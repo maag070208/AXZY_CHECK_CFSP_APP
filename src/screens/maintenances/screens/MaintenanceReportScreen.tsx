@@ -9,18 +9,10 @@ import { createMaintenance } from '../service/maintenance.service';
 import { useDispatch } from 'react-redux';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { uploadFile } from '../../../shared/service/upload.service';
+import { getCatalog } from '../../../shared/service/catalog.service';
+import Geolocation from '@react-native-community/geolocation';
 
 const { width } = Dimensions.get('window');
-
-const CATEGORIES = {
-  'PLOMERIA': {  label: 'PLOMERÍA', color: '#0288d1', icon: 'water-pump', types: ['Fuga de agua', 'Falta de agua', 'Drenaje tapado', 'Humedad/Goteras'] },
-  'ELECTRICIDAD': { label: 'ELECTRICIDAD', color: '#fbc02d', icon: 'lightning-bolt', types: ['Luminaria apagada', 'Corto circuito', 'Fallo en portón', 'Cámaras sin función'] },
-  'ESTRUCTURA': { label: 'ESTRUCTURA', color: '#7b1fa2', icon: 'home-city', types: ['Daño en pintura', 'Cristal roto', 'Fallo en cerco', 'Baches/Pavimento'] },
-  'JARDINERIA': { label: 'JARDINERÍA', color: '#388e3c', icon: 'pine-tree', types: ['Poda de césped', 'Poda de árboles', 'Riego faltante', 'Plagas'] },
-  'GENERAL': { label: 'GENERAL', color: '#e65100', icon: 'toolbox', types: ['Daños en equipamiento', 'Limpieza profunda requerida', 'Otro'] }
-};
-
-
 export const MaintenanceReportScreen = () => {
     const navigation = useNavigation();
     const route = useRoute<any>();
@@ -28,8 +20,11 @@ export const MaintenanceReportScreen = () => {
     
     const { initialCategory } = route.params || {};
 
-    const [category, setCategory] = useState<string>(initialCategory || 'GENERAL');
-    const [selectedType, setSelectedType] = useState<string>('');
+    const [categories, setCategories] = useState<any[]>([]);
+    const [allTypes, setAllTypes] = useState<any[]>([]);
+    
+    const [categoryId, setCategoryId] = useState<number | null>(null);
+    const [typeId, setTypeId] = useState<number | null>(null);
     const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
     const [media, setMedia] = useState<any[]>([]);
@@ -39,9 +34,34 @@ export const MaintenanceReportScreen = () => {
 
     useFocusEffect(
         useCallback(() => {
+            const fetchCatalogs = async () => {
+                try {
+                    const [catRes, typeRes] = await Promise.all([
+                        getCatalog('incident_category'),
+                        getCatalog('incident_type')
+                    ]);
+                    
+                    if (catRes.success) {
+                        const maintCats = catRes.data.filter((c: any) => c.type === 'MAINTENANCE');
+                        setCategories(maintCats);
+                        if (maintCats.length > 0 && !categoryId) {
+                            setCategoryId(maintCats[0].id);
+                        }
+                    }
+                    
+                    if (typeRes.success) {
+                        setAllTypes(typeRes.data);
+                    }
+                } catch (error) {
+                    console.error('Error fetching maintenance catalogs:', error);
+                }
+            };
+
+            fetchCatalogs();
+
             return () => {
-                setCategory('GENERAL');
-                setSelectedType('');
+                setCategoryId(null);
+                setTypeId(null);
                 setDescription('');
                 setMedia([]);
                 setLoading(false);
@@ -75,7 +95,7 @@ export const MaintenanceReportScreen = () => {
     };
 
     const handleSubmit = async () => {
-        if (!selectedType) {
+        if (!typeId) {
             Alert.alert('Falta información', 'Selecciona el tipo de problema primero.');
             return;
         }
@@ -98,20 +118,45 @@ export const MaintenanceReportScreen = () => {
         }));
 
         setLoading(true);
-        const res = await createMaintenance({
-            title: selectedType,
-            category: category,
-            description: description,
-            media: validMedia
-        });
-        setLoading(false);
+        const selectedType = allTypes.find(t => t.id === typeId);
 
-        if (res.success) {
-            dispatch(showToast({ message: 'Reporte de mantenimiento enviado', type: 'success' }));
-            navigation.goBack();
-        } else {
-            Alert.alert('Error', 'No se pudo enviar el reporte.');
-        }
+        Geolocation.getCurrentPosition(
+            async (position) => {
+                const res = await createMaintenance({
+                    title: selectedType?.value || 'Mantenimiento',
+                    categoryId: categoryId as number,
+                    typeId: typeId as number,
+                    description: description,
+                    media: validMedia,
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                });
+                setLoading(false);
+                if (res.success) {
+                    dispatch(showToast({ message: 'Reporte de mantenimiento enviado', type: 'success' }));
+                    navigation.goBack();
+                } else {
+                    Alert.alert('Error', 'No se pudo enviar el reporte.');
+                }
+            },
+            async (error) => {
+                const res = await createMaintenance({
+                    title: selectedType?.value || 'Mantenimiento',
+                    categoryId: categoryId as number,
+                    typeId: typeId as number,
+                    description: description,
+                    media: validMedia
+                });
+                setLoading(false);
+                if (res.success) {
+                    dispatch(showToast({ message: 'Reporte de mantenimiento enviado', type: 'success' }));
+                    navigation.goBack();
+                } else {
+                    Alert.alert('Error', 'No se pudo enviar el reporte.');
+                }
+            },
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
+        );
     };
 
     const removeMedia = (index: number) => {
@@ -120,7 +165,8 @@ export const MaintenanceReportScreen = () => {
         setMedia(newMedia);
     };
 
-    const currentCat = CATEGORIES[category as keyof typeof CATEGORIES];
+    const currentCat = categories.find(c => c.id === categoryId);
+    const filteredTypes = allTypes.filter(t => t.categoryId === categoryId);
     const isUploading = media.some(m => m.uploading);
 
     return (
@@ -138,22 +184,21 @@ export const MaintenanceReportScreen = () => {
                 <Text style={styles.label}>1. CATEGORÍA</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
                      <View style={styles.categoryGrid}>
-                        {Object.keys(CATEGORIES).map((catKey) => {
-                            const item = CATEGORIES[catKey as keyof typeof CATEGORIES];
-                            const isSelected = category === catKey;
+                        {categories.map((cat) => {
+                            const isSelected = categoryId === cat.id;
                             return (
                                 <Surface 
-                                    key={catKey} 
+                                    key={cat.id} 
                                     elevation={isSelected ? 4 : 0} 
-                                    style={[styles.catCardWrapper, isSelected && { backgroundColor: item.color }]}
+                                    style={[styles.catCardWrapper, isSelected && { backgroundColor: cat.color || '#F5F5F5' }]}
                                 >
                                     <TouchableRipple
-                                        onPress={() => { setCategory(catKey); setSelectedType(''); }}
+                                        onPress={() => { setCategoryId(cat.id); setTypeId(null); }}
                                         style={styles.catRipple}
                                     >
                                         <View style={styles.catCardContent}>
-                                            <Icon source={item.icon} size={26} color={isSelected ? 'white' : '#757575'} />
-                                            <Text style={[styles.catText, isSelected && { color: 'white' }]}>{item.label}</Text>
+                                            <Icon source={cat.icon || 'toolbox'} size={26} color={isSelected ? 'white' : '#757575'} />
+                                            <Text style={[styles.catText, isSelected && { color: 'white' }]}>{cat.value}</Text>
                                         </View>
                                     </TouchableRipple>
                                 </Surface>
@@ -164,17 +209,17 @@ export const MaintenanceReportScreen = () => {
 
                 <Text style={styles.label}>2. TIPO DE MANTENIMIENTO</Text>
                 <View style={styles.typeWrapper}>
-                    {currentCat.types.map((type) => (
+                    {filteredTypes.map((type) => (
                         <Chip
-                            key={type}
-                            selected={selectedType === type}
-                            onPress={() => setSelectedType(type)}
-                            style={[styles.typeChip, selectedType === type && { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }]}
-                            textStyle={[styles.typeChipText, selectedType === type && { color: theme.colors.primary }]}
+                            key={type.id}
+                            selected={typeId === type.id}
+                            onPress={() => setTypeId(type.id)}
+                            style={[styles.typeChip, typeId === type.id && { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }]}
+                            textStyle={[styles.typeChipText, typeId === type.id && { color: theme.colors.primary }]}
                             showSelectedCheck={false}
                             mode="outlined"
                         >
-                            {type}
+                            {type.value}
                         </Chip>
                     ))}
                 </View>
@@ -236,10 +281,10 @@ export const MaintenanceReportScreen = () => {
                     <Button 
                         mode="contained" 
                         onPress={handleSubmit} 
-                        style={[styles.mainSubmitBtn, (!selectedType || isUploading) && { backgroundColor: '#BDBDBD' }]}
+                        style={[styles.mainSubmitBtn, (!typeId || isUploading) && { backgroundColor: '#BDBDBD' }]}
                         contentStyle={{ height: 60 }}
                         loading={loading}
-                        disabled={loading || !selectedType || isUploading}
+                        disabled={loading || !typeId || isUploading}
                     >
                         <Text style={styles.submitBtnText}>{isUploading ? 'SUBIENDO...' : 'ENVIAR REPORTE'}</Text>
                     </Button>
@@ -255,14 +300,15 @@ export const MaintenanceReportScreen = () => {
             />
             
             <Portal>
-                {isUploading && (
-                    <View style={styles.uploadingOverlay}>
-                        <Surface style={styles.uploadingCard} elevation={4}>
-                            <ActivityIndicator size="large" color={theme.colors.primary} />
-                            <Text style={styles.uploadingText}>Subiendo evidencia...</Text>
-                        </Surface>
-                    </View>
-                )}
+                <Dialog visible={isUploading || loading} dismissable={false} style={{ backgroundColor: 'white', borderRadius: 20 }}>
+                    <Dialog.Content style={{ alignItems: 'center', paddingVertical: 30 }}>
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
+                        <Text style={{ marginTop: 20, fontWeight: 'bold', fontSize: 16, color: '#333', textAlign: 'center' }}>
+                            {isUploading ? 'Subiendo evidencia...' : 'Enviando reporte...'}
+                        </Text>
+                        <Text style={{ marginTop: 8, color: '#999', fontSize: 12 }}>Por favor espera un momento</Text>
+                    </Dialog.Content>
+                </Dialog>
             </Portal>
         </View>
     );

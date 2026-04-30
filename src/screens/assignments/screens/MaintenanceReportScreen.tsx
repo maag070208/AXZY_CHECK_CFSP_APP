@@ -185,7 +185,7 @@ export const MaintenanceReportScreen = () => {
                     Alert.alert('Error', 'No se pudo enviar el reporte.');
                 }
             },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
         );
     };
 
@@ -317,18 +317,17 @@ export const MaintenanceReportScreen = () => {
                 maxDuration={APP_SETTINGS.INCIDENT_VIDEO_DURATION_LIMIT}
             />
             
-            <Portal>
-                {(isUploading || loading) && (
-                    <View style={styles.uploadingOverlay}>
-                        <Surface style={styles.uploadingCard} elevation={4}>
-                            <ActivityIndicator size="large" color={theme.colors.primary} />
-                            <Text style={styles.uploadingText}>
-                                {isUploading ? 'Subiendo evidencia...' : 'Enviando reporte...'}
-                            </Text>
-                        </Surface>
-                    </View>
-                )}
-            </Portal>
+             <Portal>
+                         <Dialog visible={isUploading || loading} dismissable={false} style={{ backgroundColor: 'white', borderRadius: 20 }}>
+                             <Dialog.Content style={{ alignItems: 'center', paddingVertical: 30 }}>
+                                 <ActivityIndicator size="large" color={theme.colors.primary} />
+                                 <Text style={{ marginTop: 20, fontWeight: 'bold', fontSize: 16, color: '#333', textAlign: 'center' }}>
+                                     {isUploading ? 'Subiendo evidencia...' : 'Enviando reporte...'}
+                                 </Text>
+                                 <Text style={{ marginTop: 8, color: '#999', fontSize: 12 }}>Por favor espera un momento</Text>
+                             </Dialog.Content>
+                         </Dialog>
+                     </Portal>
         </View>
     );
 };

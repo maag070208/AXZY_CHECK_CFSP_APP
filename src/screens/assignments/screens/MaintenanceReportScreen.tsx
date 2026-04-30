@@ -9,6 +9,7 @@ import { createMaintenance } from '../service/maintenance.service';
 import { useDispatch } from 'react-redux';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { uploadFile } from '../../../shared/service/upload.service';
+import Geolocation from '@react-native-community/geolocation';
 
 const { width } = Dimensions.get('window');
 
@@ -32,6 +33,7 @@ export const MaintenanceReportScreen = () => {
     // Reset state when leaving the screen
     useFocusEffect(
         useCallback(() => {
+            Geolocation.requestAuthorization();
             return () => {
                 // Cleanup on blur
                 setSelectedType('');
@@ -81,6 +83,44 @@ export const MaintenanceReportScreen = () => {
         }
     };
 
+    const retryUpload = async (index: number) => {
+        const item = media[index];
+        if (!item.error || item.uploading) return;
+
+        setMedia(prev => {
+            const newMedia = [...prev];
+            newMedia[index] = { ...newMedia[index], error: false, uploading: true };
+            return newMedia;
+        });
+
+        try {
+            const res = await uploadFile(item.uri, item.type === 'video' ? 'video' : 'image', 'incident');
+            
+            setMedia(prev => {
+                const newMedia = [...prev];
+                if (res.success && res.url) {
+                    newMedia[index] = { ...newMedia[index], url: res.url, uploading: false };
+                } else {
+                    newMedia[index] = { ...newMedia[index], uploading: false, error: true };
+                }
+                return newMedia;
+            });
+
+            if (res.success) {
+                dispatch(showToast({ message: 'Evidencia subida correctamente', type: 'success' }));
+            } else {
+                dispatch(showToast({ message: 'Error al reintentar', type: 'error' }));
+            }
+
+        } catch (e) {
+            setMedia(prev => {
+                const newMedia = [...prev];
+                newMedia[index] = { ...newMedia[index], uploading: false, error: true };
+                return newMedia;
+            });
+        }
+    };
+
     const handleSubmit = async () => {
         if (!selectedType) {
             Alert.alert('Falta información', 'Selecciona el tipo de problema primero.');
@@ -106,35 +146,47 @@ export const MaintenanceReportScreen = () => {
         }));
 
         setLoading(true);
-        // Note: We are passing objects with 'url' property. 
-        // The service 'createIncident' (refactored) logic might iterate media to upload. 
-        // But since we already uploaded, we should bypass that or ensure service handles already-uploaded files.
-        // Actually, let's just pass the final objects to the service and make sure service doesn't re-upload if URL exists.
-        // OR better: Create a direct payload here and call API directly? 
-        // No, let's update service to handle this "already uploaded" case implicitly or explicitly.
-        // My previous refactor of service iterates `data.media` and calls `uploadFile`.
-        // If I pass an object with `url`, I should tweak service to skip upload.
-        // Let's pass the validMedia to the service. We will need to check the service next.
 
-        console.log('Valid media:', validMedia);
-        console.log('Selected type:', selectedType);
-        console.log('Description:', description);
+        Geolocation.getCurrentPosition(
+            async (position) => {
+                const res = await createMaintenance({
+                    title: selectedType,
+                    category: 'MANTENIMIENTO',
+                    description: description,
+                    media: validMedia,
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                });
+                
+                setLoading(false);
 
-        const res = await createMaintenance({
-            title: selectedType,
-            category: 'MANTENIMIENTO',
-            description: description,
-            media: validMedia
-        });
-        
-        setLoading(false);
+                if (res.success) {
+                    dispatch(showToast({ message: 'Mantenimiento reportado con éxito', type: 'success' }));
+                    navigation.goBack();
+                } else {
+                    Alert.alert('Error', 'No se pudo enviar el reporte.');
+                }
+            },
+            async (error) => {
+                // Si falla la ubicación, enviar de todos modos
+                const res = await createMaintenance({
+                    title: selectedType,
+                    category: 'MANTENIMIENTO',
+                    description: description,
+                    media: validMedia
+                });
+                
+                setLoading(false);
 
-        if (res.success) {
-            dispatch(showToast({ message: 'Mantenimiento reportado con éxito', type: 'success' }));
-            navigation.goBack();
-        } else {
-            Alert.alert('Error', 'No se pudo enviar el reporte.');
-        }
+                if (res.success) {
+                    dispatch(showToast({ message: 'Mantenimiento reportado con éxito', type: 'success' }));
+                    navigation.goBack();
+                } else {
+                    Alert.alert('Error', 'No se pudo enviar el reporte.');
+                }
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        );
     };
 
     const removeMedia = (index: number) => {
@@ -210,7 +262,13 @@ export const MaintenanceReportScreen = () => {
                                 )}
                                 {item.error && (
                                     <View style={styles.errorOverlay}>
-                                        <Icon source="alert-circle" color="red" size={24} />
+                                        <IconButton 
+                                            icon="refresh" 
+                                            iconColor="white" 
+                                            size={28} 
+                                            onPress={() => retryUpload(index)}
+                                            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+                                        />
                                     </View>
                                 )}
                                 <IconButton 
@@ -260,11 +318,13 @@ export const MaintenanceReportScreen = () => {
             />
             
             <Portal>
-                {isUploading && (
+                {(isUploading || loading) && (
                     <View style={styles.uploadingOverlay}>
                         <Surface style={styles.uploadingCard} elevation={4}>
                             <ActivityIndicator size="large" color={theme.colors.primary} />
-                            <Text style={styles.uploadingText}>Subiendo evidencia...</Text>
+                            <Text style={styles.uploadingText}>
+                                {isUploading ? 'Subiendo evidencia...' : 'Enviando reporte...'}
+                            </Text>
                         </Surface>
                     </View>
                 )}

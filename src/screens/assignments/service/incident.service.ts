@@ -6,6 +6,8 @@ export const createIncident = async (data: {
     typeId: number;
     description: string;
     media: any[];
+    latitude?: number;
+    longitude?: number;
 }) => {
     try {
         const payload = {
@@ -13,7 +15,9 @@ export const createIncident = async (data: {
             categoryId: data.categoryId,
             typeId: data.typeId,
             description: data.description,
-            media: data.media
+            media: data.media,
+            latitude: data.latitude,
+            longitude: data.longitude
         };
 
         const response = await post('/incidents', payload);

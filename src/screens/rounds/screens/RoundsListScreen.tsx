@@ -170,7 +170,7 @@ export const RoundsListScreen = ({ navigation }: any) => {
 
   const renderItem = ({ item }: { item: IRound }) => {
     const statusInfo = getStatusInfo(item.status);
-    const routeTitle = item.recurringConfiguration?.title || 'Recorrido General';
+    const routeTitle = item.client?.name || 'Recorrido General';
     const guardName = `${item.guard.name} ${item.guard.lastName || ''}`;
 
     return (

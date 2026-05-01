@@ -1,22 +1,18 @@
 export interface ILocation {
   id: number;
   name: string;
-  aisle: string;
-  spot: string;
-  number: string;
+  clientId: number;
+  client?: any;
+  zoneId: number;
+  zone?: any;
+  reference?: string;
   active: boolean;
-  isOccupied?: boolean;
 }
 
 export interface ILocationCreate {
-  name?: string;
-  aisle: string;
-  spot: string;
-  number: string;
-}
-
-export interface ILocationBatch {
-  aisle: string;
-  spot: string;
-  number: string;
+  clientId: number;
+  zoneId: number;
+  name: string;
+  reference?: string;
+  active?: boolean;
 }

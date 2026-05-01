@@ -4,7 +4,6 @@ import React from 'react';
 import HomeStack from '../../screens/home/stack/HomeStack';
 import { KardexStack } from '../../screens/kardex/stack/KardexStack';
 import { theme } from '../../shared/theme/theme';
-import { InvitationsStack } from '../../screens/invitations/stack/InvitationsStack';
 
 const Tab = createBottomTabNavigator();
 
@@ -46,24 +45,6 @@ const TabNavigator = () => {
                     <Icon source="history" size={size} color={color} />
                 ),
                 tabBarStyle: { display: 'none' },
-            }}
-        />
-      )}
-      {(role === UserRole.ADMIN || role === UserRole.SHIFT || role === UserRole.GUARD) && (
-        <Tab.Screen
-            name="INVITADOS_TAB"
-            component={InvitationsStack}
-            options={({ route }) => {
-                const routeName = getFocusedRouteNameFromRoute(route);
-                return {
-                    tabBarLabel: 'Invitados',
-                    tabBarIcon: ({ color, size }) => (
-                        <Icon source="qrcode-scan" size={size} color={color} />
-                    ),
-                    tabBarStyle: (routeName === 'INVITATION_SCAN' || routeName === 'INVITATION_DETAIL' || routeName === 'INVITATION_FORM') 
-                        ? { display: 'none' } 
-                        : { backgroundColor: theme.colors.TabNavigationBackground }
-                };
             }}
         />
       )}

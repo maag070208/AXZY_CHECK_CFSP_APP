@@ -10,14 +10,13 @@ import TabNavigator from '../tabs/TabNavigator';
 import DrawerContent from './DrawerContent';
 import { ProfileScreen } from '../../screens/profile/ProfileScreen';
 import { CheckStack } from '../../screens/check/stack/CheckStack';
-import { RecurringStack } from '../../screens/recurring/stack/RecurringStack';
 import { IncidentsStack } from '../../screens/assignments/stack/IncidentsStack';
 import { MaintenanceStack } from '../../screens/maintenances/stack/MaintenanceStack';
 import { RoundsStack } from '../../screens/rounds/stack/RoundsStack';
 import { SchedulesStack } from '../../screens/schedules/stack/SchedulesStack';
-import { PropertiesStack } from '../../screens/properties/stack/PropertiesStack';
-import { InvitationsStack } from '../../screens/invitations/stack/InvitationsStack';
-import { ResidentsStack } from '../../screens/residents/stack/ResidentsStack';
+import { ClientsStack } from '../../screens/clients/stack/ClientsStack';
+import { ZonesStack } from '../../screens/zones/stack/ZonesStack';
+import { RecurringStack } from '../../screens/recurring/stack/RecurringStack';
 
 const Drawer = createDrawerNavigator();
 
@@ -28,6 +27,8 @@ const getActiveRouteName = (route: any): string => {
     if (route.name === 'HOME_STACK') return 'HOME_MAIN';
     if (route.name === 'LOCATIONS_STACK') return 'LOCATIONS_MAIN';
     if (route.name === 'PROFILE_SCREEN') return 'PROFILE_MAIN';
+    if (route.name === 'CLIENTS_STACK') return 'CLIENTS_MAIN';
+    if (route.name === 'ZONES_STACK') return 'ZONES_MAIN';
     if (route.name === 'Tabs') return 'HOME_MAIN';
     return route.name;
   }
@@ -46,7 +47,6 @@ const isDrawerEnabled = (route: any) => {
   const routeName = getActiveRouteName(route);
   return DRAWER_WHITELIST.includes(routeName);
 };
-
 const DrawerNavigator = () => {
   return (
     <Drawer.Navigator
@@ -102,20 +102,27 @@ const DrawerNavigator = () => {
       />
 
       <Drawer.Screen
-        name="PROFILE_SCREEN"
-        component={ProfileScreen}
+        name="CLIENTS_STACK"
+        component={ClientsStack}
         options={{
           drawerItemStyle: { display: 'none' },
         }}
       />
 
       <Drawer.Screen
-        name="RECURRING_STACK"
-        component={RecurringStack}
-        options={({ route }) => ({
-            swipeEnabled: false, 
-            drawerItemStyle: { display: 'none' } 
-        })}
+        name="ZONES_STACK"
+        component={ZonesStack}
+        options={{
+          drawerItemStyle: { display: 'none' },
+        }}
+      />
+
+      <Drawer.Screen
+        name="PROFILE_SCREEN"
+        component={ProfileScreen}
+        options={{
+          drawerItemStyle: { display: 'none' },
+        }}
       />
 
       <Drawer.Screen
@@ -151,24 +158,8 @@ const DrawerNavigator = () => {
       />
 
       <Drawer.Screen
-        name="PROPERTIES_STACK"
-        component={PropertiesStack}
-        options={{
-            drawerItemStyle: { display: 'none' }
-        }}
-      />
-
-      <Drawer.Screen
-        name="INVITATIONS_STACK"
-        component={InvitationsStack}
-        options={{
-            drawerItemStyle: { display: 'none' }
-        }}
-      />
-
-      <Drawer.Screen
-        name="RESIDENTS_STACK"
-        component={ResidentsStack}
+        name="RECURRING_STACK"
+        component={RecurringStack}
         options={{
             drawerItemStyle: { display: 'none' }
         }}

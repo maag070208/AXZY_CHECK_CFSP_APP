@@ -33,13 +33,6 @@ const MENU_ITEMS: MenuItem[] = [
     roles: ['ADMIN', 'SHIFT', 'GUARD', 'MAINT', 'RESDN'],
   },
   {
-    label: 'Contactos',
-    icon: 'book-account-outline',
-    route: 'RESIDENTS_STACK',
-    screen: 'RESIDENT_CONTACTS',
-    roles: ['RESDN'],
-  },
-  {
     label: 'Guardias',
     icon: 'account-group',
     route: 'GUARDS_STACK',
@@ -68,20 +61,6 @@ const MENU_ITEMS: MenuItem[] = [
     roles: ['ADMIN', 'SHIFT'],
   },
   {
-    label: 'Rutas',
-    icon: 'briefcase-clock-outline',
-    route: 'RECURRING_STACK',
-    screen: 'RecurringList',
-    roles: ['ADMIN', 'SHIFT'],
-  },
-  {
-    label: 'Mis Rutinas',
-    icon: 'clipboard-check-outline',
-    route: 'RECURRING_STACK',
-    screen: 'MyRecurring',
-    roles: ['GUARD', 'SHIFT', 'MAINT'],
-  },
-  {
     label: 'Incidencias',
     icon: 'alert-circle-outline',
     route: 'INCIDENTS_STACK',
@@ -108,6 +87,27 @@ const MENU_ITEMS: MenuItem[] = [
     route: 'SCHEDULES_STACK',
     screen: 'SCHEDULES_LIST',
     roles: ['ADMIN'],
+  },
+  {
+    label: 'Clientes',
+    icon: 'office-building',
+    route: 'CLIENTS_STACK',
+    screen: 'CLIENTS_MAIN',
+    roles: ['ADMIN'],
+  },
+  {
+    label: 'Zonas',
+    icon: 'map-clock-outline',
+    route: 'ZONES_STACK',
+    screen: 'ZONES_MAIN',
+    roles: ['ADMIN'],
+  },
+  {
+    label: 'Locaciones',
+    icon: 'map-marker-radius-outline',
+    route: 'LOCATIONS_STACK',
+    screen: 'LOCATIONS_MAIN',
+    roles: ['ADMIN', 'SHIFT'],
   },
 ];
 
@@ -201,7 +201,7 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
 
-        <Text style={styles.versionText}>v1.0.17</Text>
+        <Text style={styles.versionText}>v1.0.19</Text>
       </View>
     </View>
   );

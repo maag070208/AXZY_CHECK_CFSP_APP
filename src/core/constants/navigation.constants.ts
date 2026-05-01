@@ -4,6 +4,8 @@ export const BOTTOM_TAB_WHITELIST: string[] = [
   'LOCATIONS_MAIN',
   'PRODUCTS_MAIN',
   'ORDERS_MAIN',
+  'CLIENTS_MAIN',
+  'ZONES_MAIN',
 ];
 
 export const DRAWER_WHITELIST: string[] = [
@@ -12,4 +14,6 @@ export const DRAWER_WHITELIST: string[] = [
   'LOCATIONS_MAIN',
   'PRODUCTS_MAIN',
   'ORDERS_MAIN',
+  'CLIENTS_MAIN',
+  'ZONES_MAIN',
 ];

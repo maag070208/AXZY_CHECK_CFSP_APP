@@ -11,26 +11,6 @@ export type ScreenParams<T = undefined> = {
   params?: T;
 };
 
-export type ProductsStackParamList = {
-  PRODUCTS_MAIN: undefined;
-  PRODUCTS_LOCATIONS: { productCode: string; productName: string };
-};
-
-export type LocationsStackParamList = {
-  LOCATIONS_MAIN: undefined;
-  LOCATIONS_PRODUCTS: { locationId: number; locationName: string };
-};
-
-export type CheckStackParamList = {
-  CHECK_SCAN: undefined;
-  CHECK_MAIN: {
-    assignmentId?: number;
-    expectedLocationId?: number;
-    expectedLocationName?: string;
-    location?: any;
-  };
-};
-
 export type RootStackParamList = {
   DRAWER_MAIN: {
     TABS: ScreenParams;
@@ -44,6 +24,7 @@ export type RootStackParamList = {
   HOME_STACK: {
     HOME_MAIN: ScreenParams;
   };
+  
   INVENTORY_STACK: {
     INVENTORY_MAIN: ScreenParams;
     INVENTORY_MOVE: ScreenParams;
@@ -57,31 +38,23 @@ export type RootStackParamList = {
       locationId: number;
       locationName: string;
     }>;
+    LOCATIONS_BULK_PRINT: ScreenParams;
   };
-  PROPERTIES_STACK: {
-    PROPERTIES_MAIN: ScreenParams;
-    PROPERTY_DETAIL: ScreenParams<{ property: any }>;
-    PROPERTY_FORM: ScreenParams<{ property?: any }>;
+
+  GUARDS_STACK: {
+    GUARD_LIST: ScreenParams;
+    GUARD_DETAIL: ScreenParams<{ guardId: number }>;
   };
-  INVITATIONS_STACK: {
-    INVITATIONS_MAIN: ScreenParams;
-    INVITATION_DETAIL: ScreenParams<{ invitation: any }>;
-    INVITATION_FILTER: ScreenParams<{ currentFilters?: any }>;
+
+  ASSIGNMENTS_STACK: {
+    ASSIGNMENT_LIST: ScreenParams;
+    MY_ASSIGNMENTS_MAIN: ScreenParams;
   };
-  RESIDENTS_STACK: {
-    RESIDENTS_MAIN: ScreenParams;
+
+  USERS_STACK: {
+    USER_LIST: ScreenParams;
   };
-  PRODUCTS_STACK: {
-    PRODUCTS_MAIN: ScreenParams;
-    PRODUCTS_LOCATIONS: ScreenParams<{
-      productCode: string;
-      productName: string;
-    }>;
-  };
-  ORDERS_STACK: {
-    ORDERS_MAIN: ScreenParams;
-    ORDERS_DETAILS: ScreenParams<{ orderId: number; orderNumber: string }>;
-  };
+
   CHECK_STACK: {
     CHECK_SCAN: ScreenParams;
     CHECK_MAIN: ScreenParams<{
@@ -91,6 +64,36 @@ export type RootStackParamList = {
       location?: any;
     }>;
   };
+
+  CLIENTS_STACK: {
+    CLIENTS_MAIN: ScreenParams;
+    CREATE_CLIENT: ScreenParams;
+  };
+
+  ZONES_STACK: {
+    ZONES_MAIN: ScreenParams;
+  };
+
+  INCIDENTS_STACK: {
+    INCIDENT_LIST: ScreenParams;
+  };
+
+  MAINTENANCE_STACK: {
+    MAINTENANCE_LIST: ScreenParams;
+  };
+
+  ROUNDS_STACK: {
+    ROUNDS_LIST: ScreenParams;
+  };
+
+  SCHEDULES_STACK: {
+    SCHEDULES_LIST: ScreenParams;
+  };
+
+  RECURRING_STACK: {
+    RECURRING_LIST: ScreenParams;
+  };
+
   PROFILE_SCREEN: undefined;
 };
 
@@ -123,31 +126,44 @@ export const AppStacks: RootStackParamList = {
   LOCATIONS_STACK: {
     LOCATIONS_MAIN: {},
     LOCATIONS_PRODUCTS: {},
+    LOCATIONS_BULK_PRINT: {},
   },
-  PROPERTIES_STACK: {
-    PROPERTIES_MAIN: {},
-    PROPERTY_DETAIL: {},
-    PROPERTY_FORM: {},
+  GUARDS_STACK: {
+    GUARD_LIST: {},
+    GUARD_DETAIL: {},
   },
-  INVITATIONS_STACK: {
-    INVITATIONS_MAIN: {},
-    INVITATION_DETAIL: {},
-    INVITATION_FILTER: {},
+  ASSIGNMENTS_STACK: {
+    ASSIGNMENT_LIST: {},
+    MY_ASSIGNMENTS_MAIN: {},
   },
-  RESIDENTS_STACK: {
-    RESIDENTS_MAIN: {},
-  },
-  PRODUCTS_STACK: {
-    PRODUCTS_MAIN: {},
-    PRODUCTS_LOCATIONS: {},
-  },
-  ORDERS_STACK: {
-    ORDERS_MAIN: {},
-    ORDERS_DETAILS: {},
+  USERS_STACK: {
+    USER_LIST: {},
   },
   CHECK_STACK: {
     CHECK_SCAN: {},
     CHECK_MAIN: {},
+  },
+  CLIENTS_STACK: {
+    CLIENTS_MAIN: {},
+    CREATE_CLIENT: {},
+  },
+  ZONES_STACK: {
+    ZONES_MAIN: {},
+  },
+  INCIDENTS_STACK: {
+    INCIDENT_LIST: {},
+  },
+  MAINTENANCE_STACK: {
+    MAINTENANCE_LIST: {},
+  },
+  ROUNDS_STACK: {
+    ROUNDS_LIST: {},
+  },
+  SCHEDULES_STACK: {
+    SCHEDULES_LIST: {},
+  },
+  RECURRING_STACK: {
+    RECURRING_LIST: {},
   },
   PROFILE_SCREEN: undefined,
 };

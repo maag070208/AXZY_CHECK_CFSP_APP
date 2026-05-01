@@ -8,19 +8,14 @@ export interface IRound {
   startTime: string;
   endTime?: string | null;
   status: 'IN_PROGRESS' | 'COMPLETED';
-  recurringConfigurationId: number;
-  recurringConfiguration?: {
+  clientId: number;
+  client?: {
       id: number;
-      title: string;
-      startTime?: string;
-      endTime?: string;
-      recurringLocations?: Array<{
+      name: string;
+      locations?: Array<{
          id: number;
-         locationId: number;
-         location: {
-           id: number;
-           name: string;
-         }
+         name: string;
+         tasks?: any[];
       }>;
   };
   guard: {

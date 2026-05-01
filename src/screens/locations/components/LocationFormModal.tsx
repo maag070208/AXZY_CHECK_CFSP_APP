@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import {
   Button,
   HelperText,
@@ -7,10 +7,14 @@ import {
   Portal,
   Text,
   TextInput,
+  IconButton,
+  ActivityIndicator,
 } from 'react-native-paper';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { ILocation, ILocationCreate } from '../type/location.types';
+import { getClients } from '../../clients/service/client.service';
+import { getPaginatedZones } from '../../zones/service/zone.service';
 
 interface Props {
   visible: boolean;
@@ -21,9 +25,10 @@ interface Props {
 }
 
 const validationSchema = Yup.object().shape({
-  aisle: Yup.string().required('La sección es obligatoria'),
-  spot: Yup.string().required('El consecutivo es obligatorio'),
-  number: Yup.string().required('La referencia o calle es obligatoria'),
+  clientId: Yup.number().required('El cliente es obligatorio'),
+  zoneId: Yup.number().required('El recurrente (zona) es obligatorio'),
+  name: Yup.string().required('El nombre de ubicación es obligatorio'),
+  reference: Yup.string().optional(),
 });
 
 export const LocationFormModal = ({
@@ -33,10 +38,38 @@ export const LocationFormModal = ({
   initialData,
   loading,
 }: Props) => {
+  const [clients, setClients] = useState<any[]>([]);
+  const [zones, setZones] = useState<any[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [loadingZones, setLoadingZones] = useState(false);
+  const [selectorVisible, setSelectorVisible] = useState(false);
+  const [selectorType, setSelectorType] = useState<'CLIENT' | 'ZONE'>('CLIENT');
+
+  useEffect(() => {
+    if (visible) {
+      loadClients();
+    }
+  }, [visible]);
+
+  const loadClients = async () => {
+    setLoadingClients(true);
+    const res = await getClients();
+    if (res.success) setClients(res.data || []);
+    setLoadingClients(false);
+  };
+
+  const loadZones = async (clientId: number) => {
+    setLoadingZones(true);
+    const res = await getPaginatedZones({ filters: { clientId } });
+    if (res.success) setZones(res.data.rows || []);
+    setLoadingZones(false);
+  };
+
   const initialValues = {
-    aisle: initialData?.aisle || '',
-    spot: initialData?.spot || '',
-    number: initialData?.number || '',
+    clientId: initialData?.clientId || '',
+    zoneId: initialData?.zoneId || '',
+    name: initialData?.name || '',
+    reference: initialData?.reference || '',
   };
 
   return (
@@ -51,7 +84,7 @@ export const LocationFormModal = ({
             {initialData ? 'Editar Ubicación' : 'Nueva Ubicación'}
           </Text>
           <Text variant="bodySmall" style={styles.subtitle}>
-            Completa los campos para {initialData ? 'actualizar' : 'crear'} la ubicación
+            Sincronizado con el catálogo de clientes y zonas
           </Text>
         </View>
 
@@ -61,10 +94,10 @@ export const LocationFormModal = ({
           validationSchema={validationSchema}
           onSubmit={values => {
             onSubmit({
-              aisle: values.aisle,
-              spot: values.spot,
-              number: String(values.number),
-              name: `${values.aisle}-${values.spot}-${values.number}`,
+              clientId: Number(values.clientId),
+              zoneId: Number(values.zoneId),
+              name: values.name,
+              reference: values.reference,
             });
           }}
         >
@@ -72,105 +105,147 @@ export const LocationFormModal = ({
             handleChange,
             handleBlur,
             handleSubmit,
+            setFieldValue,
             values,
             errors,
             touched,
-          }) => (
-            <View>
+          }) => {
+            // Trigger zone load when client changes
+            useEffect(() => {
+              if (values.clientId) loadZones(Number(values.clientId));
+            }, [values.clientId]);
+
+            const selectedClientName = clients.find(c => c.id === values.clientId)?.name || 'Selecciona un cliente';
+            const selectedZoneName = zones.find(z => z.id === values.zoneId)?.name || 'Selecciona una zona';
+
+            return (
+              <View style={styles.formContent}>
+                {/* Selector de Cliente */}
                 <View style={styles.inputContainer}>
-                  <TextInput
-                    mode="outlined"
-                    label="Sección"
-                    placeholder="Ej: A, SECC-1"
-                    value={values.aisle}
-                    onChangeText={handleChange('aisle')}
-                    onBlur={handleBlur('aisle')}
-                    error={touched.aisle && !!errors.aisle}
-                    style={styles.input}
-                    outlineStyle={styles.inputOutline}
-                    contentStyle={styles.inputContent}
-                    left={<TextInput.Icon icon="map-marker-radius-outline" size={20} />}
-                  />
-                  {touched.aisle && errors.aisle && (
-                    <HelperText type="error" visible={true} style={styles.errorText}>
-                      {errors.aisle}
-                    </HelperText>
-                  )}
-                </View>
-                <View style={styles.inputContainer}>
-                  <TextInput
-                    mode="outlined"
-                    label="# Consecutivo"
-                    placeholder="Ej: 101, B2"
-                    value={values.spot}
-                    onChangeText={handleChange('spot')}
-                    onBlur={handleBlur('spot')}
-                    error={touched.spot && !!errors.spot}
-                    style={styles.input}
-                    outlineStyle={styles.inputOutline}
-                    contentStyle={styles.inputContent}
-                    left={<TextInput.Icon icon="numeric-1-box-outline" size={20} />}
-                  />
-                  {touched.spot && errors.spot && (
-                    <HelperText type="error" visible={true} style={styles.errorText}>
-                      {errors.spot}
-                    </HelperText>
-                  )}
-                </View>
-                <View style={styles.inputContainer}>
-                  <TextInput
-                    mode="outlined"
-                    label="Referencia / Calle"
-                    placeholder="Ej: Calle Principal 123"
-                    value={values.number}
-                    onChangeText={handleChange('number')}
-                    onBlur={handleBlur('number')}
-                    error={touched.number && !!errors.number}
-                    style={styles.input}
-                    outlineStyle={styles.inputOutline}
-                    contentStyle={styles.inputContent}
-                    left={<TextInput.Icon icon="office-building-marker-outline" size={20} />}
-                  />
-                  {touched.number && errors.number && (
-                    <HelperText type="error" visible={true} style={styles.errorText}>
-                      {errors.number}
-                    </HelperText>
+                  <Text style={styles.label}>CLIENTE *</Text>
+                  <TouchableOpacity 
+                    style={[styles.selector, touched.clientId && errors.clientId && styles.errorBorder]}
+                    onPress={() => {
+                        setSelectorType('CLIENT');
+                        setSelectorVisible(true);
+                    }}
+                  >
+                    <Text style={values.clientId ? styles.selectorText : styles.placeholderText}>{selectedClientName}</Text>
+                    <IconButton icon="chevron-down" size={20} />
+                  </TouchableOpacity>
+                  {touched.clientId && errors.clientId && (
+                    <HelperText type="error" visible={true}>{errors.clientId}</HelperText>
                   )}
                 </View>
 
-              <View style={styles.generatedName}>
-                <Text variant="labelSmall" style={styles.generatedNameLabel}>
-                  Nombre generado:
-                </Text>
-                <Text variant="bodyMedium" style={styles.generatedNameText}>
-                  {`${values.aisle || ''}-${values.spot || ''}-${values.number || ''}`}
-                </Text>
-              </View>
+                {/* Selector de Zona */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>RECURRENTE (ZONA) *</Text>
+                  <TouchableOpacity 
+                    style={[styles.selector, touched.zoneId && errors.zoneId && styles.errorBorder, !values.clientId && styles.disabledSelector]}
+                    disabled={!values.clientId}
+                    onPress={() => {
+                        setSelectorType('ZONE');
+                        setSelectorVisible(true);
+                    }}
+                  >
+                    <Text style={values.zoneId ? styles.selectorText : styles.placeholderText}>
+                        {loadingZones ? 'Cargando...' : selectedZoneName}
+                    </Text>
+                    <IconButton icon="chevron-down" size={20} />
+                  </TouchableOpacity>
+                  {touched.zoneId && errors.zoneId && (
+                    <HelperText type="error" visible={true}>{errors.zoneId}</HelperText>
+                  )}
+                </View>
 
-              <View style={styles.actions}>
-                <Button
-                  mode="outlined"
-                  onPress={onDismiss}
-                  style={styles.button}
-                  contentStyle={styles.buttonContent}
-                  labelStyle={styles.buttonLabel}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  mode="contained"
-                  onPress={() => handleSubmit()}
-                  loading={loading}
-                  disabled={loading}
-                  style={[styles.button, styles.buttonPrimary]}
-                  contentStyle={styles.buttonContent}
-                  labelStyle={styles.buttonPrimaryLabel}
-                >
-                  {initialData ? 'Guardar' : 'Crear'}
-                </Button>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>NOMBRE UBICACIÓN *</Text>
+                  <TextInput
+                    mode="outlined"
+                    placeholder="Ej: Recepción, Oficina 101"
+                    value={values.name}
+                    onChangeText={handleChange('name')}
+                    onBlur={handleBlur('name')}
+                    error={touched.name && !!errors.name}
+                    style={styles.input}
+                    outlineStyle={styles.inputOutline}
+                  />
+                  {touched.name && errors.name && (
+                    <HelperText type="error" visible={true}>{errors.name}</HelperText>
+                  )}
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>REFERENCIA (OPCIONAL)</Text>
+                  <TextInput
+                    mode="outlined"
+                    placeholder="Ej: A un lado del elevador"
+                    value={values.reference}
+                    onChangeText={handleChange('reference')}
+                    onBlur={handleBlur('reference')}
+                    style={styles.input}
+                    outlineStyle={styles.inputOutline}
+                  />
+                </View>
+
+                <View style={styles.actions}>
+                  <Button mode="text" onPress={onDismiss} textColor="#64748b">Cancelar</Button>
+                  <Button 
+                    mode="contained" 
+                    onPress={() => handleSubmit()} 
+                    loading={loading} 
+                    disabled={loading}
+                    buttonColor="#059669"
+                    style={styles.saveButton}
+                  >
+                    Guardar Ubicación
+                  </Button>
+                </View>
+
+                {/* Sub-modal para selección de ítems */}
+                <Portal>
+                  <Modal
+                    visible={selectorVisible}
+                    onDismiss={() => setSelectorVisible(false)}
+                    contentContainerStyle={styles.selectorModal}
+                  >
+                    <Text style={styles.selectorTitle}>
+                        {selectorType === 'CLIENT' ? 'Seleccionar Cliente' : 'Seleccionar Zona'}
+                    </Text>
+                    <FlatList
+                        data={selectorType === 'CLIENT' ? clients : zones}
+                        keyExtractor={item => String(item.id)}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity 
+                                style={styles.optionItem}
+                                onPress={() => {
+                                    if (selectorType === 'CLIENT') {
+                                        setFieldValue('clientId', item.id);
+                                        setFieldValue('zoneId', ''); // Reset zone when client changes
+                                    } else {
+                                        setFieldValue('zoneId', item.id);
+                                    }
+                                    setSelectorVisible(false);
+                                }}
+                            >
+                                <Text style={styles.optionText}>{item.name}</Text>
+                                {(selectorType === 'CLIENT' ? values.clientId : values.zoneId) === item.id && (
+                                    <Icon name="check" size={20} color="#059669" />
+                                )}
+                            </TouchableOpacity>
+                        )}
+                        ListEmptyComponent={() => (
+                            <View style={styles.emptySelector}>
+                                {loadingClients || loadingZones ? <ActivityIndicator color="#059669" /> : <Text>No se encontraron resultados</Text>}
+                            </View>
+                        )}
+                    />
+                  </Modal>
+                </Portal>
               </View>
-            </View>
-          )}
+            );
+          }}
         </Formik>
       </Modal>
     </Portal>
@@ -180,15 +255,9 @@ export const LocationFormModal = ({
 const styles = StyleSheet.create({
   modal: {
     backgroundColor: 'white',
-    padding: 0,
-    margin: 24,
+    margin: 20,
     borderRadius: 24,
     overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
   },
   header: {
     backgroundColor: '#f8fafc',
@@ -197,89 +266,102 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e2e8f0',
   },
   title: {
-    fontWeight: '700',
-    color: '#0f172a',
-    fontSize: 20,
+    fontWeight: '800',
+    color: '#1e293b',
   },
   subtitle: {
     color: '#64748b',
     marginTop: 4,
-    fontSize: 13,
+  },
+  formContent: {
+    padding: 24,
   },
   inputContainer: {
     marginBottom: 16,
-    paddingHorizontal: 24,
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#64748b',
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  selector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingLeft: 16,
+    height: 52,
+    backgroundColor: '#f8fafc',
+  },
+  disabledSelector: {
+    opacity: 0.5,
+    backgroundColor: '#f1f5f9',
+  },
+  errorBorder: {
+    borderColor: '#ef4444',
+  },
+  selectorText: {
+    color: '#1e293b',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  placeholderText: {
+    color: '#94a3b8',
+    fontSize: 14,
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: '#f8fafc',
   },
   inputOutline: {
     borderRadius: 12,
     borderWidth: 1.5,
-  },
-  inputContent: {
-    paddingVertical: 12,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingHorizontal: 24,
-  },
-  halfInputContainer: {
-    width: '48%',
-  },
-  errorText: {
-    marginTop: 4,
-    fontSize: 12,
-  },
-  generatedName: {
-    backgroundColor: '#f1f5f9',
-    marginHorizontal: 24,
-    marginVertical: 16,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  generatedNameLabel: {
-    color: '#64748b',
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  generatedNameText: {
-    color: '#0f172a',
-    fontWeight: '600',
-    fontSize: 16,
+    borderColor: '#e2e8f0',
   },
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    padding: 24,
-    paddingTop: 20,
-    backgroundColor: '#f8fafc',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    gap: 12,
+    marginTop: 24,
   },
-  button: {
+  saveButton: {
     borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#cbd5e1',
-    marginLeft: 12,
-    minWidth: 100,
   },
-  buttonPrimary: {
-    backgroundColor: '#0f172a',
-    borderColor: '#0f172a',
+  selectorModal: {
+    backgroundColor: 'white',
+    padding: 24,
+    margin: 30,
+    borderRadius: 20,
+    maxHeight: '70%',
   },
-  buttonContent: {
-    height: 48,
+  selectorTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1e293b',
+    marginBottom: 20,
   },
-  buttonLabel: {
-    color: '#475569',
-    fontWeight: '600',
+  optionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
-  buttonPrimaryLabel: {
-    color: 'white',
-    fontWeight: '600',
+  optionText: {
+    fontSize: 15,
+    color: '#334155',
   },
+  emptySelector: {
+    padding: 40,
+    alignItems: 'center',
+  }
 });
+
+// Mock Icon component if not available
+const Icon = ({ name, size, color }: any) => (
+    <IconButton icon={name} size={size} iconColor={color} style={{ margin: 0 }} />
+);

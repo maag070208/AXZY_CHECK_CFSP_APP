@@ -138,13 +138,13 @@ export const RoundDetailScreen = ({ route }: any) => {
       previousTime = current;
     });
 
-    const expectedLocs = data.round.recurringConfiguration?.recurringLocations || [];
-    const missingLocs = expectedLocs.filter((l: any) => !visitedLocations.has(String(l.location.id)));
+    const expectedLocs = data.round.client?.locations || [];
+    const missingLocs = expectedLocs.filter((l: any) => !visitedLocations.has(String(l.id)));
     
     missingLocs.forEach((loc: any) => {
       mapNodes.push({
         type: 'POINT',
-        label: loc.location.name,
+        label: loc.name,
         status: data.round.status === 'COMPLETED' ? 'MISSING' : 'PENDING',
         timeDiff: '--'
       });
@@ -365,7 +365,7 @@ export const RoundDetailScreen = ({ route }: any) => {
     );
   }
 
-  const routeTitle = data.round.recurringConfiguration?.title || 'Ronda General';
+  const routeTitle = data.round.client?.name || 'Ronda General';
 
   return (
     <View style={styles.container}>

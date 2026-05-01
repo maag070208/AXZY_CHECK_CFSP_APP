@@ -1,35 +1,35 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { HeaderBack } from '../../../navigation/header/HeaderBack';
-import { LocationsScreen } from '../screens/LocationsScreen';
-import { BulkPrintScreen } from '../screens/BulkPrintScreen';
+import { ClientsScreen } from '../screens/ClientsScreen';
+import { CreateClientScreen } from '../screens/CreateClientScreen';
 
 const Stack = createNativeStackNavigator();
 
-export const LocationsStack = () => {
+export const ClientsStack = () => {
   return (
     <Stack.Navigator>
       <Stack.Screen
-        name="LOCATIONS_MAIN"
-        component={LocationsScreen}
+        name="CLIENTS_MAIN"
+        component={ClientsScreen}
         options={({ navigation }) => ({
           header: () => (
             <HeaderBack
               navigation={navigation}
-              title="Ubicaciones"
+              title="Clientes"
               back={true}
             />
           ),
         })}
       />
       <Stack.Screen
-        name="LOCATIONS_BULK_PRINT"
-        component={BulkPrintScreen}
+        name="CREATE_CLIENT"
+        component={CreateClientScreen}
         options={({ navigation }) => ({
           header: () => (
             <HeaderBack
               navigation={navigation}
-              title="Impresión Masiva"
+              title="Nuevo Cliente"
               back={true}
             />
           ),

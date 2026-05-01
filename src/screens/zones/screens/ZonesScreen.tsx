@@ -1,51 +1,45 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, TouchableOpacity, View, Modal, ScrollView } from 'react-native';
+import { Alert, FlatList, RefreshControl, StyleSheet, View, Modal, ScrollView, TouchableOpacity } from 'react-native';
 import {
   ActivityIndicator,
   Avatar,
-  Button,
   Card,
-  FAB,
   Icon,
   IconButton,
   Searchbar,
   Text,
+  FAB,
+  Button,
   Portal,
+  Divider,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LocationFormModal } from '../components/LocationFormModal';
 import {
-  createLocation,
-  deleteLocation,
-  getPaginatedLocations,
-  updateLocation
-} from '../service/location.service';
+  getPaginatedZones,
+  deleteZone,
+  createZone
+} from '../service/zone.service';
 import { getClients } from '../../clients/service/client.service';
-import { ILocation } from '../type/location.types';
+import { IZone } from '../type/zone.types';
 import { IClient } from '../../clients/type/client.types';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
+import { ZoneFormModal } from '../components/ZoneFormModal';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
 
 const PRIMARY_COLOR = '#0F4C3A';
 
-export const LocationsScreen = ({ navigation, route }: any) => {
+export const ZonesScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.userState);
   const isAdmin = user.role === UserRole.ADMIN;
-
-  // Params from navigation
-  const routeClientId = route.params?.clientId;
-  const clientName = route.params?.clientName;
-  const zoneId = route.params?.zoneId;
-  const zoneName = route.params?.zoneName;
-
-  const [locations, setLocations] = useState<ILocation[]>([]);
+  
+  const [zones, setZones] = useState<IZone[]>([]);
   const [clients, setClients] = useState<IClient[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,12 +53,10 @@ export const LocationsScreen = ({ navigation, route }: any) => {
 
   // Filters
   const [showFilters, setShowFilters] = useState(false);
-  const [appliedClientId, setAppliedClientId] = useState<number | string>(routeClientId || "");
-  const [tempClientId, setTempClientId] = useState<number | string>(routeClientId || "");
-  const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [appliedClientId, setAppliedClientId] = useState<number | string>("");
+  const [tempClientId, setTempClientId] = useState<number | string>("");
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingLocation, setEditingLocation] = useState<ILocation | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -83,13 +75,6 @@ export const LocationsScreen = ({ navigation, route }: any) => {
   };
 
   useEffect(() => {
-    if (routeClientId) {
-        setAppliedClientId(routeClientId);
-        setTempClientId(routeClientId);
-    }
-  }, [routeClientId]);
-
-  useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
     }, 500);
@@ -98,7 +83,7 @@ export const LocationsScreen = ({ navigation, route }: any) => {
 
   useEffect(() => {
     fetchData(1);
-  }, [debouncedSearch, filterStatus, appliedClientId, zoneId]);
+  }, [debouncedSearch, appliedClientId]);
 
   const fetchData = async (pageNum: number, isRefreshing = false) => {
     if (pageNum === 1) {
@@ -111,32 +96,30 @@ export const LocationsScreen = ({ navigation, route }: any) => {
         page: pageNum,
         limit: 20,
         filters: {
-            name: debouncedSearch,
-            clientId: appliedClientId || undefined,
-            zoneId: zoneId,
-            active: filterStatus === 'ALL' ? undefined : filterStatus === 'ACTIVE' ? true : false
+            search: debouncedSearch,
+            clientId: appliedClientId || undefined
         }
     };
 
     try {
-        const res = await getPaginatedLocations(params);
-        if (res.success && res.data) {
+        const res = await getPaginatedZones(params);
+        if (res && res.success && res.data) {
             const newRows = res.data.rows || [];
             const totalRows = res.data.total || 0;
 
             if (pageNum === 1) {
-                setLocations(newRows);
+                setZones(newRows);
                 setHasMore(newRows.length < totalRows);
             } else {
-                setLocations(prev => [...prev, ...newRows]);
-                setHasMore(locations.length + newRows.length < totalRows);
+                setZones(prev => [...prev, ...newRows]);
+                setHasMore(zones.length + newRows.length < totalRows);
             }
 
             setTotal(totalRows);
             setPage(pageNum);
         }
     } catch (error) {
-        console.error("Error fetching locations:", error);
+        console.error("Error fetching zones:", error);
     } finally {
         setLoading(false);
         setRefreshing(false);
@@ -158,7 +141,7 @@ export const LocationsScreen = ({ navigation, route }: any) => {
   useFocusEffect(
     React.useCallback(() => {
       fetchData(1);
-    }, [appliedClientId, zoneId]),
+    }, []),
   );
 
   const handleOpenFilters = () => {
@@ -173,50 +156,35 @@ export const LocationsScreen = ({ navigation, route }: any) => {
 
   const handleClearFilters = () => {
     setTempClientId("");
-    // If we were viewing a specific client from params, we clear it too
-    if (routeClientId) {
-        navigation.setParams({ clientId: undefined, clientName: undefined });
-    }
   };
 
   const handleCreate = () => {
-    setEditingLocation(null);
-    setModalVisible(true);
-  };
-
-  const handleEdit = (item: ILocation) => {
-    setEditingLocation(item);
     setModalVisible(true);
   };
 
   const handleSubmit = async (data: any) => {
     setSubmitting(true);
     try {
-        const res = editingLocation 
-          ? await updateLocation(editingLocation.id, data)
-          : await createLocation(data);
-        
-        if (res.success) {
-          setModalVisible(false);
-          setEditingLocation(null);
-          dispatch(showToast({ 
-            message: editingLocation ? 'Ubicación actualizada' : 'Ubicación creada', 
-            type: 'success' 
-          }));
-          fetchData(1);
+        const res = await createZone(data);
+        if (res && res.success) {
+            setModalVisible(false);
+            dispatch(showToast({ message: 'Zona creada correctamente', type: 'success' }));
+            fetchData(1);
         } else {
-          dispatch(showToast({ message: 'Error al guardar ubicación', type: 'error' }));
+            const msg = res?.messages?.[0] || 'Error al crear zona';
+            dispatch(showToast({ message: msg, type: 'error' }));
         }
-    } catch (error) {
-        console.error("Error submitting location:", error);
+    } catch (error: any) {
+        const msg = error?.messages?.[0] || 'Ocurrió un error inesperado';
+        dispatch(showToast({ message: msg, type: 'error' }));
     } finally {
         setSubmitting(false);
     }
   };
 
-  const handleDelete = (item: ILocation) => {
+  const handleDelete = (item: IZone) => {
     Alert.alert(
-      'Eliminar ubicación',
+      'Eliminar zona',
       `¿Estás seguro de que deseas eliminar "${item.name}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -224,9 +192,9 @@ export const LocationsScreen = ({ navigation, route }: any) => {
           text: 'Eliminar', 
           style: 'destructive',
           onPress: async () => {
-            const res = await deleteLocation(item.id);
-            if (res.success) {
-              dispatch(showToast({ message: 'Ubicación eliminada', type: 'success' }));
+            const res = await deleteZone(item.id);
+            if (res && res.success) {
+              dispatch(showToast({ message: 'Zona eliminada', type: 'success' }));
               fetchData(1);
             }
           }
@@ -242,73 +210,58 @@ export const LocationsScreen = ({ navigation, route }: any) => {
 
   const activeFiltersCount = appliedClientId !== "" ? 1 : 0;
 
-  const renderItem = ({ item }: { item: ILocation }) => (
-  <Card
-    style={styles.itemCard}
-    elevation={1}
-  >
-    <View style={styles.cardLayout}>
-      <View style={styles.avatarSection}>
-        <Avatar.Icon 
-          size={56} 
-          icon="map-marker-radius-outline" 
-          style={styles.avatar} 
-          color="#0F4C3A"
-        />
-        <View style={[styles.statusBadge, { backgroundColor: item.active ? '#059669' : '#64748B' }]}>
-          <Icon source={item.active ? "check" : "minus"} size={10} color="#fff" />
+  const renderItem = ({ item }: { item: IZone }) => (
+    <Card
+      style={styles.itemCard}
+      elevation={1}
+      onPress={() => {
+        navigation.navigate('LOCATIONS_STACK', {
+            screen: 'LOCATIONS_MAIN',
+            params: { zoneId: item.id, zoneName: item.name }
+        });
+      }}
+    >
+      <View style={styles.cardLayout}>
+        <View style={styles.avatarSection}>
+          <Avatar.Icon 
+            size={56} 
+            icon="map-clock-outline" 
+            style={styles.avatar} 
+            color="#0F4C3A"
+          />
+          <View style={[styles.statusBadge, { backgroundColor: item.active ? '#059669' : '#64748B' }]}>
+            <Icon source={item.active ? "check" : "minus"} size={10} color="#fff" />
+          </View>
         </View>
-      </View>
 
-      <View style={styles.infoSection}>
-        <View style={styles.nameRow}>
+        <View style={styles.infoSection}>
           <Text style={styles.propertyName} numberOfLines={1}>{item.name}</Text>
-          <View style={[styles.idBadge, { backgroundColor: '#F1F5F9' }]}>
-            <Text style={[styles.idText, { color: '#64748B' }]}>PUNTO</Text>
-          </View>
+          <Text style={styles.ownerText} numberOfLines={1}>Cliente: {item.client?.name || 'N/A'}</Text>
         </View>
-        
-        <Text style={styles.ownerText} numberOfLines={1}>Cliente: {(item as any).client?.name || 'N/A'}</Text>
 
-        <View style={styles.detailsRow}>
-          <View style={styles.detailItem}>
-            <Icon source="map-outline" size={14} color="#64748B" />
-            <Text style={styles.detailText} numberOfLines={1}>{(item as any).zone?.name || 'Sin zona'}</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.actions}>
-        {isAdmin && (
-          <View style={styles.adminActions}>
-             <IconButton
-                icon="pencil-outline"
-                size={20}
-                onPress={() => handleEdit(item)}
-                iconColor="#64748B"
-            />
+        <View style={styles.actions}>
+          {isAdmin ? (
             <IconButton
                 icon="trash-can-outline"
                 size={20}
                 onPress={() => handleDelete(item)}
                 iconColor="#ba1a1a"
             />
-          </View>
-        )}
+          ) : (
+            <IconButton icon="chevron-right" iconColor="#CBD5E1" size={24} />
+          )}
+        </View>
       </View>
-    </View>
-  </Card>
-);
+    </Card>
+  );
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.headerTitle}>Locaciones</Text>
-            <Text style={styles.headerSubtitle}>
-                {appliedClientId && clientName ? `Filtrando: ${clientName}` : zoneName ? `Zona: ${zoneName}` : `${total} locaciones registradas`}
-            </Text>
+            <Text style={styles.headerTitle}>Zonas</Text>
+            <Text style={styles.headerSubtitle}>{total} zonas registradas</Text>
           </View>
           <IconButton
             icon="filter-variant"
@@ -318,13 +271,14 @@ export const LocationsScreen = ({ navigation, route }: any) => {
             onPress={handleOpenFilters}
           />
         </View>
+        
         <Searchbar
-          placeholder="Buscar por nombre..."
+          placeholder="Buscar zona por nombre..."
           onChangeText={setSearch}
           value={search}
           style={styles.searchBar}
           inputStyle={styles.searchInput}
-          iconColor="#0F4C3A"
+          iconColor={PRIMARY_COLOR}
           placeholderTextColor="#94A3B8"
           elevation={0}
         />
@@ -333,11 +287,11 @@ export const LocationsScreen = ({ navigation, route }: any) => {
       {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-          <Text style={styles.loadingText}>Cargando ubicaciones...</Text>
+          <Text style={styles.loadingText}>Cargando zonas...</Text>
         </View>
       ) : (
         <FlatList
-          data={locations}
+          data={zones}
           keyExtractor={item => String(item.id)}
           renderItem={renderItem}
           refreshControl={
@@ -357,12 +311,10 @@ export const LocationsScreen = ({ navigation, route }: any) => {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <View style={styles.emptyIcon}>
-                <IconButton icon={debouncedSearch ? "magnify-off" : "map-marker-off"} size={40} iconColor="#94A3B8" />
+                <IconButton icon="map-off-outline" size={40} iconColor="#94A3B8" />
               </View>
-              <Text style={styles.emptyTitle}>{debouncedSearch ? "No se encontraron resultados" : "Sin ubicaciones"}</Text>
-              <Text style={styles.emptyText}>
-                {debouncedSearch ? "Prueba con otros términos de búsqueda." : "Comienza agregando tu primera ubicación con el botón inferior."}
-              </Text>
+              <Text style={styles.emptyTitle}>Sin zonas</Text>
+              <Text style={styles.emptyText}>No se encontraron zonas registradas.</Text>
             </View>
           }
         />
@@ -386,7 +338,7 @@ export const LocationsScreen = ({ navigation, route }: any) => {
           <View style={[styles.modalHeader, { paddingTop: insets.top + 20 }]}>
             <View style={styles.modalHeaderTitle}>
               <Icon source="filter-variant" size={24} color={PRIMARY_COLOR} />
-              <Text style={styles.modalTitle}>Filtros de Locaciones</Text>
+              <Text style={styles.modalTitle}>Filtros de Zonas</Text>
             </View>
             <IconButton icon="close" size={24} onPress={() => setShowFilters(false)} iconColor="#94A3B8" />
           </View>
@@ -415,11 +367,10 @@ export const LocationsScreen = ({ navigation, route }: any) => {
         </Modal>
       </Portal>
 
-      <LocationFormModal
+      <ZoneFormModal
         visible={modalVisible}
         onDismiss={() => setModalVisible(false)}
         onSubmit={handleSubmit}
-        initialData={editingLocation}
         loading={submitting}
       />
     </View>
@@ -513,11 +464,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   propertyName: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -526,46 +472,21 @@ const styles = StyleSheet.create({
   ownerText: {
     fontSize: 13,
     color: '#94A3B8',
-    marginBottom: 4,
-  },
-  idBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  idText: {
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  detailsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  detailText: {
-    fontSize: 12,
-    color: '#64748B',
   },
   actions: {
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  adminActions: {
-    flexDirection: 'column',
     alignItems: 'center',
   },
   fab: {
     position: 'absolute',
     margin: 16,
     right: 0,
-    backgroundColor: '#0F4C3A',
+    backgroundColor: PRIMARY_COLOR,
     borderRadius: 28,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
   emptyState: {
     alignItems: 'center',
@@ -592,10 +513,6 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 20,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
   },
   modalFullScreen: {
     backgroundColor: 'white',

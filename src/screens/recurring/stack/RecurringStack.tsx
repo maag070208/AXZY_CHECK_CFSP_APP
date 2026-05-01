@@ -1,56 +1,32 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { HeaderBack } from '../../../navigation/header/HeaderBack';
-import { MyRecurringScreen } from '../screens/MyRecurringScreen';
-import { RecurringFormScreen } from '../screens/RecurringFormScreen';
 import { RecurringListScreen } from '../screens/RecurringListScreen';
+import { RecurringFormScreen } from '../screens/RecurringFormScreen';
+import { HeaderBack } from '../../../navigation/header/HeaderBack';
 
 const Stack = createNativeStackNavigator();
 
 export const RecurringStack = () => {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: '#fff' },
-        headerTitleStyle: { fontWeight: 'bold', color: '#1A1C3D' },
-        headerTintColor: '#065911',
-      }}
-    >
+    <Stack.Navigator>
       <Stack.Screen
-        name="RecurringList"
+        name="RECURRING_LIST"
         component={RecurringListScreen}
         options={({ navigation }) => ({
           header: () => (
-            <HeaderBack
-              navigation={navigation}
-              title="Rutas"
-              back={true}
-            />
+            <HeaderBack navigation={navigation} title="Rutas" back={true} />
           ),
         })}
       />
       <Stack.Screen
-        name="RecurringForm"
+        name="RECURRING_FORM"
         component={RecurringFormScreen}
-        options={({ navigation }) => ({
+        options={({ navigation, route }: any) => ({
           header: () => (
-            <HeaderBack
-              navigation={navigation}
-              title="Nueva Configuración"
-              back={true}
-            />
-          ),
-        })}
-      />
-      <Stack.Screen
-        name="MyRecurring"
-        component={MyRecurringScreen}
-        options={({ navigation }) => ({
-          header: () => (
-            <HeaderBack
-              navigation={navigation}
-              title="Mis Rutinas"
-              back={true}
+            <HeaderBack 
+                navigation={navigation} 
+                title={route.params?.route ? "Editar Ruta" : "Nueva Ruta"} 
+                back={true} 
             />
           ),
         })}

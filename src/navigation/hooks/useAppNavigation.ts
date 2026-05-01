@@ -16,7 +16,7 @@ export const useAppNavigation = () => {
         const route = state.routes[state.index];
 
         const currentStack = Object.keys(AppStacks).find((stack:any) =>
-            Object.keys(AppStacks[stack]).includes(route.name)
+            AppStacks[stack] && Object.keys(AppStacks[stack] as object).includes(route.name)
         ) as StackNames | undefined;
 
         return {

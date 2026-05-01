@@ -47,30 +47,35 @@ export const uploadFile = async (uri: string, type: 'video' | 'image', locationN
 
   console.log('[Upload] Enviando a:', `${API_CONSTANTS.BASE_URL}/uploads`);
 
-  try {
-    // IMPORTANTE: Usamos FETCH sin Content-Type para que RN genere el boundary correcto
-    const response = await fetch(`${API_CONSTANTS.BASE_URL}/uploads`, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-        'Accept': 'application/json',
-      },
-    });
+  let attempts = 0;
+  const maxRetries = 2; // Total 3 intentos
 
-    const result = await response.json();
-    console.log('[Upload] Respuesta servidor:', result);
+  const performUpload = async (): Promise<{ success: boolean; url?: string; error?: string }> => {
+    try {
+      const response = await fetch(`${API_CONSTANTS.BASE_URL}/uploads`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Accept': 'application/json',
+        },
+      });
 
-    if (response.ok && (result.success || result.url || result.data?.url)) {
-      return { 
-        success: true, 
-        url: result.url || result.data?.url 
-      };
+      const result = await response.json();
+      if (response.ok && (result.success || result.url || result.data?.url)) {
+        return { success: true, url: result.url || result.data?.url };
+      }
+      return { success: false, error: result.message || 'Error en respuesta del servidor' };
+    } catch (error: any) {
+      if (attempts < maxRetries) {
+        attempts++;
+        console.warn(`[Upload] Intento ${attempts} fallido, reintentando...`, error.message);
+        return performUpload();
+      }
+      console.warn('[Upload] Error de red persistente:', error.message);
+      return { success: false, error: `Error de red: ${error.message}` };
     }
+  };
 
-    return { success: false, error: result.message || 'Error en respuesta del servidor' };
-  } catch (error: any) {
-    console.error('[Upload] Error fatal de red:', error.message);
-    return { success: false, error: `Error de red: ${error.message}. Verifica tu conexión o IP.` };
-  }
+  return performUpload();
 };

@@ -129,6 +129,26 @@ export const HomeScreen = () => {
       roles: [UserRole.ADMIN],
     },
     {
+      id: 'clients',
+      label: 'Clientes',
+      icon: 'office-building',
+      stack: 'CLIENTS_STACK',
+      screen: 'CLIENTS_MAIN',
+      color: '#059669',
+      gradient: ['#059669', '#10b981'],
+      roles: [UserRole.ADMIN],
+    },
+    {
+      id: 'zones',
+      label: 'Zonas',
+      icon: 'map-clock-outline',
+      stack: 'ZONES_STACK',
+      screen: 'ZONES_MAIN',
+      color: '#4f46e5',
+      gradient: ['#4f46e5', '#6366f1'],
+      roles: [UserRole.ADMIN],
+    },
+    {
       id: 'invitation_form',
       label: 'Generar Pase',
       icon: 'qrcode-plus',
@@ -186,7 +206,6 @@ export const HomeScreen = () => {
             color={item.color}
             gradient={item.gradient}
             badge={item.badge}
-            params={item.params}
           />
         )}
         columnWrapperStyle={styles.row}

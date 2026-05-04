@@ -8,33 +8,9 @@ import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
 import { resolveMaintenance } from '../service/maintenance.service';
+import { CATEGORIES_INFO as CATEGORIES, COLORS } from '../../../shared/utils/constants';
 
 
-const COLORS = {
-  primary: '#e65100',        // Naranja oscuro
-  primaryLight: '#fff3e0',   // Naranja muy claro
-  secondary: '#ff9800',      // Naranja medio
-  tertiary: '#ffb74d',       // Naranja claro
-  background: '#F8FAFC',
-  surface: '#FFFFFF',
-  surfaceVariant: '#F1F5F9',
-  textPrimary: '#1E293B',
-  textSecondary: '#64748B',
-  border: '#E2E8F0',
-  error: '#D32F2F',
-  warning: '#FF9800',
-  success: '#4CAF50',
-  complete: '#4CAF50',
-  pending: '#FF9800',
-};
-
-const CATEGORIES = {
-  'PLOMERIA': {  label: 'PLOMERÍA', color: '#0288d1', icon: 'water-pump' },
-  'ELECTRICIDAD': { label: 'ELECTRICIDAD', color: '#fbc02d', icon: 'lightning-bolt' },
-  'ESTRUCTURA': { label: 'ESTRUCTURA / AREAS', color: '#7b1fa2', icon: 'home-city' },
-  'JARDINERIA': { label: 'JARDINERÍA', color: '#388e3c', icon: 'pine-tree' },
-  'GENERAL': { label: 'GENERAL', color: '#e65100', icon: 'toolbox' }
-};
 
 export const MaintenanceDetailScreen = () => {
   const route = useRoute<any>();
@@ -265,6 +241,19 @@ export const MaintenanceDetailScreen = () => {
             </View>
             <View style={styles.noDescriptionContainer}>
               <Text style={styles.noDescriptionText}>No se agregó descripción adicional</Text>
+            </View>
+          </View>
+        )}
+
+        {maintenance.client && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <IconButton icon="domain" size={22} iconColor={COLORS.primary} style={styles.sectionIcon} />
+              <Text style={styles.sectionTitle}>CLIENTE / UBICACIÓN</Text>
+            </View>
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.guardName}>{maintenance.client.name}</Text>
+              <Text style={styles.guardRole}>{maintenance.client.address || 'Sin dirección registrada'}</Text>
             </View>
           </View>
         )}

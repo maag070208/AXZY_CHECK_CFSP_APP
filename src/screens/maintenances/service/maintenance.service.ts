@@ -3,12 +3,13 @@ import { get, post, put } from '../../../core/axios';
 export const createMaintenance = async (data: {
     title: string;
     category?: string;
-    categoryId?: number;
-    typeId?: number;
+    categoryId?: string;
+    typeId?: string;
     description: string;
     media: any[];
     latitude?: number;
     longitude?: number;
+    clientId?: string;
 }) => {
     try {
         const payload = {
@@ -19,7 +20,8 @@ export const createMaintenance = async (data: {
             description: data.description,
             media: data.media,
             latitude: data.latitude,
-            longitude: data.longitude
+            longitude: data.longitude,
+            clientId: data.clientId
         };
 
         const response = await post('/maintenance', payload);
@@ -34,7 +36,7 @@ export const createMaintenance = async (data: {
 export const getMaintenances = async (filters?: {
     startDate?: Date;
     endDate?: Date;
-    guardId?: number;
+    guardId?: string;
     category?: string;
     title?: string;
 }) => {
@@ -69,7 +71,7 @@ export const getPaginatedMaintenances = async (params: { page: number, limit: nu
     }
 };
 
-export const resolveMaintenance = async (id: number) => {
+export const resolveMaintenance = async (id: string) => {
     try {
         const response = await put(`/maintenance/${id}/resolve`);
         return response;

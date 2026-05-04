@@ -44,7 +44,7 @@ import { createVideoThumbnail } from 'react-native-compressor';
 const { width } = Dimensions.get('window');
 
 export const CheckReportScreen = ({ route, navigation }: any) => {
-  const { location, assignmentId } = route.params;
+  const { location, assignmentId, roundId } = route.params;
   const user = useSelector((state: RootState) => state.userState);
   const dispatch = useDispatch();
   
@@ -53,7 +53,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
   const [photos, setPhotos] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
   const [notes, setNotes] = useState('');
-  const [currentKardexId, setCurrentKardexId] = useState<number | null>(null);
+  const [currentKardexId, setCurrentKardexId] = useState<string | null>(null);
   const [cameraVisible, setCameraVisible] = useState(false);
   const [cameraMode, setCameraMode] = useState<'video' | 'photo'>('photo');
   const [tasks, setTasks] = useState<any[]>([]);
@@ -112,7 +112,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
 
       const res = await registerCheck(
         location.id,
-        Number(user.id),
+        user.id,
         '',
         [],
         coords?.lat,
@@ -159,7 +159,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
 
   const performVideoUpload = async (uri: string) => {
     try {
-      const res: any = await uploadFile(uri, 'video', location?.name);
+      const res: any = await uploadFile(uri, 'video', location?.name, roundId);
       if (res.success) {
           setVideos(curr => {
               const updated = curr.map(v => v.uri === uri ? { ...v, url: res.url, uploading: false } : v);
@@ -174,7 +174,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
 
   const performPhotoUpload = async (photo: any) => {
     try {
-      const res: any = await uploadFile(photo.uri, 'image', location?.name);
+      const res: any = await uploadFile(photo.uri, 'image', location?.name, roundId);
       if (res.success) {
         setPhotos(curr => {
           const updated = curr.map(p => p.uri === photo.uri ? { ...p, url: res.url, uploading: false } : p);

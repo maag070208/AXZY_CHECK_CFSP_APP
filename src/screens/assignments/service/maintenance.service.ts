@@ -7,6 +7,7 @@ export const createMaintenance = async (data: {
     media: any[];
     latitude?: number;
     longitude?: number;
+    clientId?: string;
 }) => {
     try {
         const payload = {
@@ -15,7 +16,8 @@ export const createMaintenance = async (data: {
             description: data.description,
             media: data.media,
             latitude: data.latitude,
-            longitude: data.longitude
+            longitude: data.longitude,
+            clientId: data.clientId
         };
 
         const response = await post('/maintenance', payload);

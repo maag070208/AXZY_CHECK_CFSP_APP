@@ -1,33 +1,33 @@
 import { get, post } from '../../../core/axios';
 
 export interface IKardexFilter {
-    userId?: number;
-    locationId?: number;
+    userId?: string;
+    locationId?: string;
     startDate?: string;
     endDate?: string;
     search?: string;
 }
 
 export interface IKardexEntry {
-    id: number;
-    userId: number;
-    locationId: number;
+    id: string;
+    userId: string;
+    locationId: string;
     timestamp: string;
     latitude?: number;
     longitude?: number;
     notes?: string;
     media?: { type: 'IMAGE' | 'VIDEO', url: 'string', description?: string }[];
     user: {
-        id: number;
+        id: string;
         username: string;
         name: string;
         lastName?: string;
     };
     location: {
-        id: number;
+        id: string;
         name: string;
     };
-    assignmentId?: number;
+    assignmentId?: string;
     assignment?: {
         status: string;
         tasks?: any[];
@@ -62,7 +62,7 @@ export const getUsers = async () => {
     return { success: true, data: response.data };
 };
 
-export const getKardexById = async (id: number) => {
+export const getKardexById = async (id: string) => {
     const response = await get<IKardexEntry>(`/kardex/${id}`);
     return { success: true, data: response.data }; // Match TResult structure or adapt
 };

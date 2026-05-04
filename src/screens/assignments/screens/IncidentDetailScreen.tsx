@@ -1,53 +1,27 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, Dimensions, SafeAreaView, Alert } from 'react-native';
-import { Text, Surface, IconButton, Avatar, Chip, Button } from 'react-native-paper';
-import Video from 'react-native-video';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Avatar, Button, Chip, IconButton, Text } from 'react-native-paper';
+import Video from 'react-native-video';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
-import { resolveIncident, deleteIncident } from '../service/incident.service';
-
-// Paleta de colores consistente
-// ... (COLORS kept typically but I'm replacing top block)
-
-const COLORS = {
-  primary: '#065911',        // Verde oscuro
-  primaryLight: '#d0f8d3',   // Verde muy claro
-  secondary: '#54634d',      // Verde grisáceo
-  tertiary: '#38656a',       // Azul verdoso
-  background: '#FFFFFF',
-  surface: '#F9FBF9',
-  surfaceVariant: '#F0F4F0',
-  textPrimary: '#1A1A1A',
-  textSecondary: '#666666',
-  border: '#E5E9E5',
-  error: '#D32F2F',
-  warning: '#FF9800',
-  success: '#4CAF50',
-  complete: '#4CAF50',
-  pending: '#FF9800',
-};
-
-// Categorías con colores de la paleta
-const CATEGORIES = {
-  'FALTAS': { 
-    label: 'FALTAS / MULTAS', 
-    color: COLORS.error,
-    icon: 'alert-circle',
-  },
-  'MANTENIMIENTO': { 
-    label: 'MANTENIMIENTO', 
-    color: COLORS.warning,
-    icon: 'toolbox',
-  },
-  'ACCESO': { 
-    label: 'ACCESO', 
-    color: COLORS.tertiary,
-    icon: 'door',
-  }
-};
+import {
+  CATEGORIES_INFO as CATEGORIES,
+  COLORS,
+} from '../../../shared/utils/constants';
+import { deleteIncident, resolveIncident } from '../service/incident.service';
 
 const { width, height } = Dimensions.get('window');
 
@@ -56,7 +30,7 @@ export const IncidentDetailScreen = () => {
   const route = useRoute<any>();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.userState);
-  
+
   // Use local state effectively
   const [incident, setIncident] = useState(route.params.incident);
   const [resolving, setResolving] = useState(false);
@@ -70,40 +44,43 @@ export const IncidentDetailScreen = () => {
       return {
         label: category.name || category.value || 'General',
         color: category.color || COLORS.textSecondary,
-        icon: category.icon || 'alert'
+        icon: category.icon || 'alert',
       };
     }
     // Fallback para strings antiguos (si existen)
-    return CATEGORIES[category as keyof typeof CATEGORIES] || { 
-      label: category || 'General', 
-      color: COLORS.textSecondary,
-      icon: 'alert'
-    };
+    return (
+      CATEGORIES[category as keyof typeof CATEGORIES] || {
+        label: category || 'General',
+        color: COLORS.textSecondary,
+        icon: 'alert',
+      }
+    );
   };
 
   const handleResolve = async () => {
-      Alert.alert(
-          'Confirmar',
-          '¿Marcar esta incidencia como atendida?',
-          [
-              { text: 'Cancelar', style: 'cancel' },
-              { 
-                  text: 'Sí, atender', 
-                  onPress: async () => {
-                      setResolving(true);
-                      const res = await resolveIncident(incident.id);
-                      setResolving(false);
-                      
-                      if (res.success && res.data) {
-                          setIncident(res.data);
-                          dispatch(showToast({ message: 'Incidencia atendida correctamente', type: 'success' }));
-                      } else {
-                          Alert.alert('Error', 'No se pudo actualizar el estado.');
-                      }
-                  }
-              }
-          ]
-      );
+    Alert.alert('Confirmar', '¿Marcar esta incidencia como atendida?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Sí, atender',
+        onPress: async () => {
+          setResolving(true);
+          const res = await resolveIncident(incident.id);
+          setResolving(false);
+
+          if (res.success && res.data) {
+            setIncident(res.data);
+            dispatch(
+              showToast({
+                message: 'Incidencia atendida correctamente',
+                type: 'success',
+              }),
+            );
+          } else {
+            Alert.alert('Error', 'No se pudo actualizar el estado.');
+          }
+        },
+      },
+    ]);
   };
 
   const getTimeAgo = (date: string) => {
@@ -128,51 +105,60 @@ export const IncidentDetailScreen = () => {
   const getDateTime = (date: string) => {
     const d = new Date(date);
     return {
-      date: d.toLocaleDateString('es-ES', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      date: d.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       }),
-      time: d.toLocaleTimeString('es-ES', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })
+      time: d.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
     };
   };
 
   const categoryInfo = getCategoryInfo(incident.category);
   const dateTime = getDateTime(incident.createdAt);
-  const guardInitials = incident.guard?.name?.charAt(0) + (incident.guard?.lastName?.charAt(0) || '');
+  const guardInitials =
+    incident.guard?.name?.charAt(0) +
+    (incident.guard?.lastName?.charAt(0) || '');
   const timeAgo = getTimeAgo(incident.createdAt);
 
   const isPending = incident.status === 'PENDING' || !incident.status;
-  const canResolve = isPending && (user.role === UserRole.ADMIN || user.role === UserRole.SHIFT_GUARD);
+  const canResolve =
+    isPending &&
+    (user.role === UserRole.ADMIN || user.role === UserRole.SHIFT_GUARD);
   const canDelete = user.role === UserRole.ADMIN;
 
   const handleDelete = async () => {
     Alert.alert(
-        'Eliminar Incidencia',
-        '¿Estás seguro de que deseas eliminar permanentemente esta incidencia? Esta acción no se puede deshacer.',
-        [
-            { text: 'Cancelar', style: 'cancel' },
-            { 
-                text: 'Eliminar', 
-                style: 'destructive',
-                onPress: async () => {
-                    setResolving(true);
-                    const res = await deleteIncident(incident.id);
-                    setResolving(false);
-                    
-                    if (res.success) {
-                        dispatch(showToast({ message: 'Incidencia eliminada correctamente', type: 'success' }));
-                        navigation.goBack();
-                    } else {
-                        Alert.alert('Error', 'No se pudo eliminar la incidencia.');
-                    }
-                }
+      'Eliminar Incidencia',
+      '¿Estás seguro de que deseas eliminar permanentemente esta incidencia? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            setResolving(true);
+            const res = await deleteIncident(incident.id);
+            setResolving(false);
+
+            if (res.success) {
+              dispatch(
+                showToast({
+                  message: 'Incidencia eliminada correctamente',
+                  type: 'success',
+                }),
+              );
+              navigation.goBack();
+            } else {
+              Alert.alert('Error', 'No se pudo eliminar la incidencia.');
             }
-        ]
+          },
+        },
+      ],
     );
   };
 
@@ -180,24 +166,24 @@ export const IncidentDetailScreen = () => {
     const isVideo = media?.type?.toUpperCase() === 'VIDEO';
     console.log(media);
     return (
-      <TouchableOpacity 
-        key={index} 
+      <TouchableOpacity
+        key={index}
         style={styles.mediaCard}
         onPress={() => setFullMedia(media)}
         activeOpacity={0.8}
       >
         {isVideo ? (
           <View style={styles.videoContainer}>
-            <Video 
-              source={{ uri: media.url }} 
+            <Video
+              source={{ uri: media.url }}
               style={styles.videoPreview}
               resizeMode="cover"
               paused={true}
             />
             <View style={styles.videoOverlay}>
-              <IconButton 
-                icon="play-circle" 
-                size={40} 
+              <IconButton
+                icon="play-circle"
+                size={40}
                 iconColor="#FFFFFF"
                 style={styles.playIcon}
               />
@@ -205,19 +191,19 @@ export const IncidentDetailScreen = () => {
             </View>
           </View>
         ) : (
-          <Image 
-            source={{ uri: media.url }} 
+          <Image
+            source={{ uri: media.url }}
             style={styles.imagePreview}
             resizeMode="cover"
           />
         )}
-        
+
         <View style={styles.mediaInfo}>
           <Text style={styles.mediaType}>
             {isVideo ? 'Video' : 'Foto'} {index + 1}
           </Text>
-          <IconButton 
-            icon="magnify-plus" 
+          <IconButton
+            icon="magnify-plus"
             size={20}
             iconColor={COLORS.textSecondary}
           />
@@ -228,36 +214,32 @@ export const IncidentDetailScreen = () => {
 
   const FullScreenMedia = () => {
     if (!fullMedia) return null;
-    
+
     const isVideo = fullMedia?.type?.toUpperCase() === 'VIDEO';
-    
+
     return (
       <Modal visible={!!fullMedia} transparent={true} animationType="fade">
         <SafeAreaView style={styles.fullScreenContainer}>
           <View style={styles.fullScreenHeader}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.closeButton}
               onPress={() => {
                 setFullMedia(null);
                 setVideoPlaying(false);
               }}
             >
-              <IconButton 
-                icon="close" 
-                size={28}
-                iconColor="#FFFFFF"
-              />
+              <IconButton icon="close" size={28} iconColor="#FFFFFF" />
             </TouchableOpacity>
-            
+
             <Text style={styles.fullScreenTitle}>
               {isVideo ? 'Video' : 'Foto'} de evidencia
             </Text>
           </View>
-          
+
           {isVideo ? (
             <View style={styles.fullScreenVideoContainer}>
-              <Video 
-                source={{ uri: fullMedia.url }} 
+              <Video
+                source={{ uri: fullMedia.url }}
                 style={styles.fullScreenVideo}
                 resizeMode="contain"
                 controls={true}
@@ -265,16 +247,15 @@ export const IncidentDetailScreen = () => {
                 onPause={() => setVideoPlaying(false)}
                 onEnd={() => setVideoPlaying(false)}
               />
-        
             </View>
           ) : (
-            <Image 
-              source={{ uri: fullMedia.url }} 
+            <Image
+              source={{ uri: fullMedia.url }}
               style={styles.fullScreenImage}
               resizeMode="contain"
             />
           )}
-          
+
           <View style={styles.fullScreenFooter}>
             <Text style={styles.fullScreenCaption}>
               Evidencia de incidencia - {categoryInfo.label}
@@ -287,52 +268,52 @@ export const IncidentDetailScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.content}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
       >
-        
         {/* Información principal */}
         <View style={styles.mainSection}>
           <View style={styles.categoryRow}>
-            <View style={[
-              styles.categoryBadge, 
-              { backgroundColor: categoryInfo.color + '20' }
-            ]}>
-              <IconButton 
-                icon={categoryInfo.icon} 
+            <View
+              style={[
+                styles.categoryBadge,
+                { backgroundColor: categoryInfo.color + '20' },
+              ]}
+            >
+              <IconButton
+                icon={categoryInfo.icon}
                 size={20}
                 iconColor={categoryInfo.color}
                 style={styles.categoryIcon}
               />
-              <Text style={[styles.categoryText, { color: categoryInfo.color }]}>
+              <Text
+                style={[styles.categoryText, { color: categoryInfo.color }]}
+              >
                 {categoryInfo.label}
               </Text>
             </View>
-            
+
             <Text style={styles.timeAgo}>{timeAgo}</Text>
           </View>
-          
-          <Text style={styles.incidentTitle}>
-            {incident.title}
-          </Text>
-          
+
+          <Text style={styles.incidentTitle}>{incident.title}</Text>
+
           <View style={styles.datetimeContainer}>
             <View style={styles.datetimeItem}>
-              <IconButton 
-                icon="calendar" 
+              <IconButton
+                icon="calendar"
                 size={18}
                 iconColor={COLORS.textSecondary}
                 style={styles.datetimeIcon}
               />
               <Text style={styles.datetimeText}>{dateTime.date}</Text>
             </View>
-            
+
             <View style={styles.datetimeItem}>
-              <IconButton 
-                icon="clock-outline" 
+              <IconButton
+                icon="clock-outline"
                 size={18}
                 iconColor={COLORS.textSecondary}
                 style={styles.datetimeIcon}
@@ -346,52 +327,97 @@ export const IncidentDetailScreen = () => {
         {!isPending && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <IconButton 
-                icon="check-circle" 
+              <IconButton
+                icon="check-circle"
                 size={22}
                 iconColor={COLORS.success}
                 style={styles.sectionIcon}
               />
               <Text style={styles.sectionTitle}>RESOLUCIÓN</Text>
             </View>
-            
-            <View style={[styles.descriptionContainer, { backgroundColor: COLORS.surfaceVariant }]}>
-               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: COLORS.success }}>
-                    INCIDENCIA ATENDIDA
-                  </Text>
-               </View>
 
-               {incident.resolvedBy && (
-                   <>
-                     <Text style={{ color: COLORS.textPrimary, fontSize: 14, marginBottom: 4 }}>
-                        <Text style={{ fontWeight: 'bold' }}>Atendido por: </Text>
-                        {incident.resolvedBy.name} {incident.resolvedBy.lastName}
-                     </Text>
-                     <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginBottom: 4 }}>
-                        {new Date(incident.resolvedAt).toLocaleString()}
-                     </Text>
-                      {incident.resolvedAt && (
-                        <View style={{ flexDirection: 'row', marginTop: 6, alignItems: 'center' }}>
-                            <IconButton icon="timer-outline" size={16} iconColor={COLORS.primary} style={{ margin: 0, marginRight: 4 }} />
-                            <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 13 }}>
-                                Tiempo de respuesta: {
-                                    (() => {
-                                        const start = new Date(incident.createdAt).getTime();
-                                        const end = new Date(incident.resolvedAt).getTime();
-                                        const diff = end - start;
-                                        const mins = Math.floor(diff / 60000);
-                                        const hours = Math.floor(mins / 60);
-                                        
-                                        if (hours > 0) return `${hours}h ${mins % 60}m`;
-                                        return `${mins} min`;
-                                    })()
-                                }
-                            </Text>
-                        </View>
-                      )}
-                   </>
-               )}
+            <View
+              style={[
+                styles.descriptionContainer,
+                { backgroundColor: COLORS.surfaceVariant },
+              ]}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginBottom: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 'bold',
+                    color: COLORS.success,
+                  }}
+                >
+                  INCIDENCIA ATENDIDA
+                </Text>
+              </View>
+
+              {incident.resolvedBy && (
+                <>
+                  <Text
+                    style={{
+                      color: COLORS.textPrimary,
+                      fontSize: 14,
+                      marginBottom: 4,
+                    }}
+                  >
+                    <Text style={{ fontWeight: 'bold' }}>Atendido por: </Text>
+                    {incident.resolvedBy.name} {incident.resolvedBy.lastName}
+                  </Text>
+                  <Text
+                    style={{
+                      color: COLORS.textSecondary,
+                      fontSize: 13,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {new Date(incident.resolvedAt).toLocaleString()}
+                  </Text>
+                  {incident.resolvedAt && (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        marginTop: 6,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <IconButton
+                        icon="timer-outline"
+                        size={16}
+                        iconColor={COLORS.primary}
+                        style={{ margin: 0, marginRight: 4 }}
+                      />
+                      <Text
+                        style={{
+                          color: COLORS.primary,
+                          fontWeight: 'bold',
+                          fontSize: 13,
+                        }}
+                      >
+                        Tiempo de respuesta:{' '}
+                        {(() => {
+                          const start = new Date(incident.createdAt).getTime();
+                          const end = new Date(incident.resolvedAt).getTime();
+                          const diff = end - start;
+                          const mins = Math.floor(diff / 60000);
+                          const hours = Math.floor(mins / 60);
+
+                          if (hours > 0) return `${hours}h ${mins % 60}m`;
+                          return `${mins} min`;
+                        })()}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
             </View>
           </View>
         )}
@@ -400,33 +426,31 @@ export const IncidentDetailScreen = () => {
         {incident.description ? (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <IconButton 
-                icon="text-box" 
+              <IconButton
+                icon="text-box"
                 size={22}
                 iconColor={COLORS.primary}
                 style={styles.sectionIcon}
               />
               <Text style={styles.sectionTitle}>DESCRIPCIÓN</Text>
             </View>
-            
+
             <View style={styles.descriptionContainer}>
-              <Text style={styles.descriptionText}>
-                {incident.description}
-              </Text>
+              <Text style={styles.descriptionText}>{incident.description}</Text>
             </View>
           </View>
         ) : (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <IconButton 
-                icon="text-box-outline" 
+              <IconButton
+                icon="text-box-outline"
                 size={22}
                 iconColor={COLORS.textSecondary}
                 style={styles.sectionIcon}
               />
               <Text style={styles.sectionTitle}>DESCRIPCIÓN</Text>
             </View>
-            
+
             <View style={styles.noDescriptionContainer}>
               <Text style={styles.noDescriptionText}>
                 No se agregó descripción adicional
@@ -435,35 +459,51 @@ export const IncidentDetailScreen = () => {
           </View>
         )}
 
+        {incident.client && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <IconButton
+                icon="domain"
+                size={22}
+                iconColor={COLORS.primary}
+                style={styles.sectionIcon}
+              />
+              <Text style={styles.sectionTitle}>CLIENTE / UBICACIÓN</Text>
+            </View>
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.guardName}>{incident.client.name}</Text>
+              <Text style={styles.guardRole}>{incident.client.address || 'Sin dirección registrada'}</Text>
+            </View>
+          </View>
+        )}
+
         {/* Información del guardia */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <IconButton 
-              icon="account" 
+            <IconButton
+              icon="account"
               size={22}
               iconColor={COLORS.primary}
               style={styles.sectionIcon}
             />
             <Text style={styles.sectionTitle}>REPORTADO POR</Text>
           </View>
-          
+
           <View style={styles.guardContainer}>
-            <Avatar.Text 
-              size={60} 
-              label={guardInitials || 'G'} 
+            <Avatar.Text
+              size={60}
+              label={guardInitials || 'G'}
               style={styles.guardAvatar}
               labelStyle={styles.guardAvatarLabel}
             />
-            
+
             <View style={styles.guardInfo}>
               <Text style={styles.guardName}>
                 {incident.guard?.name || 'Sistema'}
               </Text>
-              <Text style={styles.guardRole}>
-                Guardia de seguridad
-              </Text>
+              <Text style={styles.guardRole}>Guardia de seguridad</Text>
               <View style={styles.guardMeta}>
-                <Chip 
+                <Chip
                   icon="shield-check"
                   style={styles.guardChip}
                   textStyle={styles.guardChipText}
@@ -481,52 +521,50 @@ export const IncidentDetailScreen = () => {
         {/* Evidencia */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <IconButton 
-              icon="camera" 
+            <IconButton
+              icon="camera"
               size={22}
               iconColor={COLORS.primary}
               style={styles.sectionIcon}
             />
             <Text style={styles.sectionTitle}>EVIDENCIA</Text>
-            <Chip 
+            <Chip
               style={styles.mediaCountChip}
               textStyle={styles.mediaCountText}
             >
               {incident.media?.length || 0}
             </Chip>
           </View>
-          
+
           {incident.media && incident.media.length > 0 ? (
             <View style={styles.mediaContainer}>
               <Text style={styles.mediaSubtitle}>
                 Fotos y videos adjuntos al reporte
               </Text>
-              
-              <ScrollView 
-                horizontal 
+
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.mediaScroll}
               >
-                {incident.media.map((m: any, i: number) => 
-                  renderMediaItem(m, i)
+                {incident.media.map((m: any, i: number) =>
+                  renderMediaItem(m, i),
                 )}
               </ScrollView>
-              
+
               <Text style={styles.mediaInstruction}>
                 Toque cualquier imagen o video para ver en pantalla completa
               </Text>
             </View>
           ) : (
             <View style={styles.noMediaContainer}>
-              <IconButton 
-                icon="image-off" 
+              <IconButton
+                icon="image-off"
                 size={48}
                 iconColor={COLORS.border}
                 style={styles.noMediaIcon}
               />
-              <Text style={styles.noMediaText}>
-                No se adjuntó evidencia
-              </Text>
+              <Text style={styles.noMediaText}>No se adjuntó evidencia</Text>
               <Text style={styles.noMediaSubtext}>
                 Este reporte no incluye fotos o videos
               </Text>
@@ -534,38 +572,40 @@ export const IncidentDetailScreen = () => {
           )}
         </View>
 
-      {/* Footer Actions inside ScrollView */}
-      {(canResolve || canDelete) && (
-        <View style={styles.footer}>
+        {/* Footer Actions inside ScrollView */}
+        {(canResolve || canDelete) && (
+          <View style={styles.footer}>
             {canResolve && (
-                <Button 
-                    mode="contained" 
-                    onPress={handleResolve} 
-                    loading={resolving}
-                    style={styles.footerResolveButton}
-                    contentStyle={{ height: 50 }}
-                    icon="check-circle-outline"
-                >
-                    MARCAR COMO ATENDIDA
-                </Button>
+              <Button
+                mode="contained"
+                onPress={handleResolve}
+                loading={resolving}
+                style={styles.footerResolveButton}
+                contentStyle={{ height: 50 }}
+                icon="check-circle-outline"
+              >
+                MARCAR COMO ATENDIDA
+              </Button>
             )}
 
             {canDelete && (
-                <Button 
-                    mode="outlined" 
-                    onPress={handleDelete} 
-                    loading={resolving}
-                    style={[styles.footerDeleteButton, canResolve && { marginTop: 12 }]}
-                    contentStyle={{ height: 50 }}
-                    icon="trash-can-outline"
-                    textColor={COLORS.error}
-                >
-                    ELIMINAR INCIDENCIA
-                </Button>
+              <Button
+                mode="outlined"
+                onPress={handleDelete}
+                loading={resolving}
+                style={[
+                  styles.footerDeleteButton,
+                  canResolve && { marginTop: 12 },
+                ]}
+                contentStyle={{ height: 50 }}
+                icon="trash-can-outline"
+                textColor={COLORS.error}
+              >
+                ELIMINAR INCIDENCIA
+              </Button>
             )}
-        </View>
-      )}
-
+          </View>
+        )}
       </ScrollView>
       <FullScreenMedia />
     </SafeAreaView>
@@ -573,11 +613,11 @@ export const IncidentDetailScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: COLORS.background 
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
   },
-  
+
   // Header
   header: {
     flexDirection: 'row',
@@ -610,13 +650,13 @@ const styles = StyleSheet.create({
   headerRight: {
     width: 48,
   },
-  
+
   // Contenido
   content: {
     padding: 16,
     paddingBottom: 40,
   },
-  
+
   // Sección principal
   mainSection: {
     backgroundColor: COLORS.surface,
@@ -680,7 +720,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
   },
-  
+
   // Secciones
   section: {
     backgroundColor: COLORS.surface,
@@ -709,7 +749,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textTransform: 'uppercase',
   },
-  
+
   // Descripción
   descriptionContainer: {
     backgroundColor: COLORS.surfaceVariant,
@@ -733,7 +773,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
   },
-  
+
   // Guardia
   guardContainer: {
     flexDirection: 'row',
@@ -781,7 +821,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontFamily: 'monospace',
   },
-  
+
   // Evidencia
   mediaCountChip: {
     backgroundColor: COLORS.primary,
@@ -883,7 +923,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
   },
-  
+
   // Acciones
   actionsSection: {
     flexDirection: 'row',
@@ -900,7 +940,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: 12,
   },
-  
+
   // Pantalla completa
   fullScreenContainer: {
     flex: 1,
@@ -963,55 +1003,55 @@ const styles = StyleSheet.create({
     marginTop: 20,
     borderRadius: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#2E7D32'
+    borderLeftColor: '#2E7D32',
   },
   statusTextContainer: {
     marginLeft: 12,
-    flex: 1
+    flex: 1,
   },
   statusTitle: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      color: '#1B5E20'
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1B5E20',
   },
   statusSubtitle: {
-      fontSize: 12,
-      color: '#388E3C',
-      marginTop: 2
+    fontSize: 12,
+    color: '#388E3C',
+    marginTop: 2,
   },
   resolutionTime: {
-      fontSize: 12,
-      fontWeight: 'bold',
-      color: '#1B5E20',
-      marginTop: 4
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#1B5E20',
+    marginTop: 4,
   },
   headerTop: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 10
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   statusBadge: {
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      borderRadius: 20
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
   statusBadgeText: {
-      fontSize: 12,
-      fontWeight: 'bold'
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   footer: {
-      padding: 20,
-      paddingBottom: 50, // Space for home bar
-      backgroundColor: 'transparent'
+    padding: 20,
+    paddingBottom: 50, // Space for home bar
+    backgroundColor: 'transparent',
   },
   footerResolveButton: {
-      backgroundColor: '#2E7D32',
-      borderRadius: 12
+    backgroundColor: '#2E7D32',
+    borderRadius: 12,
   },
   footerDeleteButton: {
-      borderRadius: 12,
-      borderColor: COLORS.error,
-      backgroundColor: COLORS.error + '05',
-  }
+    borderRadius: 12,
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.error + '05',
+  },
 });

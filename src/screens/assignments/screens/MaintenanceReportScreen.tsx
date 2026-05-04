@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, Alert, Image, Dimensions, StatusBar, Touc
 import { Text, TextInput, Button, Chip, IconButton, Surface, TouchableRipple, Icon, Portal, Dialog } from 'react-native-paper';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { theme } from '../../../shared/theme/theme';
+import { COLORS } from '../../../shared/utils/constants';
 import { APP_SETTINGS } from '../../../core/constants/APP_SETTINGS';
 import { CameraModal } from '../../check/components/CameraModal';
 import { createMaintenance } from '../service/maintenance.service';
@@ -10,6 +11,11 @@ import { useDispatch } from 'react-redux';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { uploadFile } from '../../../shared/service/upload.service';
 import Geolocation from '@react-native-community/geolocation';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../core/store/redux.config';
+import { UserRole } from '../../../core/types/IUser';
+import { getCatalog } from '../../../shared/service/catalog.service';
+import { SearchComponent } from '../../../shared/components/SearchComponent';
 
 const { width } = Dimensions.get('window');
 
@@ -21,11 +27,14 @@ export const MaintenanceReportScreen = () => {
     const navigation = useNavigation();
     const route = useRoute<any>();
     const dispatch = useDispatch();
+    const user = useSelector((state: RootState) => state.userState);
 
     const [selectedType, setSelectedType] = useState<string>('');
     const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
     const [media, setMedia] = useState<any[]>([]);
+    const [clients, setClients] = useState<any[]>([]);
+    const [clientId, setClientId] = useState<string | null>(user.clientId || null);
     
     const [cameraVisible, setCameraVisible] = useState(false);
     const [cameraMode, setCameraMode] = useState<'photo' | 'video'>('photo');
@@ -33,6 +42,13 @@ export const MaintenanceReportScreen = () => {
     // Reset state when leaving the screen
     useFocusEffect(
         useCallback(() => {
+            const fetchClients = async () => {
+                const res = await getCatalog('client');
+                if (res.success) {
+                    setClients(res.data.map((c: any) => ({ label: c.name || c.value, value: c.id })));
+                }
+            };
+            fetchClients();
             Geolocation.requestAuthorization();
             return () => {
                 // Cleanup on blur
@@ -127,6 +143,11 @@ export const MaintenanceReportScreen = () => {
             return;
         }
 
+        if (!clientId && user.role === UserRole.ADMIN) {
+            Alert.alert('Falta información', 'Selecciona un cliente para este reporte.');
+            return;
+        }
+
         const pending = media.some(m => m.uploading);
         if (pending) {
             Alert.alert('Espera', 'Hay archivos subiéndose, por favor espera.');
@@ -155,7 +176,9 @@ export const MaintenanceReportScreen = () => {
                     description: description,
                     media: validMedia,
                     latitude: position.coords.latitude,
-                    longitude: position.coords.longitude
+                    longitude: position.coords.longitude,
+                    clientId: clientId || undefined,
+                    guardId: user.id
                 });
                 
                 setLoading(false);
@@ -173,7 +196,9 @@ export const MaintenanceReportScreen = () => {
                     title: selectedType,
                     category: 'MANTENIMIENTO',
                     description: description,
-                    media: validMedia
+                    media: validMedia,
+                    clientId: clientId || undefined,
+                    guardId: user.id
                 });
                 
                 setLoading(false);
@@ -208,6 +233,20 @@ export const MaintenanceReportScreen = () => {
             </Surface>
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+                {user.role === UserRole.ADMIN && (
+                    <>
+                        <Text style={styles.label}>SELECCIONAR CLIENTE</Text>
+                        <SearchComponent
+                            label="Cliente"
+                            placeholder="Selecciona un cliente..."
+                            options={clients}
+                            value={clientId || ''}
+                            onSelect={(val) => setClientId(val as string)}
+                        />
+                        <View style={{ height: 20 }} />
+                    </>
+                )}
 
                 <Text style={styles.label}>1. TIPO DE MANTENIMIENTO</Text>
                 <View style={styles.typeWrapper}>
@@ -333,11 +372,11 @@ export const MaintenanceReportScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4, backgroundColor: 'white' },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: '#333' },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
     content: { padding: 16, paddingBottom: 60 },
-    label: { fontSize: 11, fontWeight: '900', color: '#9E9E9E', marginBottom: 12, marginTop: 15, letterSpacing: 1.2 },
+    label: { fontSize: 11, fontWeight: '900', color: COLORS.textSecondary, marginBottom: 12, marginTop: 15, letterSpacing: 1.2 },
     
     categoryGrid: { flexDirection: 'row', gap: 10, marginBottom: 20 },
     catCardWrapper: { flex: 1, height: 90, borderRadius: 16, backgroundColor: '#F5F5F5', overflow: 'hidden' },

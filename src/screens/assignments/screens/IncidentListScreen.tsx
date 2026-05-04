@@ -1,7 +1,34 @@
-import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
+import {
+  useFocusEffect,
+  useIsFocused,
+  useNavigation,
+} from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, RefreshControl, ScrollView, StatusBar, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Avatar, Badge, Button, Chip, IconButton, Portal, Searchbar, Surface, Text, Icon, Card } from 'react-native-paper';
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import {
+  Text,
+  Icon,
+  Card,
+  FAB,
+  IconButton,
+  Button,
+  Portal,
+  Searchbar,
+  Avatar,
+} from 'react-native-paper';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../../core/store/redux.config';
+import { UserRole } from '../../../core/types/IUser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
@@ -9,17 +36,19 @@ import { getPaginatedIncidents } from '../service/incident.service';
 import { getCatalog } from '../../../shared/service/catalog.service';
 import ModernStyles from '../../../shared/theme/app.styles';
 import { theme } from '../../../shared/theme/theme';
+import { COLORS } from '../../../shared/utils/constants';
 
 export const IncidentListScreen = () => {
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
-  
+  const user = useSelector((state: RootState) => state.userState);
+
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  
+
   // Pagination and Totals
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -29,23 +58,36 @@ export const IncidentListScreen = () => {
   const [guards, setGuards] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [incidentTypes, setIncidentTypes] = useState<any[]>([]);
-  
+  const [clients, setClients] = useState<any[]>([]);
+
   // Filters State
   const [showFilters, setShowFilters] = useState(false);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
   // Applied Filters
-  const [appliedRange, setAppliedRange] = useState<{ startDate: Date | undefined; endDate: Date | undefined }>({ startDate: undefined, endDate: undefined });
+  const [appliedRange, setAppliedRange] = useState<{
+    startDate: Date | undefined;
+    endDate: Date | undefined;
+  }>({ startDate: undefined, endDate: undefined });
   const [appliedGuardId, setAppliedGuardId] = useState<number | string>('ALL');
-  const [appliedCategory, setAppliedCategory] = useState<number | string>('ALL');
+  const [appliedCategory, setAppliedCategory] = useState<number | string>(
+    'ALL',
+  );
   const [appliedType, setAppliedType] = useState<number | string>('ALL');
+  const [appliedClientId, setAppliedClientId] = useState<number | string>(
+    'ALL',
+  );
 
   // Temp Filters (for Modal)
-  const [tempRange, setTempRange] = useState<{ startDate: Date | undefined; endDate: Date | undefined }>({ startDate: undefined, endDate: undefined });
+  const [tempRange, setTempRange] = useState<{
+    startDate: Date | undefined;
+    endDate: Date | undefined;
+  }>({ startDate: undefined, endDate: undefined });
   const [tempGuardId, setTempGuardId] = useState<number | string>('ALL');
   const [tempCategory, setTempCategory] = useState<number | string>('ALL');
   const [tempType, setTempType] = useState<number | string>('ALL');
+  const [tempClientId, setTempClientId] = useState<number | string>('ALL');
 
   const [openDate, setOpenDate] = useState(false);
 
@@ -56,17 +98,35 @@ export const IncidentListScreen = () => {
         const [guardsRes, catRes, typeRes] = await Promise.all([
           getCatalog('guard'),
           getCatalog('incident_category'),
-          getCatalog('incident_type')
+          getCatalog('incident_type'),
+          getCatalog('client'),
         ]);
 
         if (guardsRes.success) {
-          setGuards(guardsRes.data.map((g: any) => ({ label: g.value, value: g.id })));
+          setGuards(
+            guardsRes.data.map((g: any) => ({ label: g.value, value: g.id })),
+          );
         }
         if (catRes.success) {
-          setCategories(catRes.data.map((c: any) => ({ label: c.name, value: c.id, color: c.color, icon: c.icon })));
+          setCategories(
+            catRes.data.map((c: any) => ({
+              label: c.name,
+              value: c.id,
+              color: c.color,
+              icon: c.icon,
+            })),
+          );
         }
         if (typeRes.success) {
           setIncidentTypes(typeRes.data);
+        }
+        if (guardsRes.success && guardsRes.data) {
+          setClients(
+            guardsRes.data.map((c: any) => ({
+              label: c.name || c.value,
+              value: c.id,
+            })),
+          );
         }
       } catch (error) {
         console.error('Error fetching catalogs:', error);
@@ -78,17 +138,18 @@ export const IncidentListScreen = () => {
   // Debounce effect for search
   useEffect(() => {
     const timer = setTimeout(() => {
-        setDebouncedSearch(search);
+      setDebouncedSearch(search);
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);
 
-  const fetchIncidents = useCallback(async (pageNum: number, isRefreshing = false) => {
-    try {
+  const fetchIncidents = useCallback(
+    async (pageNum: number, isRefreshing = false) => {
+      try {
         if (pageNum === 1) {
-            if (!isRefreshing) setLoading(true);
+          if (!isRefreshing) setLoading(true);
         } else {
-            setLoadingMore(true);
+          setLoadingMore(true);
         }
 
         const filters: any = {};
@@ -96,41 +157,51 @@ export const IncidentListScreen = () => {
         if (appliedGuardId !== 'ALL') filters.guardId = appliedGuardId;
         if (appliedCategory !== 'ALL') filters.categoryId = appliedCategory;
         if (appliedType !== 'ALL') filters.typeId = appliedType;
+        if (appliedClientId !== 'ALL') filters.clientId = appliedClientId;
         if (appliedRange.startDate) filters.startDate = appliedRange.startDate;
         if (appliedRange.endDate) filters.endDate = appliedRange.endDate;
 
-        const res = await getPaginatedIncidents({ 
-            page: pageNum, 
-            limit: 15, 
-            filters 
+        const res = await getPaginatedIncidents({
+          page: pageNum,
+          limit: 15,
+          filters,
         });
 
         if (res.success && res.data) {
-            const newRows = res.data.rows || [];
-            const totalRows = res.data.total || 0;
+          const newRows = res.data.rows || [];
+          const totalRows = res.data.total || 0;
 
-            setIncidents(prev => {
-                const combined = pageNum === 1 ? newRows : [...prev, ...newRows];
-                setHasMore(combined.length < totalRows);
-                return combined;
-            });
+          setIncidents(prev => {
+            const combined = pageNum === 1 ? newRows : [...prev, ...newRows];
+            setHasMore(combined.length < totalRows);
+            return combined;
+          });
 
-            setTotal(totalRows);
-            setPage(pageNum);
+          setTotal(totalRows);
+          setPage(pageNum);
         }
-    } catch (error) {
+      } catch (error) {
         console.error('Error fetching incidents:', error);
-    } finally {
+      } finally {
         setLoading(false);
         setRefreshing(false);
         setLoadingMore(false);
-    }
-  }, [debouncedSearch, appliedGuardId, appliedCategory, appliedType, appliedRange]);
+      }
+    },
+    [
+      debouncedSearch,
+      appliedGuardId,
+      appliedCategory,
+      appliedType,
+      appliedClientId,
+      appliedRange,
+    ],
+  );
 
   useFocusEffect(
     useCallback(() => {
-        fetchIncidents(1);
-    }, [fetchIncidents])
+      fetchIncidents(1);
+    }, [fetchIncidents]),
   );
 
   const onRefresh = () => {
@@ -140,31 +211,34 @@ export const IncidentListScreen = () => {
 
   const handleLoadMore = () => {
     if (!loadingMore && hasMore) {
-        fetchIncidents(page + 1);
+      fetchIncidents(page + 1);
     }
   };
 
   const handleOpenFilters = () => {
-      setTempRange(appliedRange);
-      setTempGuardId(appliedGuardId);
-      setTempCategory(appliedCategory);
-      setTempType(appliedType);
-      setShowFilters(true);
+    setTempRange(appliedRange);
+    setTempGuardId(appliedGuardId);
+    setTempCategory(appliedCategory);
+    setTempType(appliedType);
+    setTempClientId(appliedClientId);
+    setShowFilters(true);
   };
 
   const handleApplyFilters = () => {
-      setAppliedRange(tempRange);
-      setAppliedGuardId(tempGuardId);
-      setAppliedCategory(tempCategory);
-      setAppliedType(tempType);
-      setShowFilters(false);
+    setAppliedRange(tempRange);
+    setAppliedGuardId(tempGuardId);
+    setAppliedCategory(tempCategory);
+    setAppliedType(tempType);
+    setAppliedClientId(tempClientId);
+    setShowFilters(false);
   };
 
   const handleClearFilters = () => {
-      setTempRange({ startDate: undefined, endDate: undefined });
-      setTempGuardId('ALL');
-      setTempCategory('ALL');
-      setTempType('ALL');
+    setTempRange({ startDate: undefined, endDate: undefined });
+    setTempGuardId('ALL');
+    setTempCategory('ALL');
+    setTempType('ALL');
+    setTempClientId('ALL');
   };
 
   const activeFiltersCount = [
@@ -172,6 +246,7 @@ export const IncidentListScreen = () => {
     appliedGuardId !== 'ALL' ? 1 : 0,
     appliedCategory !== 'ALL' ? 1 : 0,
     appliedType !== 'ALL' ? 1 : 0,
+    appliedClientId !== 'ALL' ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const getCategoryInfo = (categoryId: number) => {
@@ -180,60 +255,111 @@ export const IncidentListScreen = () => {
   };
 
   const renderItem = ({ item }: { item: any }) => {
+    console.log({ item });
+
     const catInfo = getCategoryInfo(item.categoryId);
     const date = new Date(item.createdAt);
-    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timeStr = date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     const isPending = item.status === 'PENDING';
 
     return (
-      <Card 
-        style={[styles.card, isPending && styles.pendingCard]} 
-        onPress={() => navigation.navigate('INCIDENT_DETAIL', { incident: item })}
+      <Card
+        style={[styles.card, isPending && styles.pendingCard]}
+        onPress={() =>
+          navigation.navigate('INCIDENT_DETAIL', { incident: item })
+        }
         elevation={1}
       >
         <View style={styles.cardLayout}>
-            <View style={styles.avatarSection}>
-                <Avatar.Text 
-                    size={56} 
-                    label={item.guard?.name?.charAt(0) || 'G'} 
-                    style={[styles.avatar, { backgroundColor: isPending ? '#ffffffff' : '#F1F5F9' }]} 
-                    labelStyle={{ color: isPending ? '#f05151df' : '#64748B', fontWeight: 'bold' }}
-                />
-                <View style={[styles.statusIndicator, { backgroundColor: isPending ? '#EF4444' : '#10B981' }]}>
-                    <Icon source={isPending ? "clock-outline" : "check"} size={10} color="#fff" />
-                </View>
-            </View>
-
-            <View style={styles.infoSection}>
-                <View style={styles.nameRow}>
-                    <View style={[styles.categoryBadge, { backgroundColor: catInfo.color + '15' }]}>
-                        <Icon source={catInfo.icon || 'alert-circle'} size={12} color={catInfo.color} />
-                        <Text style={[styles.categoryText, { color: catInfo.color }]}>{catInfo.label}</Text>
-                    </View>
-                    <View style={styles.idBadge}>
-                        <Text style={styles.idText}>{item.id}</Text>
-                    </View>
-                </View>
-
-                <Text style={styles.incidentTitle} numberOfLines={1}>{item.title}</Text>
-                
-                <View style={styles.detailsRow}>
-                    <View style={styles.detailItem}>
-                        <Icon source="account-outline" size={14} color="#64748B" />
-                        <Text style={styles.detailText} numberOfLines={1}>{item.guard?.name}</Text>
-                    </View>
-                    <View style={[styles.detailItem, styles.ml12]}>
-                        <Icon source="calendar-outline" size={14} color="#64748B" />
-                        <Text style={styles.detailText}>{timeStr}</Text>
-                    </View>
-                </View>
-            </View>
-
-            <IconButton 
-                icon="chevron-right" 
-                iconColor="#CBD5E1" 
-                size={24} 
+          <View style={styles.avatarSection}>
+            <Avatar.Text
+              size={56}
+              label={item.guard?.name?.charAt(0) || 'G'}
+              style={[
+                styles.avatar,
+                {
+                  backgroundColor: isPending
+                    ? COLORS.surface
+                    : COLORS.surfaceVariant,
+                },
+              ]}
+              labelStyle={{
+                color: isPending ? COLORS.error : COLORS.textSecondary,
+                fontWeight: 'bold',
+              }}
             />
+            <View
+              style={[
+                styles.statusIndicator,
+                { backgroundColor: isPending ? COLORS.red : COLORS.emerald },
+              ]}
+            >
+              <Icon
+                source={isPending ? 'clock-outline' : 'check'}
+                size={10}
+                color="#fff"
+              />
+            </View>
+          </View>
+
+          <View style={styles.infoSection}>
+            <View style={styles.nameRow}>
+              <View
+                style={[
+                  styles.categoryBadge,
+                  { backgroundColor: catInfo.color + '15' },
+                ]}
+              >
+                <Icon
+                  source={catInfo.icon || 'alert-circle'}
+                  size={12}
+                  color={catInfo.color}
+                />
+                <Text style={[styles.categoryText, { color: catInfo.color }]}>
+                  {catInfo.label}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.incidentTitle} numberOfLines={1}>
+              {item.title}
+            </Text>
+
+            {item.client && (
+              <View style={styles.clientRow}>
+                <Icon
+                  source="office-building"
+                  size={14}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.clientText} numberOfLines={1}>
+                  {item.client.name}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.detailsRow}>
+              <View style={styles.detailItem}>
+                <Icon source="account-outline" size={14} color="#64748B" />
+                <Text style={styles.detailText} numberOfLines={1}>
+                  {item.guard?.name}
+                </Text>
+              </View>
+              <View style={[styles.detailItem, styles.ml12]}>
+                <Icon source="calendar-outline" size={14} color="#64748B" />
+                <Text style={styles.detailText}>{timeStr}</Text>
+              </View>
+            </View>
+          </View>
+
+          <IconButton
+            icon="chevron-right"
+            iconColor={COLORS.border}
+            size={24}
+          />
         </View>
       </Card>
     );
@@ -242,17 +368,21 @@ export const IncidentListScreen = () => {
   return (
     <View style={ModernStyles.screenContainer}>
       <StatusBar barStyle="dark-content" />
-      
+
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.headerTitle}>Incidencias</Text>
-            <Text style={styles.headerSubtitle}>{total} reportes registrados</Text>
+            <Text style={styles.headerSubtitle}>
+              {total} reportes registrados
+            </Text>
           </View>
           <IconButton
             icon="filter-variant"
             mode="contained"
-            containerColor={activeFiltersCount > 0 ? theme.colors.primary : '#F1F5F9'}
+            containerColor={
+              activeFiltersCount > 0 ? theme.colors.primary : '#F1F5F9'
+            }
             iconColor={activeFiltersCount > 0 ? '#FFFFFF' : '#64748B'}
             onPress={handleOpenFilters}
           />
@@ -272,18 +402,42 @@ export const IncidentListScreen = () => {
       <FlatList
         data={incidents}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
+        keyExtractor={item => item.id.toString()}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+          />
+        }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={() => loadingMore ? <ActivityIndicator style={{ margin: 16 }} color={theme.colors.primary} /> : null}
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 20 }]}
+        ListFooterComponent={() =>
+          loadingMore ? (
+            <ActivityIndicator
+              style={{ margin: 16 }}
+              color={theme.colors.primary}
+            />
+          ) : null
+        }
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + 20 },
+        ]}
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
-              <Icon source="clipboard-text-search-outline" size={64} color="#E2E8F0" />
+              <Icon
+                source="clipboard-text-search-outline"
+                size={64}
+                color="#E2E8F0"
+              />
               <Text style={styles.emptyText}>No se encontraron resultados</Text>
-              <Button mode="text" onPress={() => fetchIncidents(1)} textColor={theme.colors.primary}>
+              <Button
+                mode="text"
+                onPress={() => fetchIncidents(1)}
+                textColor={theme.colors.primary}
+              >
                 Actualizar lista
               </Button>
             </View>
@@ -291,31 +445,68 @@ export const IncidentListScreen = () => {
         }
       />
 
+      {user.role === UserRole.ADMIN && (
+        <FAB
+          icon="plus"
+          style={[styles.fab, { bottom: insets.bottom + 16 }]}
+          onPress={() => navigation.navigate('INCIDENT_REPORT')}
+          color="white"
+        />
+      )}
+
       <Portal>
-        <Modal 
-          visible={showFilters} 
-          onDismiss={() => setShowFilters(false)}
-          contentContainerStyle={styles.modalFullScreen}
-        >
+        <Modal visible={showFilters} onDismiss={() => setShowFilters(false)}>
           <View style={[styles.modalHeader, { paddingTop: insets.top + 20 }]}>
             <View style={styles.modalHeaderTitle}>
-              <Icon source="filter-variant" size={24} color={theme.colors.primary} />
+              <Icon
+                source="filter-variant"
+                size={24}
+                color={theme.colors.primary}
+              />
               <Text style={styles.modalTitle}>Filtros de Incidencias</Text>
             </View>
-            <IconButton icon="close" size={24} onPress={() => setShowFilters(false)} iconColor="#94A3B8" />
+            <IconButton
+              icon="close"
+              size={24}
+              onPress={() => setShowFilters(false)}
+              iconColor="#94A3B8"
+            />
           </View>
 
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.modalScroll}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.filterGroup}>
               <Text style={styles.filterLabel}>POR FECHA</Text>
-              <TouchableOpacity onPress={() => setOpenDate(true)} style={styles.dateSelector}>
-                <Icon source="calendar-range" size={20} color={theme.colors.primary} />
+              <TouchableOpacity
+                onPress={() => setOpenDate(true)}
+                style={styles.dateSelector}
+              >
+                <Icon
+                  source="calendar-range"
+                  size={20}
+                  color={theme.colors.primary}
+                />
                 <Text style={styles.dateValue}>
-                  {appliedRange.startDate ? 
-                    `${appliedRange.startDate.toLocaleDateString()} - ${appliedRange.endDate?.toLocaleDateString() || ''}` : 
-                    'Todos los reportes'}
+                  {appliedRange.startDate
+                    ? `${appliedRange.startDate.toLocaleDateString()} - ${
+                        appliedRange.endDate?.toLocaleDateString() || ''
+                      }`
+                    : 'Todos los reportes'}
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterLabel}>POR CLIENTE</Text>
+              <SearchComponent
+                label="Cliente"
+                placeholder="Todos los clientes"
+                options={clients}
+                value={tempClientId}
+                onSelect={setTempClientId}
+              />
             </View>
 
             <View style={styles.filterGroup}>
@@ -336,7 +527,7 @@ export const IncidentListScreen = () => {
                 placeholder="Todas las categorías"
                 options={categories}
                 value={tempCategory}
-                onSelect={(val) => {
+                onSelect={val => {
                   setTempCategory(val);
                   setTempType('ALL');
                 }}
@@ -359,11 +550,25 @@ export const IncidentListScreen = () => {
             )}
           </ScrollView>
 
-          <View style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}>
-            <Button mode="outlined" onPress={handleClearFilters} style={styles.footerButton} textColor="#64748B">
+          <View
+            style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
+          >
+            <Button
+              mode="outlined"
+              onPress={handleClearFilters}
+              style={styles.footerButton}
+              textColor="#64748B"
+            >
               Limpiar
             </Button>
-            <Button mode="contained" onPress={handleApplyFilters} style={[styles.footerButton, { backgroundColor: theme.colors.primary }]}>
+            <Button
+              mode="contained"
+              onPress={handleApplyFilters}
+              style={[
+                styles.footerButton,
+                { backgroundColor: theme.colors.primary },
+              ]}
+            >
               Aplicar Filtros
             </Button>
           </View>
@@ -428,7 +633,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: COLORS.surfaceVariant,
   },
   pendingCard: {
     backgroundColor: '#FFF5F5', // Rojo suave
@@ -586,5 +791,23 @@ const styles = StyleSheet.create({
   footerButton: {
     flex: 1,
     borderRadius: 14,
+  },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    backgroundColor: COLORS.primary,
+  },
+  clientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  clientText: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: '700',
   },
 });

@@ -32,7 +32,7 @@ export const ProfileScreen = () => {
     if (!user.id) return;
     setLoading(true);
     try {
-      const res = await updateUserProfile(Number(user.id), { name, lastName});
+      const res = await updateUserProfile(user.id, { name, lastName});
       if (res.success && res.data) {
         dispatch(showToast({ message: 'Perfil actualizado correctamente.', type: 'success' }));
       } else {
@@ -57,7 +57,7 @@ export const ProfileScreen = () => {
     }
     setLoading(true);
     try {
-      const res = await changePassword(Number(user.id), { oldPassword, newPassword });
+      const res = await changePassword(user.id, { oldPassword, newPassword });
       console.log(res);
       if (res.success) {
         dispatch(showToast({ message: 'Contraseña actualizada correctamente.', type: 'success' }));

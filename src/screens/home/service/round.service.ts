@@ -2,11 +2,11 @@ import { post, put, get } from '../../../core/axios';
 import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
 import { TResult } from '../../../core/types/TResult';
 
-export const startRound = async (guardId: number, clientId?: number, recurringConfigurationId?: number): Promise<TResult<any>> => {
+export const startRound = async (guardId: string, clientId?: string, recurringConfigurationId?: string): Promise<TResult<any>> => {
   return await post(API_CONSTANTS.URLS.ROUNDS.START, { guardId, clientId, recurringConfigurationId });
 };
 
-export const endRound = async (roundId: number): Promise<TResult<any>> => {
+export const endRound = async (roundId: string): Promise<TResult<any>> => {
     // The constant ends with /end, we need to inject the ID before it or constructor the url manually
     // Actually API_CONSTANTS.URLS.ROUNDS.END is just a string. 
     // The route is PUT /:id/end. 

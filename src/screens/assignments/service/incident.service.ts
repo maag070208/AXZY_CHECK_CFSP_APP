@@ -2,12 +2,13 @@ import { get, post, put, remove } from '../../../core/axios';
 
 export const createIncident = async (data: {
     title: string;
-    categoryId: number;
-    typeId: number;
+    categoryId: string;
+    typeId: string;
     description: string;
     media: any[];
     latitude?: number;
     longitude?: number;
+    clientId?: string;
 }) => {
     try {
         const payload = {
@@ -17,7 +18,8 @@ export const createIncident = async (data: {
             description: data.description,
             media: data.media,
             latitude: data.latitude,
-            longitude: data.longitude
+            longitude: data.longitude,
+            clientId: data.clientId
         };
 
         const response = await post('/incidents', payload);
@@ -46,7 +48,7 @@ export const getPaginatedIncidents = async (params: {
 export const getIncidents = async (filters?: {
     startDate?: Date;
     endDate?: Date;
-    guardId?: number;
+    guardId?: string;
     category?: string;
     title?: string;
 }) => {
@@ -66,7 +68,7 @@ export const getIncidents = async (filters?: {
     }
 };
 
-export const resolveIncident = async (id: number) => {
+export const resolveIncident = async (id: string) => {
     try {
         const response = await put(`/incidents/${id}/resolve`);
         return response;
@@ -75,7 +77,7 @@ export const resolveIncident = async (id: number) => {
     }
 };
 
-export const deleteIncident = async (id: number) => {
+export const deleteIncident = async (id: string) => {
     try {
         const response = await remove(`/incidents/${id}`);
         return response;

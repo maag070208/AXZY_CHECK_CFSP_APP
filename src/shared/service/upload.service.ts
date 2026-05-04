@@ -3,7 +3,12 @@ import { store } from '../../core/store/redux.config';
 import { Image, Video } from 'react-native-compressor';
 import { Platform } from 'react-native';
 
-export const uploadFile = async (uri: string, type: 'video' | 'image', locationName: string = 'unknown'): Promise<{ success: boolean; url?: string; error?: string }> => {
+export const uploadFile = async (
+  uri: string, 
+  type: 'video' | 'image', 
+  locationName: string = 'unknown',
+  roundId?: string
+): Promise<{ success: boolean; url?: string; error?: string }> => {
   let uploadUri = uri;
 
   try {
@@ -36,6 +41,9 @@ export const uploadFile = async (uri: string, type: 'video' | 'image', locationN
 
   const formData = new FormData();
   formData.append('location', locationName);
+  if (roundId) {
+    formData.append('roundId', roundId);
+  }
   formData.append('file', {
     uri: uploadUri,
     name: filename,

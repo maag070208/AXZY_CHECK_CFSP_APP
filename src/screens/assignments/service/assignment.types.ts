@@ -8,28 +8,28 @@ export enum AssignmentStatus {
 }
 
 export interface IAssignment {
-  id: number;
-  guardId: number;
-  locationId: number;
-  assignedBy: number;
+  id: string;
+  guardId: string;
+  locationId: string;
+  assignedBy: string;
   status: AssignmentStatus;
   notes?: string;
   createdAt: string;
   updatedAt: string;
   location?: {
-    id: number;
+    id: string;
     name: string;
     aisle: string;
     spot: string;
     number: string;
   };
   guard?: {
-    id: number;
+    id: string;
     name: string;
     lastName: string;
   };
   tasks?: {
-    id: number;
+    id: string;
     description: string;
     reqPhoto: boolean;
     completed: boolean;
@@ -38,8 +38,8 @@ export interface IAssignment {
 }
 
 export interface CreateAssignmentDTO {
-  guardId: number;
-  locationId: number;
+  guardId: string;
+  locationId: string;
   notes?: string;
   tasks?: { description: string; reqPhoto: boolean }[];
   assignedBy?: string;

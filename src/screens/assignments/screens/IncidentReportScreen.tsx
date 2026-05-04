@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, Alert, Image, Dimensions, StatusBar, Touc
 import { Text, TextInput, Button, Chip, IconButton, Surface, TouchableRipple, Icon, Portal, Dialog } from 'react-native-paper';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { theme } from '../../../shared/theme/theme';
+import { COLORS } from '../../../shared/utils/constants';
 import { APP_SETTINGS } from '../../../core/constants/APP_SETTINGS';
 import { CameraModal } from '../../check/components/CameraModal';
 import { createIncident } from '../service/incident.service';
@@ -11,6 +12,10 @@ import { showToast } from '../../../core/store/slices/toast.slice';
 import { uploadFile } from '../../../shared/service/upload.service';
 import { getCatalog } from '../../../shared/service/catalog.service';
 import Geolocation from '@react-native-community/geolocation';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../core/store/redux.config';
+import { UserRole } from '../../../core/types/IUser';
+import { SearchComponent } from '../../../shared/components/SearchComponent';
 
 const { width } = Dimensions.get('window');
 
@@ -37,11 +42,13 @@ export const IncidentReportScreen = () => {
     const navigation = useNavigation();
     const route = useRoute<any>();
     const dispatch = useDispatch();
+    const user = useSelector((state: RootState) => state.userState);
     
-    const { initialCategory } = route.params || {};
+    const { initialCategory, roundId } = route.params || {};
 
     const [categories, setCategories] = useState<CatalogItem[]>([]);
     const [allTypes, setAllTypes] = useState<CatalogItem[]>([]);
+    const [clients, setClients] = useState<any[]>([]);
     
     const [categoryId, setCategoryId] = useState<number | null>(null);
     const [typeId, setTypeId] = useState<number | null>(null);
@@ -49,6 +56,7 @@ export const IncidentReportScreen = () => {
     const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
     const [media, setMedia] = useState<MediaItem[]>([]);
+    const [clientId, setClientId] = useState<string | null>(user.clientId || null);
     
     const [cameraVisible, setCameraVisible] = useState(false);
     const [cameraMode, setCameraMode] = useState<'photo' | 'video'>('photo');
@@ -58,9 +66,10 @@ export const IncidentReportScreen = () => {
         useCallback(() => {
             const fetchCatalogs = async () => {
                 try {
-                    const [catRes, typeRes] = await Promise.all([
+                    const [catRes, typeRes, clientsRes] = await Promise.all([
                         getCatalog('incident_category'),
-                        getCatalog('incident_type')
+                        getCatalog('incident_type'),
+                        getCatalog('client')
                     ]);
                     
                     if (catRes.success && catRes.data) {
@@ -69,6 +78,9 @@ export const IncidentReportScreen = () => {
                     }
                     if (typeRes.success && typeRes.data) {
                         setAllTypes(typeRes.data);
+                    }
+                    if (clientsRes.success && clientsRes.data) {
+                        setClients(clientsRes.data.map((c: any) => ({ label: c.name || c.value, value: c.id })));
                     }
                 } catch (e) {
                     console.error('Error fetching incident catalogs:', e);
@@ -103,7 +115,7 @@ export const IncidentReportScreen = () => {
         setMedia(prev => [...prev, newItem]);
 
         try {
-            const res = await uploadFile(file.uri, file.type === 'video' ? 'video' : 'image', 'incident');
+            const res = await uploadFile(file.uri, file.type === 'video' ? 'video' : 'image', 'incident', roundId);
             
             setMedia(prev => prev.map(item => {
                 if (item.id === tempId) {
@@ -141,7 +153,7 @@ export const IncidentReportScreen = () => {
         });
 
         try {
-            const res = await uploadFile(item.uri, item.type === 'video' ? 'video' : 'image', 'incident');
+            const res = await uploadFile(item.uri, item.type === 'video' ? 'video' : 'image', 'incident', roundId);
             
             setMedia(prev => {
                 const newMedia = [...prev];
@@ -174,6 +186,11 @@ export const IncidentReportScreen = () => {
             return;
         }
 
+        if (!clientId && user.role === UserRole.ADMIN) {
+            Alert.alert('Falta información', 'Selecciona un cliente para este reporte.');
+            return;
+        }
+
         const pending = media.some(m => m.uploading);
         if (pending) {
             Alert.alert('Espera', 'Hay archivos subiéndose, por favor espera.');
@@ -202,10 +219,11 @@ export const IncidentReportScreen = () => {
                     title: selectedType?.value || 'Incidencia',
                     categoryId: categoryId as number,
                     typeId: typeId as number,
-                    description: description,
                     media: validMedia,
                     latitude: position.coords.latitude,
-                    longitude: position.coords.longitude
+                    longitude: position.coords.longitude,
+                    clientId: clientId || undefined,
+                    guardId: user.id
                 });
                 
                 setLoading(false);
@@ -224,7 +242,9 @@ export const IncidentReportScreen = () => {
                     categoryId: categoryId as number,
                     typeId: typeId as number,
                     description: description,
-                    media: validMedia 
+                    media: validMedia,
+                    clientId: clientId || undefined,
+                    guardId: user.id
                 });
                 
                 setLoading(false);
@@ -262,6 +282,20 @@ export const IncidentReportScreen = () => {
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 
+                {user.role === UserRole.ADMIN && (
+                    <>
+                        <Text style={styles.label}>SELECCIONAR CLIENTE</Text>
+                        <SearchComponent
+                            label="Cliente"
+                            placeholder="Selecciona un cliente..."
+                            options={clients}
+                            value={clientId || ''}
+                            onSelect={(val) => setClientId(val as string)}
+                        />
+                        <View style={{ height: 20 }} />
+                    </>
+                )}
+
                 <Text style={styles.label}>1. CATEGORÍA</Text>
                 <View style={styles.categoryGrid}>
                     {categories.map((item) => {
@@ -414,33 +448,33 @@ export const IncidentReportScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4, backgroundColor: 'white' },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: '#333' },
+    container: { flex: 1, backgroundColor: COLORS.surface },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4, backgroundColor: COLORS.surface },
+    headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
     content: { padding: 16, paddingBottom: 60 },
-    label: { fontSize: 11, fontWeight: '900', color: '#9E9E9E', marginBottom: 12, marginTop: 15, letterSpacing: 1.2 },
+    label: { fontSize: 11, fontWeight: '900', color: COLORS.textSecondary, marginBottom: 12, marginTop: 15, letterSpacing: 1.2 },
     
     categoryGrid: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    catCardWrapper: { flex: 1, height: 90, borderRadius: 16, backgroundColor: '#F5F5F5', overflow: 'hidden' },
+    catCardWrapper: { flex: 1, height: 90, borderRadius: 16, backgroundColor: COLORS.surfaceVariant, overflow: 'hidden' },
     catRipple: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     catCardContent: { alignItems: 'center' },
-    catText: { fontSize: 10, fontWeight: '800', marginTop: 8, textAlign: 'center', color: '#616161' },
+    catText: { fontSize: 10, fontWeight: '800', marginTop: 8, textAlign: 'center', color: COLORS.textSecondary },
 
     typeWrapper: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-    typeChip: { borderRadius: 10, borderColor: '#EEEEEE' },
+    typeChip: { borderRadius: 10, borderColor: COLORS.border },
     typeChipText: { fontSize: 13, fontWeight: '600' },
 
     photoActionRow: { flexDirection: 'row', gap: 12, marginBottom: 15 },
-    bigCaptureBtn: { flex: 1, height: 90, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2 },
+    bigCaptureBtn: { flex: 1, height: 90, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2, backgroundColor: COLORS.surface },
     bigCaptureText: { color: 'white', fontWeight: '900', fontSize: 13, marginTop: 6 },
 
     mediaList: { marginBottom: 20, paddingVertical: 5 },
     mediaItem: { marginRight: 15, position: 'relative' },
-    mediaImg: { width: 100, height: 100, borderRadius: 12, backgroundColor: '#F5F5F5' },
+    mediaImg: { width: 100, height: 100, borderRadius: 12, backgroundColor: COLORS.surfaceVariant },
     videoIconOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 12 },
     deleteMedia: { position: 'absolute', top: -12, right: -12, margin: 0 },
 
-    textInput: { backgroundColor: 'white', minHeight: 100, fontSize: 15 },
+    textInput: { backgroundColor: COLORS.surface, minHeight: 100, fontSize: 15 },
     mainSubmitBtn: { marginTop: 30, borderRadius: 12, elevation: 4 },
     submitBtnText: { color: 'white', fontWeight: '900', fontSize: 16, letterSpacing: 1 },
     

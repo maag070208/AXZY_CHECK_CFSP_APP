@@ -1,4 +1,5 @@
 import { FlatList, StyleSheet, View } from 'react-native';
+import { COLORS } from '../../../shared/utils/constants';
 import ModernStyles from '../../../shared/theme/app.styles';
 import { HomeItemComponent } from '../components/HomeItemComponent';
 import { UserRole } from '../../../core/types/IUser';
@@ -43,8 +44,8 @@ export const HomeScreen = () => {
       icon: 'account-plus',
       stack: 'USERS_STACK',
       screen: 'USER_LIST',
-      color: '#db2777',
-      gradient: ['#db2777', '#ec4899'],
+      color: COLORS.pink,
+      gradient: [COLORS.pink, '#ec4899'],
       roles: [UserRole.ADMIN],
     },
     {
@@ -53,8 +54,8 @@ export const HomeScreen = () => {
       icon: 'account-group',
       stack: 'GUARDS_STACK',
       screen: 'GUARD_LIST',
-      color: '#7c3aed',
-      gradient: ['#7c3aed', '#8b5cf6'],
+      color: COLORS.purple,
+      gradient: [COLORS.purple, '#8b5cf6'],
       roles: [UserRole.ADMIN, UserRole.SHIFT],
     },
     {
@@ -63,8 +64,8 @@ export const HomeScreen = () => {
       icon: 'alert-circle-outline',
       stack: 'INCIDENTS_STACK',
       screen: 'INCIDENT_LIST',
-      color: '#dc2626',
-      gradient: ['#dc2626', '#ef4444'],
+      color: COLORS.red,
+      gradient: [COLORS.red, '#ef4444'],
       roles: [UserRole.ADMIN],
       badge: pendingIncidents > 0 ? pendingIncidents : undefined,
     },
@@ -74,8 +75,8 @@ export const HomeScreen = () => {
       icon: 'toolbox-outline',
       stack: 'MAINTENANCE_STACK',
       screen: 'MAINTENANCE_LIST',
-      color: '#e65100',
-      gradient: ['#e65100', '#fb8c00'],
+      color: COLORS.primary,
+      gradient: [COLORS.primary, '#fb8c00'],
       roles: [UserRole.ADMIN, UserRole.MAINT],
     },
     {
@@ -84,8 +85,8 @@ export const HomeScreen = () => {
       icon: 'map-marker-outline',
       stack: 'LOCATIONS_STACK',
       screen: 'LOCATIONS_MAIN',
-      color: '#2563eb',
-      gradient: ['#2563eb', '#3b82f6'],
+      color: COLORS.blue,
+      gradient: [COLORS.blue, '#3b82f6'],
       roles: [UserRole.ADMIN, UserRole.SHIFT],
     },
     {
@@ -94,8 +95,8 @@ export const HomeScreen = () => {
       icon: 'clipboard-clock-outline',
       stack: 'RECURRING_STACK',
       screen: 'RECURRING_LIST',
-      color: '#059669',
-      gradient: ['#059669', '#10b981'],
+      color: COLORS.emerald,
+      gradient: [COLORS.emerald, '#10b981'],
       roles: [UserRole.ADMIN, UserRole.SHIFT],
     },
     {
@@ -104,8 +105,8 @@ export const HomeScreen = () => {
       icon: 'clipboard-text-clock',
       stack: 'ROUNDS_STACK',
       screen: 'ROUNDS_LIST',
-      color: '#4f46e5',
-      gradient: ['#4f46e5', '#6366f1'],
+      color: COLORS.indigo,
+      gradient: [COLORS.indigo, '#6366f1'],
       roles: [UserRole.ADMIN, UserRole.SHIFT],
     },
     {
@@ -114,8 +115,8 @@ export const HomeScreen = () => {
       icon: 'history',
       stack: 'Kardex',
       screen: 'KARDEX_LIST',
-      color: '#0891b2',
-      gradient: ['#0891b2', '#06b6d4'],
+      color: COLORS.cyan,
+      gradient: [COLORS.cyan, '#06b6d4'],
       roles: [UserRole.ADMIN, UserRole.SHIFT],
     },
     {
@@ -124,8 +125,8 @@ export const HomeScreen = () => {
       icon: 'clock-outline',
       stack: 'SCHEDULES_STACK',
       screen: 'SCHEDULES_LIST',
-      color: '#f59e0b',
-      gradient: ['#f59e0b', '#fbbf24'],
+      color: COLORS.amber,
+      gradient: [COLORS.amber, '#fbbf24'],
       roles: [UserRole.ADMIN],
     },
     {
@@ -134,8 +135,8 @@ export const HomeScreen = () => {
       icon: 'office-building',
       stack: 'CLIENTS_STACK',
       screen: 'CLIENTS_MAIN',
-      color: '#059669',
-      gradient: ['#059669', '#10b981'],
+      color: COLORS.emerald,
+      gradient: [COLORS.emerald, '#10b981'],
       roles: [UserRole.ADMIN],
     },
     {
@@ -144,8 +145,8 @@ export const HomeScreen = () => {
       icon: 'map-clock-outline',
       stack: 'ZONES_STACK',
       screen: 'ZONES_MAIN',
-      color: '#4f46e5',
-      gradient: ['#4f46e5', '#6366f1'],
+      color: COLORS.indigo,
+      gradient: [COLORS.indigo, '#6366f1'],
       roles: [UserRole.ADMIN],
     },
     {
@@ -154,7 +155,7 @@ export const HomeScreen = () => {
       icon: 'qrcode-plus',
       stack: 'INVITATIONS_STACK',
       screen: 'INVITATION_FORM',
-      color: '#059669',
+      color: COLORS.emerald,
       roles: [UserRole.RESDN],
     },
     {
@@ -163,7 +164,7 @@ export const HomeScreen = () => {
       icon: 'card-account-details-outline',
       stack: 'INVITATIONS_STACK',
       screen: 'INVITATIONS_MAIN',
-      color: '#0891b2',
+      color: COLORS.cyan,
       roles: [UserRole.RESDN],
     },
     {
@@ -172,8 +173,8 @@ export const HomeScreen = () => {
       icon: 'book-account-outline',
       stack: 'RESIDENTS_STACK',
       screen: 'RESIDENT_CONTACTS',
-      color: '#4f46e5',
-      params: { residentId: Number(user.id) },
+      color: COLORS.indigo,
+      params: { residentId: user.id },
       roles: [UserRole.RESDN],
     },
     {
@@ -182,7 +183,7 @@ export const HomeScreen = () => {
       icon: 'account-cog-outline',
       stack: 'RESIDENTS_STACK',
       screen: 'RESIDENT_PROFILE',
-      color: '#6366f1',
+      color: COLORS.indigo,
       roles: [UserRole.RESDN],
     },
   ];

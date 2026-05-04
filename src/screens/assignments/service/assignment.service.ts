@@ -24,7 +24,7 @@ export const createAssignment = async (
 };
 
 export const getAllAssignments = async (
-  filters: { guardId?: number; status?: AssignmentStatus; id?: number } = {}
+  filters: { guardId?: string; status?: AssignmentStatus; id?: string } = {}
 ): Promise<TResult<IAssignment[]>> => {
   let query = '';
   const queryParams = [];
@@ -37,12 +37,12 @@ export const getAllAssignments = async (
 };
 
 export const updateAssignmentStatus = async (
-  id: number,
+  id: string,
   status: AssignmentStatus,
 ): Promise<TResult<IAssignment>> => {
   return await patch<IAssignment>(`/assignments/${id}/status`, { status });
 };
 
-export const toggleTask = async (taskId: number): Promise<TResult<any>> => {
+export const toggleTask = async (taskId: string): Promise<TResult<any>> => {
     return await patch<any>(`/assignments/tasks/${taskId}/toggle`, {});
 };

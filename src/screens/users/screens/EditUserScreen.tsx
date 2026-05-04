@@ -11,6 +11,8 @@ import { showToast } from '../../../core/store/slices/toast.slice';
 import ModernStyles from '../../../shared/theme/app.styles';
 import { getSchedules, ISchedule } from '../../schedules/service/schedules.service';
 import { updateUser } from '../../users/service/user.service';
+import { getCatalog } from '../../../shared/service/catalog.service';
+import { Switch } from 'react-native-paper';
 
 const UserEditSchema = Yup.object().shape({
   name: Yup.string().required('El nombre es requerido'),
@@ -20,7 +22,7 @@ const UserEditSchema = Yup.object().shape({
     .min(4, 'Mínimo 4 caracteres')
     .matches(/^[a-zA-Z0-9_]+$/, 'Solo letras, números y guión bajo'),
   role: Yup.string().required('El rol es requerido'),
-  scheduleId: Yup.number().when('role', {
+  scheduleId: Yup.string().when('role', {
     is: (val: string) => val === UserRole.GUARD || val === UserRole.SHIFT || val === UserRole.MAINT,
     then: (schema) => schema.required('El horario es requerido para personal operativo'),
     otherwise: (schema) => schema.optional(),
@@ -36,6 +38,7 @@ export const EditUserScreen = () => {
   
   const [saving, setSaving] = useState(false);
   const [schedules, setSchedules] = useState<ISchedule[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
 
   const steps = [
@@ -47,6 +50,9 @@ export const EditUserScreen = () => {
   useEffect(() => {
     getSchedules().then(res => {
       if (res.success && res.data) setSchedules(res.data);
+    });
+    getCatalog('role').then(res => {
+      if (res.success && res.data) setRoles(res.data);
     });
   }, []);
 
@@ -101,6 +107,7 @@ export const EditUserScreen = () => {
             username: user.username || '',
             role: typeof user.role === 'object' ? user.role.name : user.role,
             scheduleId: user.scheduleId || '',
+            active: user.active ?? true,
           }}
           validationSchema={UserEditSchema}
           onSubmit={handleSubmit}
@@ -199,6 +206,23 @@ export const EditUserScreen = () => {
                           <HelperText type="error">{errors.lastName as string}</HelperText>
                         )}
                       </View>
+
+                      <View style={[styles.inputGroup, styles.switchContainer]}>
+                        <View>
+                            <Text style={styles.inputLabel}>Estatus del usuario</Text>
+                            <Text style={styles.inputSubtitle}>Define si el empleado puede acceder al sistema</Text>
+                        </View>
+                        <View style={styles.switchWrapper}>
+                            <Text style={[styles.switchLabel, { color: values.active ? '#10B981' : '#64748B' }]}>
+                                {values.active ? 'ACTIVO' : 'INACTIVO'}
+                            </Text>
+                            <Switch 
+                                value={values.active} 
+                                onValueChange={(val) => setFieldValue('active', val)} 
+                                color="#10B981"
+                            />
+                        </View>
+                      </View>
                     </View>
                   )}
 
@@ -226,24 +250,36 @@ export const EditUserScreen = () => {
                       <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>Rol del sistema</Text>
                         <View style={styles.roleGrid}>
-                            {[
-                                { label: 'Guardia', value: UserRole.GUARD, icon: 'shield-account' },
-                                { label: 'Jefe Turno', value: UserRole.SHIFT, icon: 'shield-crown' },
-                                { label: 'Admin', value: UserRole.ADMIN, icon: 'shield-star' },
-                                { label: 'Mtto', value: UserRole.MAINT, icon: 'wrench' },
-                            ].map((r) => (
-                                <TouchableOpacity 
-                                    key={r.value}
-                                    onPress={() => setFieldValue('role', r.value)}
-                                    style={[
-                                        styles.roleCard,
-                                        values.role === r.value && styles.roleCardActive
-                                    ]}
-                                >
-                                    <Icon source={r.icon} size={20} color={values.role === r.value ? '#FFFFFF' : '#64748B'} />
-                                    <Text style={[styles.roleCardText, values.role === r.value && styles.roleCardTextActive]}>{r.label}</Text>
-                                </TouchableOpacity>
-                            ))}
+                            {roles.length === 0 ? (
+                                <ActivityIndicator size="small" color="#065911" style={{ marginVertical: 20 }} />
+                            ) : (
+                                roles.map((r) => {
+                                    const roleIcon = 
+                                        r.name === UserRole.GUARD ? 'shield-account' :
+                                        r.name === UserRole.SHIFT ? 'shield-crown' :
+                                        r.name === UserRole.ADMIN ? 'shield-star' :
+                                        r.name === UserRole.MAINT ? 'wrench' : 'account';
+                                    
+                                    return (
+                                        <TouchableOpacity 
+                                            key={r.id || r.name}
+                                            onPress={() => setFieldValue('role', r.name)}
+                                            style={[
+                                                styles.roleCard,
+                                                values.role === r.name && styles.roleCardActive
+                                            ]}
+                                        >
+                                            <Icon source={roleIcon} size={20} color={values.role === r.name ? '#FFFFFF' : '#64748B'} />
+                                            <Text style={[
+                                                styles.roleLabel,
+                                                values.role === r.name && styles.roleLabelActive
+                                            ]}>
+                                                {r.value || r.name}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })
+                            )}
                         </View>
                       </View>
                     </View>
@@ -469,6 +505,39 @@ const styles = StyleSheet.create({
   },
   roleCardTextActive: {
     color: '#FFFFFF',
+  },
+  roleLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 4,
+  },
+  roleLabelActive: {
+    color: '#FFFFFF',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 8,
+  },
+  inputSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  switchWrapper: {
+    alignItems: 'center',
+  },
+  switchLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    marginBottom: 4,
   },
   infoCard: {
     backgroundColor: '#F8FAFC',

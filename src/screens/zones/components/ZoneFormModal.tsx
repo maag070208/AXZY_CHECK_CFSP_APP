@@ -5,6 +5,7 @@ import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { getClients } from '../../clients/service/client.service';
 import { IClient } from '../../clients/type/client.types';
+import { SearchComponent } from '../../../shared/components/SearchComponent';
 
 const ZoneSchema = Yup.object().shape({
   name: Yup.string().required('El nombre de la zona es requerido'),
@@ -16,9 +17,10 @@ interface Props {
   onDismiss: () => void;
   onSubmit: (data: any) => void;
   loading: boolean;
+  initialData?: any;
 }
 
-export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading }: Props) => {
+export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading, initialData }: Props) => {
   const [clients, setClients] = useState<IClient[]>([]);
   const [fetchingClients, setFetchingClients] = useState(false);
 
@@ -53,8 +55,10 @@ export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading }: Props) 
           <Surface style={styles.surface} elevation={5}>
             <View style={styles.header}>
               <View>
-                <Text style={styles.title}>Nueva Zona</Text>
-                <Text style={styles.subtitle}>Agrega un nuevo sector para inspecciones</Text>
+                <Text style={styles.title}>{initialData ? 'Editar Zona' : 'Nueva Zona'}</Text>
+                <Text style={styles.subtitle}>
+                    {initialData ? `Actualizando ${initialData.name}` : 'Agrega un nuevo sector para inspecciones'}
+                </Text>
               </View>
               <IconButton icon="close" onPress={onDismiss} size={20} />
             </View>
@@ -62,7 +66,11 @@ export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading }: Props) 
             <Divider />
 
             <Formik
-              initialValues={{ name: '', clientId: '' }}
+              initialValues={{ 
+                name: initialData?.name || '', 
+                clientId: initialData?.clientId || '' 
+              }}
+              enableReinitialize
               validationSchema={ZoneSchema}
               onSubmit={onSubmit}
             >
@@ -85,20 +93,14 @@ export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading }: Props) 
                     </View>
 
                     <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Asignar a Cliente</Text>
-                      <View style={styles.pickerContainer}>
-                        <Picker
-                          selectedValue={values.clientId}
-                          onValueChange={(itemValue) => setFieldValue('clientId', itemValue)}
-                          style={styles.picker}
-                        >
-                          <Picker.Item label="Selecciona un cliente..." value="" />
-                          {clients.map((client) => (
-                            <Picker.Item key={client.id} label={client.name} value={client.id} />
-                          ))}
-                        </Picker>
-                      </View>
-                      {touched.clientId && errors.clientId && <HelperText type="error">{errors.clientId}</HelperText>}
+                      <SearchComponent
+                        label="Asignar a Cliente"
+                        placeholder="Selecciona un cliente..."
+                        options={clients.map(c => ({ label: c.name, value: c.id }))}
+                        value={values.clientId}
+                        onSelect={(val) => setFieldValue('clientId', val)}
+                        error={touched.clientId && errors.clientId}
+                      />
                     </View>
 
                     <View style={styles.infoBox}>
@@ -126,7 +128,7 @@ export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading }: Props) 
                         disabled={loading}
                         buttonColor="#065911"
                     >
-                        Crear Zona
+                        {initialData ? 'Guardar Cambios' : 'Crear Zona'}
                     </Button>
                   </View>
                 </View>

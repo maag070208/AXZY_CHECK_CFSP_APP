@@ -15,6 +15,7 @@ import * as Yup from 'yup';
 import { ILocation, ILocationCreate } from '../type/location.types';
 import { getClients } from '../../clients/service/client.service';
 import { getPaginatedZones } from '../../zones/service/zone.service';
+import { SearchComponent } from '../../../shared/components/SearchComponent';
 
 interface Props {
   visible: boolean;
@@ -25,8 +26,8 @@ interface Props {
 }
 
 const validationSchema = Yup.object().shape({
-  clientId: Yup.number().required('El cliente es obligatorio'),
-  zoneId: Yup.number().required('El recurrente (zona) es obligatorio'),
+  clientId: Yup.string().required('El cliente es obligatorio'),
+  zoneId: Yup.string().required('El recurrente (zona) es obligatorio'),
   name: Yup.string().required('El nombre de ubicación es obligatorio'),
   reference: Yup.string().optional(),
 });
@@ -42,8 +43,6 @@ export const LocationFormModal = ({
   const [zones, setZones] = useState<any[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [loadingZones, setLoadingZones] = useState(false);
-  const [selectorVisible, setSelectorVisible] = useState(false);
-  const [selectorType, setSelectorType] = useState<'CLIENT' | 'ZONE'>('CLIENT');
 
   useEffect(() => {
     if (visible) {
@@ -58,7 +57,7 @@ export const LocationFormModal = ({
     setLoadingClients(false);
   };
 
-  const loadZones = async (clientId: number) => {
+  const loadZones = async (clientId: string) => {
     setLoadingZones(true);
     const res = await getPaginatedZones({ filters: { clientId } });
     if (res.success) setZones(res.data.rows || []);
@@ -94,8 +93,8 @@ export const LocationFormModal = ({
           validationSchema={validationSchema}
           onSubmit={values => {
             onSubmit({
-              clientId: Number(values.clientId),
-              zoneId: Number(values.zoneId),
+              clientId: values.clientId,
+              zoneId: values.zoneId,
               name: values.name,
               reference: values.reference,
             });
@@ -112,51 +111,38 @@ export const LocationFormModal = ({
           }) => {
             // Trigger zone load when client changes
             useEffect(() => {
-              if (values.clientId) loadZones(Number(values.clientId));
+              if (values.clientId) loadZones(values.clientId);
             }, [values.clientId]);
 
             const selectedClientName = clients.find(c => c.id === values.clientId)?.name || 'Selecciona un cliente';
-            const selectedZoneName = zones.find(z => z.id === values.zoneId)?.name || 'Selecciona una zona';
 
             return (
               <View style={styles.formContent}>
-                {/* Selector de Cliente */}
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>CLIENTE *</Text>
-                  <TouchableOpacity 
-                    style={[styles.selector, touched.clientId && errors.clientId && styles.errorBorder]}
-                    onPress={() => {
-                        setSelectorType('CLIENT');
-                        setSelectorVisible(true);
+                  <SearchComponent
+                    label="CLIENTE *"
+                    placeholder="Selecciona un cliente"
+                    options={clients.map(c => ({ label: c.name, value: c.id }))}
+                    value={values.clientId}
+                    onSelect={(val) => {
+                        setFieldValue('clientId', val);
+                        setFieldValue('zoneId', '');
                     }}
-                  >
-                    <Text style={values.clientId ? styles.selectorText : styles.placeholderText}>{selectedClientName}</Text>
-                    <IconButton icon="chevron-down" size={20} />
-                  </TouchableOpacity>
-                  {touched.clientId && errors.clientId && (
-                    <HelperText type="error" visible={true}>{errors.clientId}</HelperText>
-                  )}
+                    error={touched.clientId && errors.clientId}
+                  />
                 </View>
 
-                {/* Selector de Zona */}
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>RECURRENTE (ZONA) *</Text>
-                  <TouchableOpacity 
-                    style={[styles.selector, touched.zoneId && errors.zoneId && styles.errorBorder, !values.clientId && styles.disabledSelector]}
-                    disabled={!values.clientId}
-                    onPress={() => {
-                        setSelectorType('ZONE');
-                        setSelectorVisible(true);
-                    }}
-                  >
-                    <Text style={values.zoneId ? styles.selectorText : styles.placeholderText}>
-                        {loadingZones ? 'Cargando...' : selectedZoneName}
-                    </Text>
-                    <IconButton icon="chevron-down" size={20} />
-                  </TouchableOpacity>
-                  {touched.zoneId && errors.zoneId && (
-                    <HelperText type="error" visible={true}>{errors.zoneId}</HelperText>
-                  )}
+                  <SearchComponent
+                    label="RECURRENTE (ZONA) *"
+                    placeholder={values.clientId ? "Selecciona una zona" : "Primero selecciona un cliente"}
+                    disabled={!values.clientId || loadingZones}
+                    options={zones.map(z => ({ label: z.name, value: z.id }))}
+                    value={values.zoneId}
+                    onSelect={(val) => setFieldValue('zoneId', val)}
+                    error={touched.zoneId && errors.zoneId}
+                    helperText={loadingZones ? "Cargando zonas..." : undefined}
+                  />
                 </View>
 
                 <View style={styles.inputContainer}>
@@ -202,47 +188,6 @@ export const LocationFormModal = ({
                     Guardar Ubicación
                   </Button>
                 </View>
-
-                {/* Sub-modal para selección de ítems */}
-                <Portal>
-                  <Modal
-                    visible={selectorVisible}
-                    onDismiss={() => setSelectorVisible(false)}
-                    contentContainerStyle={styles.selectorModal}
-                  >
-                    <Text style={styles.selectorTitle}>
-                        {selectorType === 'CLIENT' ? 'Seleccionar Cliente' : 'Seleccionar Zona'}
-                    </Text>
-                    <FlatList
-                        data={selectorType === 'CLIENT' ? clients : zones}
-                        keyExtractor={item => String(item.id)}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity 
-                                style={styles.optionItem}
-                                onPress={() => {
-                                    if (selectorType === 'CLIENT') {
-                                        setFieldValue('clientId', item.id);
-                                        setFieldValue('zoneId', ''); // Reset zone when client changes
-                                    } else {
-                                        setFieldValue('zoneId', item.id);
-                                    }
-                                    setSelectorVisible(false);
-                                }}
-                            >
-                                <Text style={styles.optionText}>{item.name}</Text>
-                                {(selectorType === 'CLIENT' ? values.clientId : values.zoneId) === item.id && (
-                                    <Icon name="check" size={20} color="#059669" />
-                                )}
-                            </TouchableOpacity>
-                        )}
-                        ListEmptyComponent={() => (
-                            <View style={styles.emptySelector}>
-                                {loadingClients || loadingZones ? <ActivityIndicator color="#059669" /> : <Text>No se encontraron resultados</Text>}
-                            </View>
-                        )}
-                    />
-                  </Modal>
-                </Portal>
               </View>
             );
           }}
@@ -285,33 +230,6 @@ const styles = StyleSheet.create({
     color: '#64748b',
     marginBottom: 8,
     letterSpacing: 1,
-  },
-  selector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    paddingLeft: 16,
-    height: 52,
-    backgroundColor: '#f8fafc',
-  },
-  disabledSelector: {
-    opacity: 0.5,
-    backgroundColor: '#f1f5f9',
-  },
-  errorBorder: {
-    borderColor: '#ef4444',
-  },
-  selectorText: {
-    color: '#1e293b',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  placeholderText: {
-    color: '#94a3b8',
-    fontSize: 14,
   },
   input: {
     backgroundColor: '#f8fafc',

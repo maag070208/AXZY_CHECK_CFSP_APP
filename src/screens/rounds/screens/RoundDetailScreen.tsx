@@ -1,6 +1,22 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Image, Linking, Dimensions, StatusBar, ImageStyle } from 'react-native';
-import { Text, ActivityIndicator, Chip, Avatar, Icon } from 'react-native-paper';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Linking,
+  Dimensions,
+  StatusBar,
+  ImageStyle,
+} from 'react-native';
+import {
+  Text,
+  ActivityIndicator,
+  Chip,
+  Avatar,
+  Icon,
+} from 'react-native-paper';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +37,14 @@ const { width } = Dimensions.get('window');
 interface TimelineNode {
   type: 'START' | 'POINT' | 'END';
   label: string;
-  status: 'START' | 'END' | 'SUCCESS' | 'DUPLICATE' | 'INCOMPLETE' | 'MISSING' | 'PENDING';
+  status:
+    | 'START'
+    | 'END'
+    | 'SUCCESS'
+    | 'DUPLICATE'
+    | 'INCOMPLETE'
+    | 'MISSING'
+    | 'PENDING';
   timeDiff: string | null;
 }
 
@@ -43,7 +66,7 @@ export const RoundDetailScreen = ({ route }: any) => {
   const { id } = route.params;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  
+
   const [data, setData] = useState<IRoundDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedEvents, setExpandedEvents] = useState<Set<number>>(new Set());
@@ -87,8 +110,11 @@ export const RoundDetailScreen = ({ route }: any) => {
     if (!data) return null;
 
     const start = new Date(data.round.startTime);
-    const end = data.round.endTime ? new Date(data.round.endTime) : 
-                (data.round.status === 'COMPLETED' ? new Date() : null);
+    const end = data.round.endTime
+      ? new Date(data.round.endTime)
+      : data.round.status === 'COMPLETED'
+      ? new Date()
+      : null;
     const effectiveEnd = end || new Date();
 
     const durationMs = effectiveEnd.getTime() - start.getTime();
@@ -97,17 +123,22 @@ export const RoundDetailScreen = ({ route }: any) => {
 
     const scans = data.timeline
       .filter(e => e.type === 'SCAN')
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      );
 
     const visitedLocations = new Set<string>();
     let validScansCount = 0;
 
-    const mapNodes: TimelineNode[] = [{ 
-      type: 'START', 
-      label: 'Inicio', 
-      status: 'START', 
-      timeDiff: null 
-    }];
+    const mapNodes: TimelineNode[] = [
+      {
+        type: 'START',
+        label: 'Inicio',
+        status: 'START',
+        timeDiff: null,
+      },
+    ];
 
     let previousTime = start;
 
@@ -121,7 +152,10 @@ export const RoundDetailScreen = ({ route }: any) => {
       const isDuplicate = visitedLocations.has(locId);
       visitedLocations.add(locId);
 
-      const hasEvidence = scan.data?.media && Array.isArray(scan.data.media) && scan.data.media.length > 0;
+      const hasEvidence =
+        scan.data?.media &&
+        Array.isArray(scan.data.media) &&
+        scan.data.media.length > 0;
 
       let status: TimelineNode['status'] = 'SUCCESS';
       if (isDuplicate) status = 'DUPLICATE';
@@ -132,21 +166,23 @@ export const RoundDetailScreen = ({ route }: any) => {
         type: 'POINT',
         label: scan.data?.location?.name || 'Punto sin nombre',
         status,
-        timeDiff: formatTimeDiff(mins, secs)
+        timeDiff: formatTimeDiff(mins, secs),
       });
 
       previousTime = current;
     });
 
     const expectedLocs = data.round.client?.locations || [];
-    const missingLocs = expectedLocs.filter((l: any) => !visitedLocations.has(String(l.id)));
-    
+    const missingLocs = expectedLocs.filter(
+      (l: any) => !visitedLocations.has(String(l.id)),
+    );
+
     missingLocs.forEach((loc: any) => {
       mapNodes.push({
         type: 'POINT',
         label: loc.name,
         status: data.round.status === 'COMPLETED' ? 'MISSING' : 'PENDING',
-        timeDiff: '--'
+        timeDiff: '--',
       });
     });
 
@@ -155,15 +191,18 @@ export const RoundDetailScreen = ({ route }: any) => {
       const diff = current.getTime() - previousTime.getTime();
       const mins = Math.floor(diff / 60000);
       const secs = Math.floor((diff % 60000) / 1000);
-      mapNodes.push({ 
-        type: 'END', 
-        label: 'Fin', 
-        status: 'END', 
-        timeDiff: formatTimeDiff(mins, secs) 
+      mapNodes.push({
+        type: 'END',
+        label: 'Fin',
+        status: 'END',
+        timeDiff: formatTimeDiff(mins, secs),
       });
     }
 
-    const avgTime = scans.length > 0 ? (durationMs / (scans.length + (data.round.endTime ? 1 : 0))) : 0;
+    const avgTime =
+      scans.length > 0
+        ? durationMs / (scans.length + (data.round.endTime ? 1 : 0))
+        : 0;
     const avgMins = Math.floor(avgTime / 60000);
     const avgSecs = Math.floor((avgTime % 60000) / 1000);
 
@@ -173,33 +212,40 @@ export const RoundDetailScreen = ({ route }: any) => {
       totalRawScans: scans.length,
       expectedScans: expectedLocs.length,
       mapNodes,
-      avgTime: formatTimeDiff(avgMins, avgSecs)
+      avgTime: formatTimeDiff(avgMins, avgSecs),
     };
   }, [data]);
-
 
   const handleOpenMap = useCallback(() => {
     if (!data) return;
 
     const scansWithCoords = data.timeline
       .filter(e => e.type === 'SCAN' && e.data?.latitude && e.data?.longitude)
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      );
 
     if (scansWithCoords.length === 0) return;
 
     if (scansWithCoords.length === 1) {
       Linking.openURL(
-        `https://www.google.com/maps/search/?api=1&query=${scansWithCoords[0].data.latitude},${scansWithCoords[0].data.longitude}`
+        `https://www.google.com/maps/search/?api=1&query=${scansWithCoords[0].data.latitude},${scansWithCoords[0].data.longitude}`,
       );
       return;
     }
 
     const origin = `${scansWithCoords[0].data.latitude},${scansWithCoords[0].data.longitude}`;
-    const destination = `${scansWithCoords[scansWithCoords.length - 1].data.latitude},${scansWithCoords[scansWithCoords.length - 1].data.longitude}`;
-    const waypoints = scansWithCoords.slice(1, -1).map(s => `${s.data.latitude},${s.data.longitude}`).join('|');
+    const destination = `${
+      scansWithCoords[scansWithCoords.length - 1].data.latitude
+    },${scansWithCoords[scansWithCoords.length - 1].data.longitude}`;
+    const waypoints = scansWithCoords
+      .slice(1, -1)
+      .map(s => `${s.data.latitude},${s.data.longitude}`)
+      .join('|');
 
     Linking.openURL(
-      `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=walking`
+      `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=walking`,
     );
   }, [data]);
 
@@ -219,10 +265,14 @@ export const RoundDetailScreen = ({ route }: any) => {
               <Text style={styles.webNotesText}>{headerText}</Text>
             </View>
           ) : null}
-          
+
           <View style={styles.checklistCard}>
             <View style={styles.checklistHeader}>
-              <Icon source="clipboard-check-outline" size={18} color="#6366F1" />
+              <Icon
+                source="clipboard-check-outline"
+                size={18}
+                color="#6366F1"
+              />
               <Text style={styles.checklistTitle}>LISTA DE VERIFICACIÓN</Text>
             </View>
             <View style={styles.checklistDivider} />
@@ -231,15 +281,19 @@ export const RoundDetailScreen = ({ route }: any) => {
               const text = line.replace('[x]', '').replace('[ ]', '').trim();
               return (
                 <View key={idx} style={styles.checklistItem}>
-                  <Icon 
-                    source={isCompleted ? 'checkbox-marked' : 'checkbox-blank-outline'} 
-                    size={20} 
-                    color={isCompleted ? '#10B981' : '#D1D5DB'} 
+                  <Icon
+                    source={
+                      isCompleted ? 'checkbox-marked' : 'checkbox-blank-outline'
+                    }
+                    size={20}
+                    color={isCompleted ? '#10B981' : '#D1D5DB'}
                   />
-                  <Text style={[
-                    styles.checklistText,
-                    isCompleted && styles.checklistTextCompleted
-                  ]}>
+                  <Text
+                    style={[
+                      styles.checklistText,
+                      isCompleted && styles.checklistTextCompleted,
+                    ]}
+                  >
                     {text}
                   </Text>
                 </View>
@@ -261,19 +315,21 @@ export const RoundDetailScreen = ({ route }: any) => {
     if (!mediaArray?.length) return null;
 
     return (
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
         style={styles.mediaGallery}
         contentContainerStyle={styles.mediaGalleryContent}
       >
         {mediaArray.map((m: any, idx: number) => {
           const isVid = m.type === 'VIDEO';
-          const url = m.url.startsWith('http') ? m.url : API_CONSTANTS.BASE_URL.replace('/api/v1', '') + m.url;
+          const url = m.url.startsWith('http')
+            ? m.url
+            : API_CONSTANTS.BASE_URL.replace('/api/v1', '') + m.url;
 
           return (
-            <TouchableOpacity 
-              key={idx} 
+            <TouchableOpacity
+              key={idx}
               style={styles.mediaItem}
               onPress={() => {
                 setPreviewUrl(url);
@@ -292,7 +348,10 @@ export const RoundDetailScreen = ({ route }: any) => {
                   muted={true}
                 />
               ) : (
-                <Image source={{ uri: url }} style={styles.mediaImage as ImageStyle} />
+                <Image
+                  source={{ uri: url }}
+                  style={styles.mediaImage as ImageStyle}
+                />
               )}
               {isVid && (
                 <View style={styles.videoBadge}>
@@ -319,10 +378,12 @@ export const RoundDetailScreen = ({ route }: any) => {
               size={20}
               color={task.completed ? '#10B981' : '#D1D5DB'}
             />
-            <Text style={[
-              styles.taskText, 
-              task.completed && styles.taskTextCompleted
-            ]}>
+            <Text
+              style={[
+                styles.taskText,
+                task.completed && styles.taskTextCompleted,
+              ]}
+            >
               {task.description}
             </Text>
           </View>
@@ -332,14 +393,52 @@ export const RoundDetailScreen = ({ route }: any) => {
   }, []);
 
   const getStatusConfig = (status: string) => {
-    const configs: Record<string, { color: string; bgColor: string; icon: string; label: string }> = {
-      START: { color: '#3B82F6', bgColor: '#EFF6FF', icon: 'play', label: 'Inicio' },
-      END: { color: '#1F2937', bgColor: '#F3F4F6', icon: 'flag-checkered', label: 'Fin' },
-      SUCCESS: { color: '#10B981', bgColor: '#ECFDF5', icon: 'check', label: 'Completado' },
-      DUPLICATE: { color: '#EF4444', bgColor: '#FEF2F2', icon: 'alert', label: 'Repetido' },
-      INCOMPLETE: { color: '#F59E0B', bgColor: '#FEF3C7', icon: 'alert', label: 'Incompleto' },
-      MISSING: { color: '#EF4444', bgColor: '#FEF2F2', icon: 'map-marker-question', label: 'Faltante' },
-      PENDING: { color: '#9CA3AF', bgColor: '#F3F4F6', icon: 'clock-outline', label: 'Pendiente' },
+    const configs: Record<
+      string,
+      { color: string; bgColor: string; icon: string; label: string }
+    > = {
+      START: {
+        color: '#3B82F6',
+        bgColor: '#EFF6FF',
+        icon: 'play',
+        label: 'Inicio',
+      },
+      END: {
+        color: '#1F2937',
+        bgColor: '#F3F4F6',
+        icon: 'flag-checkered',
+        label: 'Fin',
+      },
+      SUCCESS: {
+        color: '#10B981',
+        bgColor: '#ECFDF5',
+        icon: 'check',
+        label: 'Completado',
+      },
+      DUPLICATE: {
+        color: '#EF4444',
+        bgColor: '#FEF2F2',
+        icon: 'alert',
+        label: 'Repetido',
+      },
+      INCOMPLETE: {
+        color: '#F59E0B',
+        bgColor: '#FEF3C7',
+        icon: 'alert',
+        label: 'Incompleto',
+      },
+      MISSING: {
+        color: '#EF4444',
+        bgColor: '#FEF2F2',
+        icon: 'map-marker-question',
+        label: 'Faltante',
+      },
+      PENDING: {
+        color: '#9CA3AF',
+        bgColor: '#F3F4F6',
+        icon: 'clock-outline',
+        label: 'Pendiente',
+      },
     };
     return configs[status] || configs.INCOMPLETE;
   };
@@ -370,7 +469,7 @@ export const RoundDetailScreen = ({ route }: any) => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
@@ -378,19 +477,16 @@ export const RoundDetailScreen = ({ route }: any) => {
         <View style={[styles.modernHeader, { paddingTop: insets.top + 10 }]}>
           <View style={styles.headerTopRow}>
             <View style={styles.headerTitles}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+              >
                 <Text style={styles.headerTitle}>{routeTitle}</Text>
-                <View style={styles.idBadge}>
-                  <Text style={styles.idText}>#{data.round.id}</Text>
-                </View>
               </View>
               <Text style={styles.headerSubtitle}>
-                Iniciado el {dayjs(data.round.startTime).format('DD [de] MMMM, YYYY')}
+                Iniciado el{' '}
+                {dayjs(data.round.startTime).format('DD [de] MMMM, YYYY')}
               </Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButtonCircle}>
-              <Icon source="close" size={24} color="#64748B" />
-            </TouchableOpacity>
           </View>
 
           <View style={styles.headerMetaRow}>
@@ -400,21 +496,49 @@ export const RoundDetailScreen = ({ route }: any) => {
               </View>
               <View>
                 <Text style={styles.metaLabel}>GUARDIA</Text>
-                <Text style={styles.metaValue}>{data.round.guard.name} {data.round.guard.lastName}</Text>
+                <Text style={styles.metaValue}>
+                  {data.round.guard.name} {data.round.guard.lastName}
+                </Text>
               </View>
             </View>
             <View style={styles.metaItem}>
-              <View style={[styles.metaIconBg, { backgroundColor: data.round.status === 'COMPLETED' ? '#ECFDF5' : '#FFFBEB' }]}>
-                <Icon 
-                  source={data.round.status === 'COMPLETED' ? 'check-decagram' : 'timer-outline'} 
-                  size={18} 
-                  color={data.round.status === 'COMPLETED' ? '#10B981' : '#D97706'} 
+              <View
+                style={[
+                  styles.metaIconBg,
+                  {
+                    backgroundColor:
+                      data.round.status === 'COMPLETED' ? '#ECFDF5' : '#FFFBEB',
+                  },
+                ]}
+              >
+                <Icon
+                  source={
+                    data.round.status === 'COMPLETED'
+                      ? 'check-decagram'
+                      : 'timer-outline'
+                  }
+                  size={18}
+                  color={
+                    data.round.status === 'COMPLETED' ? '#10B981' : '#D97706'
+                  }
                 />
               </View>
               <View>
                 <Text style={styles.metaLabel}>ESTADO</Text>
-                <Text style={[styles.metaValue, { color: data.round.status === 'COMPLETED' ? '#10B981' : '#D97706' }]}>
-                  {data.round.status === 'COMPLETED' ? 'FINALIZADA' : 'EN CURSO'}
+                <Text
+                  style={[
+                    styles.metaValue,
+                    {
+                      color:
+                        data.round.status === 'COMPLETED'
+                          ? '#10B981'
+                          : '#D97706',
+                    },
+                  ]}
+                >
+                  {data.round.status === 'COMPLETED'
+                    ? 'FINALIZADA'
+                    : 'EN CURSO'}
                 </Text>
               </View>
             </View>
@@ -425,23 +549,35 @@ export const RoundDetailScreen = ({ route }: any) => {
         {metrics && (
           <View style={styles.webMetricsRow}>
             <View style={styles.webMetricCard}>
-              <View style={[styles.metricIconBox, { backgroundColor: '#F0F9FF' }]}>
+              <View
+                style={[styles.metricIconBox, { backgroundColor: '#F0F9FF' }]}
+              >
                 <Icon source="clock-fast" size={20} color="#0EA5E9" />
               </View>
               <Text style={styles.webMetricLabel}>DURACIÓN</Text>
               <Text style={styles.webMetricValue}>{metrics.duration}</Text>
             </View>
             <View style={styles.webMetricCard}>
-              <View style={[styles.metricIconBox, { backgroundColor: '#F5F3FF' }]}>
+              <View
+                style={[styles.metricIconBox, { backgroundColor: '#F5F3FF' }]}
+              >
                 <Icon source="qrcode-scan" size={20} color="#8B5CF6" />
               </View>
               <Text style={styles.webMetricLabel}>PUNTOS</Text>
               <Text style={styles.webMetricValue}>
-                {metrics.totalScans} <Text style={styles.webMetricSubValue}>/ {metrics.expectedScans > 0 ? metrics.expectedScans : metrics.totalRawScans}</Text>
+                {metrics.totalScans}{' '}
+                <Text style={styles.webMetricSubValue}>
+                  /{' '}
+                  {metrics.expectedScans > 0
+                    ? metrics.expectedScans
+                    : metrics.totalRawScans}
+                </Text>
               </Text>
             </View>
             <View style={styles.webMetricCard}>
-              <View style={[styles.metricIconBox, { backgroundColor: '#FEFCE8' }]}>
+              <View
+                style={[styles.metricIconBox, { backgroundColor: '#FEFCE8' }]}
+              >
                 <Icon source="lightning-bolt" size={20} color="#EAB308" />
               </View>
               <Text style={styles.webMetricLabel}>PROMEDIO</Text>
@@ -458,14 +594,17 @@ export const RoundDetailScreen = ({ route }: any) => {
                 <View style={styles.titleIndicator} />
                 <Text style={styles.sectionTitle}>Ruta Recorrida</Text>
               </View>
-              <TouchableOpacity onPress={handleOpenMap} style={styles.mapAction}>
+              <TouchableOpacity
+                onPress={handleOpenMap}
+                style={styles.mapAction}
+              >
                 <Icon source="map-legend" size={16} color="#6366F1" />
                 <Text style={styles.mapActionText}>Ver trazo</Text>
               </TouchableOpacity>
             </View>
 
-            <ScrollView 
-              horizontal 
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.routeScrollContent}
             >
@@ -475,15 +614,28 @@ export const RoundDetailScreen = ({ route }: any) => {
                   <View key={idx} style={styles.routeNodeContainer}>
                     {idx > 0 && (
                       <View style={styles.connectorContainer}>
-                        <Text style={styles.connectorTime}>{node.timeDiff}</Text>
+                        <Text style={styles.connectorTime}>
+                          {node.timeDiff}
+                        </Text>
                         <View style={styles.connectorLine} />
                       </View>
                     )}
                     <View style={styles.routeNode}>
-                      <View style={[styles.nodeCircle, { borderColor: config.color }]}>
-                        <Icon source={config.icon} size={18} color={config.color} />
+                      <View
+                        style={[
+                          styles.nodeCircle,
+                          { borderColor: config.color },
+                        ]}
+                      >
+                        <Icon
+                          source={config.icon}
+                          size={18}
+                          color={config.color}
+                        />
                       </View>
-                      <Text style={styles.nodeLabel} numberOfLines={2}>{node.label}</Text>
+                      <Text style={styles.nodeLabel} numberOfLines={2}>
+                        {node.label}
+                      </Text>
                     </View>
                   </View>
                 );
@@ -496,49 +648,87 @@ export const RoundDetailScreen = ({ route }: any) => {
         <View style={styles.timelineSection}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
-              <View style={[styles.titleIndicator, { backgroundColor: '#6366F1' }]} />
+              <View
+                style={[styles.titleIndicator, { backgroundColor: '#6366F1' }]}
+              />
               <Text style={styles.sectionTitle}>Línea de Tiempo</Text>
             </View>
-            <Text style={styles.eventCount}>{data.timeline.length} eventos</Text>
+            <Text style={styles.eventCount}>
+              {data.timeline.length} eventos
+            </Text>
           </View>
 
           {data.timeline.map((event, idx) => {
             const isExpanded = expandedEvents.has(idx);
             const eventConfig = getEventConfig(event.type);
-            const hasDetails = event.type === 'SCAN' || event.type === 'INCIDENT';
+            const hasDetails =
+              event.type === 'SCAN' || event.type === 'INCIDENT';
 
             return (
               <View key={idx} style={styles.timelineItem}>
                 <View style={styles.timelineSidebar}>
-                  <View style={[styles.timelinePoint, { backgroundColor: eventConfig.color }]}>
+                  <View
+                    style={[
+                      styles.timelinePoint,
+                      { backgroundColor: eventConfig.color },
+                    ]}
+                  >
                     <Icon source={eventConfig.icon} size={14} color="#fff" />
                   </View>
-                  {idx < data.timeline.length - 1 && <View style={styles.timelineLink} />}
+                  {idx < data.timeline.length - 1 && (
+                    <View style={styles.timelineLink} />
+                  )}
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.eventCard, isExpanded && styles.eventCardExpanded]}
+                  style={[
+                    styles.eventCard,
+                    isExpanded && styles.eventCardExpanded,
+                  ]}
                   onPress={() => hasDetails && toggleEventExpanded(idx)}
                   activeOpacity={hasDetails ? 0.7 : 1}
                   disabled={!hasDetails}
                 >
                   <View style={styles.eventHeader}>
                     <View style={styles.eventInfo}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={styles.eventTime}>{dayjs(event.timestamp).format('HH:mm')}</Text>
-                        <View style={[styles.eventTypeBadge, { backgroundColor: eventConfig.bgColor }]}>
-                           <Text style={[styles.eventTypeText, { color: eventConfig.color }]}>{event.type}</Text>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        <Text style={styles.eventTime}>
+                          {dayjs(event.timestamp).format('HH:mm')}
+                        </Text>
+                        <View
+                          style={[
+                            styles.eventTypeBadge,
+                            { backgroundColor: eventConfig.bgColor },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.eventTypeText,
+                              { color: eventConfig.color },
+                            ]}
+                          >
+                            {event.type}
+                          </Text>
                         </View>
                       </View>
-                      <Text style={styles.eventTitle} numberOfLines={isExpanded ? 0 : 1}>
+                      <Text
+                        style={styles.eventTitle}
+                        numberOfLines={isExpanded ? 0 : 1}
+                      >
                         {event.description}
                       </Text>
                     </View>
                     {hasDetails && (
-                      <Icon 
-                        source={isExpanded ? 'chevron-up' : 'chevron-down'} 
-                        size={20} 
-                        color="#94A3B8" 
+                      <Icon
+                        source={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        color="#94A3B8"
                       />
                     )}
                   </View>
@@ -570,21 +760,32 @@ export const RoundDetailScreen = ({ route }: any) => {
                                 />
                               </MapView>
                               <View style={styles.miniMapBadge}>
-                                 <Icon source="crosshairs-gps" size={10} color="#64748B" />
-                                 <Text style={styles.miniMapCoords}>
-                                   {Number(event.data.latitude).toFixed(5)}, {Number(event.data.longitude).toFixed(5)}
-                                 </Text>
+                                <Icon
+                                  source="crosshairs-gps"
+                                  size={10}
+                                  color="#64748B"
+                                />
+                                <Text style={styles.miniMapCoords}>
+                                  {Number(event.data.latitude).toFixed(5)},{' '}
+                                  {Number(event.data.longitude).toFixed(5)}
+                                </Text>
                               </View>
                             </View>
                           )}
 
                           <View style={styles.locationBanner}>
-                            <Icon source="office-building" size={16} color="#6366F1" />
-                            <Text style={styles.locationText}>{event.data.location.name}</Text>
+                            <Icon
+                              source="office-building"
+                              size={16}
+                              color="#6366F1"
+                            />
+                            <Text style={styles.locationText}>
+                              {event.data.location.name}
+                            </Text>
                           </View>
-                          
+
                           {renderNotes(event.data.notes)}
-                          
+
                           {renderTasks(event.data.assignment?.tasks)}
                           {renderMedia(event.data.media)}
                         </View>
@@ -593,13 +794,24 @@ export const RoundDetailScreen = ({ route }: any) => {
                       {event.type === 'INCIDENT' && (
                         <View style={styles.incidentDetails}>
                           <View style={styles.incidentHeaderBox}>
-                             <Icon source="alert-octagon" size={20} color="#EF4444" />
-                             <Text style={styles.incidentCategory}>{event.data?.category}</Text>
+                            <Icon
+                              source="alert-octagon"
+                              size={20}
+                              color="#EF4444"
+                            />
+                            <Text style={styles.incidentCategory}>
+                              {event.data?.category}
+                            </Text>
                           </View>
-                          
+
                           {/* Map Preview for Incident */}
                           {event.data?.latitude && event.data?.longitude && (
-                            <View style={[styles.miniMapContainer, { marginTop: 12 }]}>
+                            <View
+                              style={[
+                                styles.miniMapContainer,
+                                { marginTop: 12 },
+                              ]}
+                            >
                               <MapView
                                 style={styles.miniMap}
                                 initialRegion={{
@@ -631,7 +843,7 @@ export const RoundDetailScreen = ({ route }: any) => {
                           )}
 
                           {renderNotes(event.data.notes)}
-                          
+
                           {renderMedia(event.data?.media)}
                         </View>
                       )}
@@ -645,7 +857,9 @@ export const RoundDetailScreen = ({ route }: any) => {
           {data.timeline.length === 0 && (
             <View style={styles.emptyState}>
               <Icon source="calendar-blank" size={48} color="#E2E8F0" />
-              <Text style={styles.emptyStateText}>No se registraron eventos en este recorrido</Text>
+              <Text style={styles.emptyStateText}>
+                No se registraron eventos en este recorrido
+              </Text>
             </View>
           )}
         </View>
@@ -665,13 +879,22 @@ export const RoundDetailScreen = ({ route }: any) => {
 
 // Helper function for event configuration
 const getEventConfig = (type: string) => {
-  const configs: Record<string, { icon: string; color: string; bgColor: string }> = {
+  const configs: Record<
+    string,
+    { icon: string; color: string; bgColor: string }
+  > = {
     START: { icon: 'play', color: '#3B82F6', bgColor: '#EFF6FF' },
     SCAN: { icon: 'qrcode-scan', color: '#8B5CF6', bgColor: '#F5F3FF' },
     INCIDENT: { icon: 'alert', color: '#EF4444', bgColor: '#FEF2F2' },
     END: { icon: 'flag-checkered', color: '#10B981', bgColor: '#ECFDF5' },
   };
-  return configs[type] || { icon: 'circle-small', color: '#6B7280', bgColor: '#F3F4F6' };
+  return (
+    configs[type] || {
+      icon: 'circle-small',
+      color: '#6B7280',
+      bgColor: '#F3F4F6',
+    }
+  );
 };
 
 const styles = StyleSheet.create({

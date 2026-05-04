@@ -1,5 +1,11 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import {
   Button,
   HelperText,
@@ -22,20 +28,22 @@ interface Props {
 }
 
 const validationSchema = Yup.object().shape({
-  name: Yup.string().max(100, "Nombre demasiado largo").required("El nombre es requerido"),
+  name: Yup.string()
+    .max(100, 'Nombre demasiado largo')
+    .required('El nombre es requerido'),
   address: Yup.string().optional(),
   rfc: Yup.string()
-    .min(12, "El RFC debe tener al menos 12 caracteres")
-    .max(13, "El RFC no puede tener más de 13 caracteres")
+    .min(12, 'El RFC debe tener al menos 12 caracteres')
+    .max(13, 'El RFC no puede tener más de 13 caracteres')
     .optional(),
   contactName: Yup.string().optional(),
   contactPhone: Yup.string()
-    .matches(/^[0-9]*$/, "El teléfono solo debe contener números")
-    .max(10, "El teléfono debe tener máximo 10 dígitos")
+    .matches(/^[0-9]*$/, 'El teléfono solo debe contener números')
+    .max(10, 'El teléfono debe tener máximo 10 dígitos')
     .optional(),
   active: Yup.boolean().required(),
-  appUsername: Yup.string().min(4, "Mínimo 4 caracteres").optional(),
-  appPassword: Yup.string().min(6, "Mínimo 6 caracteres").optional(),
+  appUsername: Yup.string().min(4, 'Mínimo 4 caracteres').optional(),
+  appPassword: Yup.string().min(6, 'Mínimo 6 caracteres').optional(),
 });
 
 export const ClientFormModal = ({
@@ -63,7 +71,7 @@ export const ClientFormModal = ({
         onDismiss={onDismiss}
         contentContainerStyle={styles.modal}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
         >
@@ -94,14 +102,14 @@ export const ClientFormModal = ({
               touched,
             }) => (
               <View style={{ flex: 1 }}>
-                <ScrollView 
-                  style={styles.scroll} 
+                <ScrollView
+                  style={styles.scroll}
                   contentContainerStyle={styles.scrollContent}
                   showsVerticalScrollIndicator={false}
                 >
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>INFORMACIÓN GENERAL</Text>
-                    
+
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>NOMBRE DEL CLIENTE *</Text>
                       <TextInput
@@ -113,7 +121,11 @@ export const ClientFormModal = ({
                         style={styles.input}
                         outlineStyle={styles.inputOutline}
                       />
-                      {touched.name && errors.name && <HelperText type="error" visible={true}>{errors.name}</HelperText>}
+                      {touched.name && errors.name && (
+                        <HelperText type="error" visible={true}>
+                          {errors.name}
+                        </HelperText>
+                      )}
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -135,7 +147,9 @@ export const ClientFormModal = ({
                       <TextInput
                         mode="outlined"
                         value={values.rfc}
-                        onChangeText={(val) => setFieldValue('rfc', val.toUpperCase())}
+                        onChangeText={val =>
+                          setFieldValue('rfc', val.toUpperCase())
+                        }
                         onBlur={handleBlur('rfc')}
                         error={touched.rfc && !!errors.rfc}
                         style={styles.input}
@@ -143,13 +157,17 @@ export const ClientFormModal = ({
                         maxLength={13}
                         autoCapitalize="characters"
                       />
-                      {touched.rfc && errors.rfc && <HelperText type="error" visible={true}>{errors.rfc}</HelperText>}
+                      {touched.rfc && errors.rfc && (
+                        <HelperText type="error" visible={true}>
+                          {errors.rfc}
+                        </HelperText>
+                      )}
                     </View>
                   </View>
 
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>CONTACTO</Text>
-                    
+
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>NOMBRE ENCARGADO</Text>
                       <TextInput
@@ -167,7 +185,12 @@ export const ClientFormModal = ({
                       <TextInput
                         mode="outlined"
                         value={values.contactPhone}
-                        onChangeText={(val) => setFieldValue('contactPhone', val.replace(/[^0-9]/g, ''))}
+                        onChangeText={val =>
+                          setFieldValue(
+                            'contactPhone',
+                            val.replace(/[^0-9]/g, ''),
+                          )
+                        }
                         onBlur={handleBlur('contactPhone')}
                         error={touched.contactPhone && !!errors.contactPhone}
                         style={styles.input}
@@ -175,23 +198,27 @@ export const ClientFormModal = ({
                         keyboardType="numeric"
                         maxLength={10}
                       />
-                      {touched.contactPhone && errors.contactPhone && <HelperText type="error" visible={true}>{errors.contactPhone}</HelperText>}
+                      {touched.contactPhone && errors.contactPhone && (
+                        <HelperText type="error" visible={true}>
+                          {errors.contactPhone}
+                        </HelperText>
+                      )}
                     </View>
                   </View>
 
                   <View style={styles.section}>
-                      <View style={styles.authHeader}>
-                          <Text style={styles.sectionTitle}>CREDENCIALES APP</Text>
-                          <View style={styles.activeContainer}>
-                              <Text style={styles.activeLabel}>ACTIVO</Text>
-                              <Switch
-                                  value={values.active}
-                                  onValueChange={val => setFieldValue('active', val)}
-                                  color="#059669"
-                              />
-                          </View>
+                    <View style={styles.authHeader}>
+                      <Text style={styles.sectionTitle}>CREDENCIALES APP</Text>
+                      <View style={styles.activeContainer}>
+                        <Text style={styles.activeLabel}>ACTIVO</Text>
+                        <Switch
+                          value={values.active}
+                          onValueChange={val => setFieldValue('active', val)}
+                          color="#059669"
+                        />
                       </View>
-                    
+                    </View>
+
                     <View style={styles.inputGroup}>
                       <Text style={styles.label}>USUARIO</Text>
                       <TextInput
@@ -204,7 +231,11 @@ export const ClientFormModal = ({
                         outlineStyle={styles.inputOutline}
                         autoCapitalize="none"
                       />
-                      {touched.appUsername && errors.appUsername && <HelperText type="error" visible={true}>{errors.appUsername}</HelperText>}
+                      {touched.appUsername && errors.appUsername && (
+                        <HelperText type="error" visible={true}>
+                          {errors.appUsername}
+                        </HelperText>
+                      )}
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -216,21 +247,31 @@ export const ClientFormModal = ({
                         onChangeText={handleChange('appPassword')}
                         onBlur={handleBlur('appPassword')}
                         error={touched.appPassword && !!errors.appPassword}
-                        placeholder={initialData ? "Dejar en blanco para no cambiar" : "Mínimo 6 caracteres"}
+                        placeholder={
+                          initialData
+                            ? 'Dejar en blanco para no cambiar'
+                            : 'Mínimo 6 caracteres'
+                        }
                         style={styles.input}
                         outlineStyle={styles.inputOutline}
                       />
-                      {touched.appPassword && errors.appPassword && <HelperText type="error" visible={true}>{errors.appPassword}</HelperText>}
+                      {touched.appPassword && errors.appPassword && (
+                        <HelperText type="error" visible={true}>
+                          {errors.appPassword}
+                        </HelperText>
+                      )}
                     </View>
                   </View>
                 </ScrollView>
 
                 <View style={styles.actions}>
-                  <Button mode="text" onPress={onDismiss} textColor="#64748b">Cancelar</Button>
-                  <Button 
-                    mode="contained" 
-                    onPress={() => handleSubmit()} 
-                    loading={loading} 
+                  <Button mode="text" onPress={onDismiss} textColor="#64748b">
+                    Cancelar
+                  </Button>
+                  <Button
+                    mode="contained"
+                    onPress={() => handleSubmit()}
+                    loading={loading}
                     disabled={loading}
                     buttonColor="#0F4C3A"
                     style={styles.saveButton}

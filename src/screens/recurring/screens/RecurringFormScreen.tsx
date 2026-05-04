@@ -46,9 +46,10 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
   // Wizard State
   const [currentStep, setCurrentStep] = useState(0);
   const steps = [
-    { title: 'Base', icon: 'clipboard-text' },
-    { title: 'Puntos', icon: 'map-marker-multiple' },
-    { title: 'Consignas', icon: 'format-list-checks' }
+    { title: 'Info', icon: 'information-outline' },
+    { title: 'Recorrido', icon: 'map-marker-path' },
+    { title: 'Asignación', icon: 'account-group-outline' },
+    { title: 'Resumen', icon: 'clipboard-check-outline' },
   ];
 
   // Form State
@@ -81,12 +82,12 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
 
       if (clientRes.success) setClients(clientRes.data || []);
       if (locRes.success) setLocations(locRes.data || []);
-      
+
       let filteredGuards: any[] = [];
       if (usersRes.success) {
         filteredGuards = (usersRes.data || []).filter((u: any) => {
-            const role = typeof u.role === 'object' ? u.role.name : u.role;
-            return ['GUARD', 'SHIFT', 'MAINT'].includes(role) && u.active;
+          const role = typeof u.role === 'object' ? u.role.name : u.role;
+          return ['GUARD', 'SHIFT', 'MAINT'].includes(role) && u.active;
         });
         setGuards(filteredGuards);
       }
@@ -97,7 +98,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
           const data = fullRes.data;
           setTitle(data.title);
           setSelectedGuards((data.guards || []).map((g: any) => g.id));
-          
+
           const mappedLocs = (data.recurringLocations || []).map((rl: any) => ({
             locationId: rl.location?.id,
             locationName: rl.location?.name,
@@ -117,12 +118,14 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
       } else {
         // Default: todos los guardias asignados
         if (filteredGuards.length > 0) {
-            setSelectedGuards(filteredGuards.map(g => g.id));
+          setSelectedGuards(filteredGuards.map(g => g.id));
         }
       }
     } catch (error) {
       console.error('Error loading form data:', error);
-      dispatch(showToast({ message: 'Error al cargar catálogos', type: 'error' }));
+      dispatch(
+        showToast({ message: 'Error al cargar catálogos', type: 'error' }),
+      );
     } finally {
       setFetching(false);
     }
@@ -130,14 +133,14 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
 
   useEffect(() => {
     if (selectedClientId) {
-      fetchZones(Number(selectedClientId));
+      fetchZones(String(selectedClientId));
     } else {
       setZones([]);
       setSelectedZoneId('');
     }
   }, [selectedClientId]);
 
-  const fetchZones = async (clientId: number) => {
+  const fetchZones = async (clientId: string) => {
     try {
       const res = await getPaginatedZones({ filters: { clientId } });
       if (res.success && res.data) {
@@ -149,11 +152,13 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
   };
 
   const handleAddLocation = (locId: number) => {
-    if (addedLocations.find((l) => l.locationId === locId)) {
-      dispatch(showToast({ message: 'Ubicación ya agregada', type: 'warning' }));
+    if (addedLocations.find(l => l.locationId === locId)) {
+      dispatch(
+        showToast({ message: 'Ubicación ya agregada', type: 'warning' }),
+      );
       return;
     }
-    const loc = locations.find((l) => l.id === locId);
+    const loc = locations.find(l => l.id === locId);
     if (loc) {
       setAddedLocations([
         ...addedLocations,
@@ -169,22 +174,34 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
   const handleAddAllFromZone = () => {
     if (!selectedZoneId) return;
     const zoneLocs = locations.filter(
-      (l) => l.zoneId === Number(selectedZoneId) && !addedLocations.find((al) => al.locationId === l.id)
+      l =>
+        String(l.zoneId) === String(selectedZoneId) &&
+        !addedLocations.find(al => al.locationId === l.id),
     );
-    
+
     if (zoneLocs.length === 0) {
-      dispatch(showToast({ message: 'No hay nuevas ubicaciones en esta zona', type: 'info' }));
+      dispatch(
+        showToast({
+          message: 'No hay nuevas ubicaciones en esta zona',
+          type: 'info',
+        }),
+      );
       return;
     }
 
-    const newLocs = zoneLocs.map((l) => ({
+    const newLocs = zoneLocs.map(l => ({
       locationId: l.id,
       locationName: l.name,
       tasks: [],
     }));
 
     setAddedLocations([...addedLocations, ...newLocs]);
-    dispatch(showToast({ message: `${newLocs.length} ubicaciones añadidas`, type: 'success' }));
+    dispatch(
+      showToast({
+        message: `${newLocs.length} ubicaciones añadidas`,
+        type: 'success',
+      }),
+    );
     setSelectedZoneId('');
   };
 
@@ -206,15 +223,21 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
     setAddedLocations(copy);
   };
 
-  const handleTaskChange = (locIndex: number, taskIndex: number, text: string) => {
+  const handleTaskChange = (
+    locIndex: number,
+    taskIndex: number,
+    text: string,
+  ) => {
     const copy = [...addedLocations];
     copy[locIndex].tasks[taskIndex].description = text;
     setAddedLocations(copy);
   };
 
   const toggleGuard = (guardId: number) => {
-    setSelectedGuards((prev) =>
-      prev.includes(guardId) ? prev.filter((id) => id !== guardId) : [...prev, guardId]
+    setSelectedGuards(prev =>
+      prev.includes(guardId)
+        ? prev.filter(id => id !== guardId)
+        : [...prev, guardId],
     );
   };
 
@@ -247,17 +270,35 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
 
   const validateCurrentStep = () => {
     if (currentStep === 0) {
-        if (!title.trim()) {
-            dispatch(showToast({ message: 'Ingresa un título para la ruta', type: 'warning' }));
-            return;
-        }
-        setCurrentStep(1);
+      if (!title.trim() || !selectedClientId) {
+        dispatch(
+          showToast({
+            message: 'Completa el título y selecciona un cliente',
+            type: 'warning',
+          }),
+        );
+        return;
+      }
+      setCurrentStep(1);
     } else if (currentStep === 1) {
-        if (addedLocations.length === 0) {
-            dispatch(showToast({ message: 'Agrega al menos una ubicación', type: 'warning' }));
-            return;
-        }
-        setCurrentStep(2);
+      if (addedLocations.length === 0) {
+        dispatch(
+          showToast({
+            message: 'Agrega al menos una ubicación',
+            type: 'warning',
+          }),
+        );
+        return;
+      }
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      if (selectedGuards.length === 0) {
+        dispatch(
+          showToast({ message: 'Asigna al menos un guardia', type: 'warning' }),
+        );
+        return;
+      }
+      setCurrentStep(3);
     }
   };
 
@@ -270,11 +311,13 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
     );
   }
 
-  const availableLocations = locations.filter((l) => {
-    const alreadyAdded = addedLocations.find((al) => al.locationId === l.id);
+  const availableLocations = locations.filter(l => {
+    const alreadyAdded = addedLocations.find(al => al.locationId === l.id);
     if (alreadyAdded) return false;
-    if (selectedClientId && l.clientId !== Number(selectedClientId)) return false;
-    if (selectedZoneId && l.zoneId !== Number(selectedZoneId)) return false;
+    if (selectedClientId && String(l.clientId) !== String(selectedClientId))
+      return false;
+    if (selectedZoneId && String(l.zoneId) !== String(selectedZoneId))
+      return false;
     return true;
   });
 
@@ -284,268 +327,398 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
       style={ModernStyles.flexContainer}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 20 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <Surface style={styles.headerCard} elevation={0}>
           <View style={styles.headerIconContainer}>
             <Icon source="map-marker-path" size={32} color={PRIMARY_COLOR} />
           </View>
-          <Text style={styles.title}>{isEditing ? 'Editar Ruta' : 'Nueva Ruta'}</Text>
-          <Text style={styles.subtitle}>Configura el recorrido recurrente y las tareas de inspección</Text>
+          <Text style={styles.title}>
+            {isEditing ? 'Editar Ruta' : 'Nueva Ruta'}
+          </Text>
+          <Text style={styles.subtitle}>
+            Configura el recorrido recurrente y las tareas de inspección
+          </Text>
         </Surface>
 
         <Card style={styles.formCard} elevation={2}>
-            <Card.Content>
-                {/* Stepper */}
-                <View style={styles.stepperContainer}>
-                {steps.map((step, idx) => (
-                    <TouchableOpacity 
-                    key={idx} 
-                    style={styles.stepItem}
-                    onPress={() => {
-                        if (idx <= currentStep) setCurrentStep(idx);
-                    }}
-                    disabled={idx > currentStep}
-                    >
-                    <View style={[
-                        styles.stepCircle, 
-                        idx <= currentStep && styles.stepCircleActive,
-                        idx < currentStep && styles.stepCircleCompleted
-                    ]}>
-                        {idx < currentStep ? (
-                        <Icon source="check" size={16} color="#FFFFFF" />
-                        ) : (
-                        <Icon source={step.icon} size={16} color={idx <= currentStep ? "#FFFFFF" : "#94A3B8"} />
-                        )}
-                    </View>
-                    <Text style={[
-                        styles.stepLabel, 
-                        idx <= currentStep && styles.stepLabelActive
-                    ]} numberOfLines={1}>
-                        {step.title}
-                    </Text>
-                    {idx < steps.length - 1 && <View style={styles.stepLine} />}
-                    </TouchableOpacity>
-                ))}
-                </View>
-
-                <Divider style={styles.divider} />
-
-                {/* Step 0 - Base Info & Guards */}
-                {currentStep === 0 && (
-                    <View>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Nombre de la ruta</Text>
-                            <TextInput
-                                mode="outlined"
-                                placeholder="Ej: Ronda Perimetral Nocturna"
-                                value={title}
-                                onChangeText={setTitle}
-                                left={<TextInput.Icon icon="alphabetical" />}
-                                outlineStyle={styles.inputOutline}
-                                activeOutlineColor={PRIMARY_COLOR}
-                            />
-                        </View>
-
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Personal Asignado ({selectedGuards.length})</Text>
-                            <View style={styles.guardsGrid}>
-                                {guards.map((guard) => (
-                                    <TouchableOpacity
-                                        key={guard.id}
-                                        onPress={() => toggleGuard(guard.id)}
-                                        style={[
-                                            styles.roleCard,
-                                            selectedGuards.includes(guard.id) && styles.roleCardActive
-                                        ]}
-                                    >
-                                        <Avatar.Text 
-                                            size={24} 
-                                            label={`${guard.name[0]}${guard.lastName?.[0] || ''}`}
-                                            color={selectedGuards.includes(guard.id) ? PRIMARY_COLOR : '#64748B'}
-                                            style={{ backgroundColor: selectedGuards.includes(guard.id) ? '#fff' : '#F1F5F9' }}
-                                        />
-                                        <Text style={[styles.roleCardText, selectedGuards.includes(guard.id) && styles.roleCardTextActive]} numberOfLines={1}>
-                                            {guard.name} {guard.lastName}
-                                        </Text>
-                                        {selectedGuards.includes(guard.id) && <Icon source="check" size={16} color="#fff" />}
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-                    </View>
-                )}
-
-                {/* Step 1 - Locations */}
-                {currentStep === 1 && (
-                    <View>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Vincular Puntos</Text>
-                            <View style={styles.filtersWrapper}>
-                                <SearchComponent
-                                    label="Cliente"
-                                    placeholder="Selecciona cliente..."
-                                    options={clients.map((c) => ({ label: c.name, value: c.id }))}
-                                    value={selectedClientId}
-                                    onSelect={(val) => {
-                                        setSelectedClientId(val);
-                                        setSelectedZoneId('');
-                                    }}
-                                />
-                                <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                                    <View style={{ flex: 1 }}>
-                                        <SearchComponent
-                                            label="Zona"
-                                            placeholder="Selecciona zona..."
-                                            options={zones.map((z) => ({ label: z.name, value: z.id }))}
-                                            value={selectedZoneId}
-                                            onSelect={setSelectedZoneId}
-                                            disabled={!selectedClientId}
-                                        />
-                                    </View>
-                                    <IconButton
-                                        icon="plus-box-multiple"
-                                        mode="contained"
-                                        containerColor="#D1FAE5"
-                                        iconColor={PRIMARY_COLOR}
-                                        onPress={handleAddAllFromZone}
-                                        disabled={!selectedZoneId}
-                                        style={{ marginTop: 24, borderRadius: 12 }}
-                                    />
-                                </View>
-                                <View style={{ marginTop: 12 }}>
-                                    <SearchComponent
-                                        label="Ubicación"
-                                        placeholder="Añadir individual..."
-                                        options={availableLocations.map((l) => ({ label: l.name, value: l.id }))}
-                                        value=""
-                                        onSelect={(val) => handleAddLocation(Number(val))}
-                                        disabled={!selectedClientId}
-                                    />
-                                </View>
-                            </View>
-                        </View>
-
-                        <Divider style={styles.divider} />
-
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Puntos Seleccionados ({addedLocations.length})</Text>
-                            {addedLocations.map((loc, idx) => (
-                                <View key={`${loc.locationId}-${idx}`} style={styles.locMiniCard}>
-                                    <View style={styles.locIndexSmall}>
-                                        <Text style={styles.locIndexTextSmall}>{idx + 1}</Text>
-                                    </View>
-                                    <Text style={styles.locNameSmall} numberOfLines={1}>{loc.locationName}</Text>
-                                    <IconButton
-                                        icon="trash-can-outline"
-                                        iconColor="#EF4444"
-                                        size={20}
-                                        onPress={() => handleRemoveLocation(idx)}
-                                    />
-                                </View>
-                            ))}
-                            {addedLocations.length === 0 && (
-                                <View style={styles.emptyCard}>
-                                    <Icon source="map-marker-off" size={32} color="#94A3B8" />
-                                    <Text style={styles.emptyText}>Sin puntos vinculados</Text>
-                                </View>
-                            )}
-                        </View>
-                    </View>
-                )}
-
-                {/* Step 2 - Tasks */}
-                {currentStep === 2 && (
-                    <View>
-                        <Text style={styles.inputLabel}>Instrucciones por Punto</Text>
-                        {addedLocations.map((loc, idx) => (
-                            <View key={`${loc.locationId}-${idx}`} style={styles.taskLocationGroup}>
-                                <View style={styles.taskLocationHeader}>
-                                    <View style={styles.locIndexSmallActive}>
-                                        <Text style={styles.locIndexTextActive}>{idx + 1}</Text>
-                                    </View>
-                                    <Text style={styles.taskLocationTitle}>{loc.locationName}</Text>
-                                    <TouchableOpacity onPress={() => handleAddTask(idx)}>
-                                        <Text style={styles.addTaskBtn}>+ TAREA</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                {loc.tasks.map((task: any, tIdx: number) => (
-                                    <View key={tIdx} style={styles.taskInputRow}>
-                                        <TextInput
-                                            mode="flat"
-                                            placeholder="Describa la consigna..."
-                                            value={task.description}
-                                            onChangeText={(text) => handleTaskChange(idx, tIdx, text)}
-                                            style={styles.taskFlatInput}
-                                            dense
-                                        />
-                                        <IconButton
-                                            icon="close"
-                                            iconColor="#EF4444"
-                                            size={16}
-                                            onPress={() => handleRemoveTask(idx, tIdx)}
-                                        />
-                                    </View>
-                                ))}
-                                {loc.tasks.length === 0 && (
-                                    <Text style={styles.noTasksInfo}>Sin consignas especiales</Text>
-                                )}
-                            </View>
-                        ))}
-                    </View>
-                )}
-
-                <Divider style={styles.divider} />
-
-                <View style={styles.navigationButtons}>
-                    {currentStep > 0 && (
-                      <Button 
-                        mode="outlined" 
-                        onPress={() => setCurrentStep(prev => prev - 1)}
-                        style={styles.navButton}
-                        textColor="#64748B"
-                      >
-                        Atrás
-                      </Button>
-                    )}
-                    
-                    {currentStep < steps.length - 1 ? (
-                      <Button 
-                        mode="contained" 
-                        onPress={validateCurrentStep}
-                        style={[styles.navButton, styles.nextButton]}
-                        buttonColor={PRIMARY_COLOR}
-                      >
-                        Continuar
-                      </Button>
-                    ) : (
-                      <Button
-                        mode="contained"
-                        onPress={handleSave}
-                        loading={loading}
-                        disabled={loading}
-                        style={[styles.navButton, styles.submitButton]}
-                        buttonColor={PRIMARY_COLOR}
-                      >
-                        {isEditing ? 'Actualizar' : 'Finalizar'}
-                      </Button>
-                    )}
-                </View>
-
-                <Button
-                    mode="text"
-                    onPress={() => navigation.goBack()}
-                    disabled={loading}
-                    textColor="#94A3B8"
-                    style={styles.cancelButton}
+          <Card.Content>
+            {/* Stepper */}
+            <View style={styles.stepperContainer}>
+              {steps.map((step, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.stepItem}
+                  onPress={() => {
+                    if (idx <= currentStep) setCurrentStep(idx);
+                  }}
+                  disabled={idx > currentStep}
                 >
-                    Cancelar
+                  <View
+                    style={[
+                      styles.stepCircle,
+                      idx <= currentStep && styles.stepCircleActive,
+                      idx < currentStep && styles.stepCircleCompleted,
+                    ]}
+                  >
+                    {idx < currentStep ? (
+                      <Icon source="check" size={16} color="#FFFFFF" />
+                    ) : (
+                      <Icon
+                        source={step.icon}
+                        size={16}
+                        color={idx <= currentStep ? '#FFFFFF' : '#94A3B8'}
+                      />
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      styles.stepLabel,
+                      idx <= currentStep && styles.stepLabelActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {step.title}
+                  </Text>
+                  {idx < steps.length - 1 && <View style={styles.stepLine} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Divider style={styles.divider} />
+
+            {/* Step 0 - Identificación */}
+            {currentStep === 0 && (
+              <View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Nombre de la ruta</Text>
+                  <TextInput
+                    mode="outlined"
+                    placeholder="Ej: Ronda Perimetral Nocturna"
+                    value={title}
+                    onChangeText={setTitle}
+                    left={<TextInput.Icon icon="alphabetical" />}
+                    outlineStyle={styles.inputOutline}
+                    activeOutlineColor={PRIMARY_COLOR}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Cliente Operativo</Text>
+                  <SearchComponent
+                    label="Cliente"
+                    placeholder="Selecciona cliente..."
+                    options={clients.map(c => ({ label: c.name, value: c.id }))}
+                    value={selectedClientId}
+                    onSelect={val => {
+                      setSelectedClientId(val);
+                      setSelectedZoneId('');
+                      setAddedLocations([]);
+                      setSelectedGuards([]);
+                    }}
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Step 1 - Recorrido */}
+            {currentStep === 1 && (
+              <View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Vincular Puntos</Text>
+                  <View style={styles.filtersWrapper}>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <View style={{ flex: 1 }}>
+                        <SearchComponent
+                          label="Por Zona"
+                          placeholder="Selecciona zona..."
+                          options={zones.map(z => ({
+                            label: z.name,
+                            value: z.id,
+                          }))}
+                          value={selectedZoneId}
+                          onSelect={setSelectedZoneId}
+                          disabled={!selectedClientId}
+                        />
+                      </View>
+                      <IconButton
+                        icon="plus-box-multiple"
+                        mode="contained"
+                        containerColor="#D1FAE5"
+                        iconColor={PRIMARY_COLOR}
+                        onPress={handleAddAllFromZone}
+                        disabled={!selectedZoneId}
+                        style={{ marginTop: 24, borderRadius: 12 }}
+                      />
+                    </View>
+                    <View style={{ marginTop: 12 }}>
+                      <SearchComponent
+                        label="Ubicación Individual"
+                        placeholder="Añadir individual..."
+                        options={availableLocations.map(l => ({
+                          label: l.name,
+                          value: l.id,
+                        }))}
+                        value=""
+                        onSelect={val => handleAddLocation(val as any)}
+                        disabled={!selectedClientId}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                <Divider style={styles.divider} />
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>
+                    Hoja de Ruta ({addedLocations.length})
+                  </Text>
+                  {addedLocations.map((loc, idx) => (
+                    <View
+                      key={`${loc.locationId}-${idx}`}
+                      style={styles.taskLocationGroup}
+                    >
+                      <View style={styles.taskLocationHeader}>
+                        <View style={styles.locIndexSmallActive}>
+                          <Text style={styles.locIndexTextActive}>
+                            {idx + 1}
+                          </Text>
+                        </View>
+                        <Text style={styles.taskLocationTitle}>
+                          {loc.locationName}
+                        </Text>
+                        <View
+                          style={{ flexDirection: 'row', alignItems: 'center' }}
+                        >
+                          <TouchableOpacity
+                            onPress={() => handleAddTask(idx)}
+                            style={{ marginRight: 10 }}
+                          >
+                            <Text style={styles.addTaskBtn}>+ TAREA</Text>
+                          </TouchableOpacity>
+                          <IconButton
+                            icon="trash-can-outline"
+                            iconColor="#EF4444"
+                            size={18}
+                            onPress={() => handleRemoveLocation(idx)}
+                            style={{ margin: 0 }}
+                          />
+                        </View>
+                      </View>
+
+                      {loc.tasks.map((task: any, tIdx: number) => (
+                        <View key={tIdx} style={styles.taskInputRow}>
+                          <TextInput
+                            mode="flat"
+                            placeholder="Describa la consigna..."
+                            value={task.description}
+                            onChangeText={text =>
+                              handleTaskChange(idx, tIdx, text)
+                            }
+                            style={styles.taskFlatInput}
+                            dense
+                          />
+                          <IconButton
+                            icon="close"
+                            iconColor="#EF4444"
+                            size={16}
+                            onPress={() => handleRemoveTask(idx, tIdx)}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                  {addedLocations.length === 0 && (
+                    <View style={styles.emptyCard}>
+                      <Icon source="map-marker-off" size={32} color="#94A3B8" />
+                      <Text style={styles.emptyText}>
+                        Sin puntos vinculados
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Step 2 - Asignación */}
+            {currentStep === 2 && (
+              <View>
+                <View style={styles.inputGroup}>
+                  <View style={styles.infoBox}>
+                    <Icon
+                      source="shield-account"
+                      size={24}
+                      color={PRIMARY_COLOR}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.infoBoxTitle}>
+                        Personal Responsable
+                      </Text>
+                      <Text style={styles.infoBoxText}>
+                        Selecciona los guardias habilitados para esta ruta.
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.guardsGrid}>
+                    {guards
+                      .filter(
+                        g =>
+                          !selectedClientId ||
+                          String(g.clientId) === String(selectedClientId),
+                      )
+                      .map(guard => (
+                        <TouchableOpacity
+                          key={guard.id}
+                          onPress={() => toggleGuard(guard.id)}
+                          style={[
+                            styles.roleCard,
+                            selectedGuards.includes(guard.id) &&
+                              styles.roleCardActive,
+                          ]}
+                        >
+                          <Avatar.Text
+                            size={24}
+                            label={`${guard.name[0]}${
+                              guard.lastName?.[0] || ''
+                            }`}
+                            color={
+                              selectedGuards.includes(guard.id)
+                                ? PRIMARY_COLOR
+                                : '#64748B'
+                            }
+                            style={{
+                              backgroundColor: selectedGuards.includes(guard.id)
+                                ? '#fff'
+                                : '#F1F5F9',
+                            }}
+                          />
+                          <Text
+                            style={[
+                              styles.roleCardText,
+                              selectedGuards.includes(guard.id) &&
+                                styles.roleCardTextActive,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {guard.name} {guard.lastName}
+                          </Text>
+                          {selectedGuards.includes(guard.id) && (
+                            <Icon source="check" size={16} color="#fff" />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Step 3 - Resumen */}
+            {currentStep === 3 && (
+              <View style={styles.summaryContainer}>
+                <View style={styles.summaryHeader}>
+                  <Icon
+                    source="calendar-clock"
+                    size={40}
+                    color={PRIMARY_COLOR}
+                  />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.summaryTitle}>{title}</Text>
+                    <Text style={styles.summarySubtitle}>
+                      Resumen de Configuración
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.summaryContent}>
+                  <View style={styles.summaryRow}>
+                    <View style={styles.summaryItem}>
+                      <Text style={styles.summaryLabel}>CLIENTE</Text>
+                      <Text style={styles.summaryValue}>
+                        {clients.find(
+                          c => String(c.id) === String(selectedClientId),
+                        )?.name || 'N/A'}
+                      </Text>
+                    </View>
+                    <View style={styles.summaryItem}>
+                      <Text style={styles.summaryLabel}>PARADAS</Text>
+                      <Text style={styles.summaryValue}>
+                        {addedLocations.length} Ubicaciones
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.summarySection}>
+                    <Text style={styles.summaryLabel}>PERSONAL ASIGNADO</Text>
+                    <View style={styles.summaryBadges}>
+                      {selectedGuards.map(id => {
+                        const g = guards.find(guard => guard.id === id);
+                        return (
+                          <View key={id} style={styles.summaryBadge}>
+                            <Text style={styles.summaryBadgeText}>
+                              {g?.name} {g?.lastName}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.navigationButtons}>
+              {currentStep > 0 && (
+                <Button
+                  mode="outlined"
+                  onPress={() => setCurrentStep(prev => prev - 1)}
+                  style={styles.navButton}
+                  textColor="#64748B"
+                >
+                  Atrás
                 </Button>
-            </Card.Content>
+              )}
+
+              {currentStep < steps.length - 1 ? (
+                <Button
+                  mode="contained"
+                  onPress={validateCurrentStep}
+                  style={[styles.navButton, styles.nextButton]}
+                  buttonColor={PRIMARY_COLOR}
+                >
+                  Continuar
+                </Button>
+              ) : (
+                <Button
+                  mode="contained"
+                  onPress={handleSave}
+                  loading={loading}
+                  disabled={loading}
+                  style={[styles.navButton, styles.submitButton]}
+                  buttonColor={PRIMARY_COLOR}
+                >
+                  {isEditing ? 'Actualizar' : 'Finalizar'}
+                </Button>
+              )}
+            </View>
+
+            <Button
+              mode="text"
+              onPress={() => navigation.goBack()}
+              disabled={loading}
+              textColor="#94A3B8"
+              style={styles.cancelButton}
+            >
+              Cancelar
+            </Button>
+          </Card.Content>
         </Card>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -820,5 +993,100 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F9FF',
+    padding: 16,
+    borderRadius: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E0F2FE',
+    gap: 12,
+    alignItems: 'center',
+  },
+  infoBoxTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0369A1',
+  },
+  infoBoxText: {
+    fontSize: 12,
+    color: '#0EA5E9',
+  },
+  summaryContainer: {
+    gap: 20,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  summaryTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#1E293B',
+  },
+  summarySubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  summaryContent: {
+    gap: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  summaryItem: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  summaryLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#94A3B8',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  summarySection: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  summaryBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  summaryBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  summaryBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748B',
   },
 });

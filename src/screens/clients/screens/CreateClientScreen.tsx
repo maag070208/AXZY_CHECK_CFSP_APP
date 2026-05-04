@@ -1,31 +1,54 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Formik } from 'formik';
-import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Divider, HelperText, Icon, Surface, Text, TextInput, Switch } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import {
+  Button,
+  Card,
+  Divider,
+  HelperText,
+  Icon,
+  Surface,
+  Text,
+  TextInput,
+  Switch,
+} from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 import * as Yup from 'yup';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import ModernStyles from '../../../shared/theme/app.styles';
-import { createClient, updateClient } from '../service/client.service';
+import {
+  createClient,
+  getClientById,
+  updateClient,
+} from '../service/client.service';
 import { IClient } from '../type/client.types';
 
 const ClientSchema = Yup.object().shape({
-  name: Yup.string().max(100, "Nombre demasiado largo").required("El nombre es requerido"),
+  name: Yup.string()
+    .max(100, 'Nombre demasiado largo')
+    .required('El nombre es requerido'),
   address: Yup.string().optional(),
   rfc: Yup.string()
-    .min(12, "El RFC debe tener al menos 12 caracteres")
-    .max(13, "El RFC no puede tener más de 13 caracteres")
+    .min(12, 'El RFC debe tener al menos 12 caracteres')
+    .max(13, 'El RFC no puede tener más de 13 caracteres')
     .optional(),
   contactName: Yup.string().optional(),
   contactPhone: Yup.string()
-    .matches(/^[0-9]*$/, "El teléfono solo debe contener números")
-    .max(10, "El teléfono debe tener máximo 10 dígitos")
+    .matches(/^[0-9]*$/, 'El teléfono solo debe contener números')
+    .max(10, 'El teléfono debe tener máximo 10 dígitos')
     .optional(),
   active: Yup.boolean().required(),
-  appUsername: Yup.string().min(4, "Mínimo 4 caracteres").optional(),
-  appPassword: Yup.string().min(6, "Mínimo 6 caracteres").optional(),
+  appUsername: Yup.string().min(4, 'Mínimo 4 caracteres').optional(),
+  appPassword: Yup.string().min(6, 'Mínimo 6 caracteres').optional(),
 });
 
 export const CreateClientScreen = () => {
@@ -33,32 +56,56 @@ export const CreateClientScreen = () => {
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
-  
-  const clientToEdit: IClient | undefined = route.params?.client;
-  const isEditing = !!clientToEdit;
 
-  const [saving, setSaving] = useState(false);
+  const clientParam: IClient | undefined = route.params?.client;
+  const isEditing = !!clientParam;
+
+  const [clientToEdit, setClientToEdit] = useState<IClient | undefined>(
+    clientParam,
+  );
   const [currentStep, setCurrentStep] = useState(0);
+  const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (isEditing && clientParam?.id) {
+      fetchFullClient(String(clientParam.id));
+    }
+  }, [isEditing, clientParam?.id]);
+
+  const fetchFullClient = async (id: string) => {
+    try {
+      const res = await getClientById(Number(id)); // Types say number, but it's string UUID
+      if (res.success && res.data) {
+        setClientToEdit(res.data);
+      }
+    } catch (error) {
+      console.error('Error fetching full client:', error);
+    }
+  };
 
   const steps = [
     { title: 'General', icon: 'office-building' },
     { title: 'Contacto', icon: 'account-box-outline' },
-    { title: 'Acceso App', icon: 'shield-lock-outline' }
+    { title: 'Acceso App', icon: 'shield-lock-outline' },
   ];
 
   const handleSubmit = async (values: any) => {
     setSaving(true);
     try {
-      const res = isEditing 
+      const res = isEditing
         ? await updateClient(clientToEdit.id, values)
         : await createClient(values);
-        
+
       if (res && res.success) {
-        dispatch(showToast({ 
-            type: 'success', 
-            message: isEditing ? 'Cliente actualizado correctamente' : 'Cliente registrado correctamente' 
-        }));
+        dispatch(
+          showToast({
+            type: 'success',
+            message: isEditing
+              ? 'Cliente actualizado correctamente'
+              : 'Cliente registrado correctamente',
+          }),
+        );
         navigation.goBack();
       } else {
         const errorMsg = res?.messages?.[0] || 'Error al guardar cliente';
@@ -79,27 +126,41 @@ export const CreateClientScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={ModernStyles.flexContainer}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 20 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <Surface style={styles.headerCard} elevation={0}>
           <View style={styles.headerIconContainer}>
-            <Icon source={isEditing ? "office-building-cog" : "office-building-marker"} size={32} color="#065911" />
+            <Icon
+              source={
+                isEditing ? 'office-building-cog' : 'office-building-marker'
+              }
+              size={32}
+              color="#065911"
+            />
           </View>
-          <Text style={styles.title}>{isEditing ? 'Editar Cliente' : 'Nuevo Cliente'}</Text>
+          <Text style={styles.title}>
+            {isEditing ? 'Editar Cliente' : 'Nuevo Cliente'}
+          </Text>
           <Text style={styles.subtitle}>
-            {isEditing ? `Actualizando datos de ${clientToEdit.name}` : 'Sigue los pasos para dar de alta una nueva propiedad o cliente'}
+            {isEditing
+              ? `Actualizando datos de ${clientToEdit.name}`
+              : 'Sigue los pasos para dar de alta una nueva propiedad o cliente'}
           </Text>
         </Surface>
 
         <Formik
+          enableReinitialize
           initialValues={{
             name: clientToEdit?.name || '',
             address: clientToEdit?.address || '',
@@ -113,15 +174,28 @@ export const CreateClientScreen = () => {
           validationSchema={ClientSchema}
           onSubmit={handleSubmit}
         >
-          {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue, setFieldTouched }) => {
-            
+          {({
+            handleChange,
+            handleBlur,
+            handleSubmit,
+            values,
+            errors,
+            touched,
+            setFieldValue,
+            setFieldTouched,
+          }) => {
             const validateCurrentStep = () => {
               if (currentStep === 0) setFieldTouched('name', true);
-              
+
               if (isStepValid(values, errors, currentStep)) {
                 setCurrentStep(prev => prev + 1);
               } else {
-                dispatch(showToast({ type: 'error', message: 'Completa los campos requeridos' }));
+                dispatch(
+                  showToast({
+                    type: 'error',
+                    message: 'Completa los campos requeridos',
+                  }),
+                );
               }
             };
 
@@ -131,32 +205,43 @@ export const CreateClientScreen = () => {
                   {/* Stepper */}
                   <View style={styles.stepperContainer}>
                     {steps.map((step, idx) => (
-                      <TouchableOpacity 
-                        key={idx} 
+                      <TouchableOpacity
+                        key={idx}
                         style={styles.stepItem}
                         onPress={() => {
                           if (idx <= currentStep) setCurrentStep(idx);
                         }}
                         disabled={idx > currentStep}
                       >
-                        <View style={[
-                          styles.stepCircle, 
-                          idx <= currentStep && styles.stepCircleActive,
-                          idx < currentStep && styles.stepCircleCompleted
-                        ]}>
+                        <View
+                          style={[
+                            styles.stepCircle,
+                            idx <= currentStep && styles.stepCircleActive,
+                            idx < currentStep && styles.stepCircleCompleted,
+                          ]}
+                        >
                           {idx < currentStep ? (
                             <Icon source="check" size={16} color="#FFFFFF" />
                           ) : (
-                            <Icon source={step.icon} size={16} color={idx <= currentStep ? "#FFFFFF" : "#94A3B8"} />
+                            <Icon
+                              source={step.icon}
+                              size={16}
+                              color={idx <= currentStep ? '#FFFFFF' : '#94A3B8'}
+                            />
                           )}
                         </View>
-                        <Text style={[
-                          styles.stepLabel, 
-                          idx <= currentStep && styles.stepLabelActive
-                        ]} numberOfLines={1}>
+                        <Text
+                          style={[
+                            styles.stepLabel,
+                            idx <= currentStep && styles.stepLabelActive,
+                          ]}
+                          numberOfLines={1}
+                        >
                           {step.title}
                         </Text>
-                        {idx < steps.length - 1 && <View style={styles.stepLine} />}
+                        {idx < steps.length - 1 && (
+                          <View style={styles.stepLine} />
+                        )}
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -167,7 +252,9 @@ export const CreateClientScreen = () => {
                   {currentStep === 0 && (
                     <View>
                       <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Nombre del Cliente *</Text>
+                        <Text style={styles.inputLabel}>
+                          Nombre del Cliente *
+                        </Text>
                         <TextInput
                           mode="outlined"
                           value={values.name}
@@ -178,7 +265,9 @@ export const CreateClientScreen = () => {
                           error={touched.name && !!errors.name}
                           outlineStyle={styles.inputOutline}
                         />
-                        {touched.name && errors.name && <HelperText type="error">{errors.name}</HelperText>}
+                        {touched.name && errors.name && (
+                          <HelperText type="error">{errors.name}</HelperText>
+                        )}
                       </View>
 
                       <View style={styles.inputGroup}>
@@ -201,7 +290,9 @@ export const CreateClientScreen = () => {
                         <TextInput
                           mode="outlined"
                           value={values.rfc}
-                          onChangeText={(val) => setFieldValue('rfc', val.toUpperCase())}
+                          onChangeText={val =>
+                            setFieldValue('rfc', val.toUpperCase())
+                          }
                           onBlur={handleBlur('rfc')}
                           placeholder="12 o 13 caracteres"
                           left={<TextInput.Icon icon="card-text-outline" />}
@@ -210,7 +301,9 @@ export const CreateClientScreen = () => {
                           autoCapitalize="characters"
                           maxLength={13}
                         />
-                        {touched.rfc && errors.rfc && <HelperText type="error">{errors.rfc}</HelperText>}
+                        {touched.rfc && errors.rfc && (
+                          <HelperText type="error">{errors.rfc}</HelperText>
+                        )}
                       </View>
                     </View>
                   )}
@@ -232,11 +325,18 @@ export const CreateClientScreen = () => {
                       </View>
 
                       <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Teléfono Encargado</Text>
+                        <Text style={styles.inputLabel}>
+                          Teléfono Encargado
+                        </Text>
                         <TextInput
                           mode="outlined"
                           value={values.contactPhone}
-                          onChangeText={(val) => setFieldValue('contactPhone', val.replace(/[^0-9]/g, ''))}
+                          onChangeText={val =>
+                            setFieldValue(
+                              'contactPhone',
+                              val.replace(/[^0-9]/g, ''),
+                            )
+                          }
                           onBlur={handleBlur('contactPhone')}
                           placeholder="10 dígitos"
                           left={<TextInput.Icon icon="phone" />}
@@ -245,19 +345,25 @@ export const CreateClientScreen = () => {
                           error={touched.contactPhone && !!errors.contactPhone}
                           outlineStyle={styles.inputOutline}
                         />
-                        {touched.contactPhone && errors.contactPhone && <HelperText type="error">{errors.contactPhone}</HelperText>}
+                        {touched.contactPhone && errors.contactPhone && (
+                          <HelperText type="error">
+                            {errors.contactPhone}
+                          </HelperText>
+                        )}
                       </View>
 
                       <View style={styles.activeCard}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.activeTitle}>Cliente Activo</Text>
-                            <Text style={styles.activeSubtitle}>Permitir que el cliente sea visible en el sistema</Text>
-                          </View>
-                          <Switch
-                            value={values.active}
-                            onValueChange={(val) => setFieldValue('active', val)}
-                            color="#065911"
-                          />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.activeTitle}>Cliente Activo</Text>
+                          <Text style={styles.activeSubtitle}>
+                            Permitir que el cliente sea visible en el sistema
+                          </Text>
+                        </View>
+                        <Switch
+                          value={values.active}
+                          onValueChange={val => setFieldValue('active', val)}
+                          color="#065911"
+                        />
                       </View>
                     </View>
                   )}
@@ -265,15 +371,14 @@ export const CreateClientScreen = () => {
                   {/* Step 2 - Acceso App */}
                   {currentStep === 2 && (
                     <View>
-                        <View style={styles.infoBox}>
-                            <Icon source="shield-check" size={24} color="#065911" />
-                            <Text style={styles.infoBoxText}>
-                                {isEditing 
-                                    ? 'Si no deseas cambiar la contraseña, deja el campo en blanco.' 
-                                    : 'Configura las credenciales para que el cliente pueda acceder a la aplicación.'
-                                }
-                            </Text>
-                        </View>
+                      <View style={styles.infoBox}>
+                        <Icon source="shield-check" size={24} color="#065911" />
+                        <Text style={styles.infoBoxText}>
+                          {isEditing
+                            ? 'Si no deseas cambiar la contraseña, deja el campo en blanco.'
+                            : 'Configura las credenciales para que el cliente pueda acceder a la aplicación.'}
+                        </Text>
+                      </View>
 
                       <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>Nombre de Usuario</Text>
@@ -288,7 +393,11 @@ export const CreateClientScreen = () => {
                           error={touched.appUsername && !!errors.appUsername}
                           outlineStyle={styles.inputOutline}
                         />
-                        {touched.appUsername && errors.appUsername && <HelperText type="error">{errors.appUsername}</HelperText>}
+                        {touched.appUsername && errors.appUsername && (
+                          <HelperText type="error">
+                            {errors.appUsername}
+                          </HelperText>
+                        )}
                       </View>
 
                       <View style={styles.inputGroup}>
@@ -299,18 +408,26 @@ export const CreateClientScreen = () => {
                           onChangeText={handleChange('appPassword')}
                           onBlur={handleBlur('appPassword')}
                           secureTextEntry={!showPassword}
-                          placeholder={isEditing ? "Dejar en blanco para no cambiar" : "Mínimo 6 caracteres"}
+                          placeholder={
+                            isEditing
+                              ? 'Dejar en blanco para no cambiar'
+                              : 'Mínimo 6 caracteres'
+                          }
                           left={<TextInput.Icon icon="lock" />}
                           right={
-                            <TextInput.Icon 
-                                icon={showPassword ? "eye-off" : "eye"} 
-                                onPress={() => setShowPassword(!showPassword)}
+                            <TextInput.Icon
+                              icon={showPassword ? 'eye-off' : 'eye'}
+                              onPress={() => setShowPassword(!showPassword)}
                             />
                           }
                           error={touched.appPassword && !!errors.appPassword}
                           outlineStyle={styles.inputOutline}
                         />
-                        {touched.appPassword && errors.appPassword && <HelperText type="error">{errors.appPassword}</HelperText>}
+                        {touched.appPassword && errors.appPassword && (
+                          <HelperText type="error">
+                            {errors.appPassword}
+                          </HelperText>
+                        )}
                       </View>
                     </View>
                   )}
@@ -319,8 +436,8 @@ export const CreateClientScreen = () => {
 
                   <View style={styles.navigationButtons}>
                     {currentStep > 0 && (
-                      <Button 
-                        mode="outlined" 
+                      <Button
+                        mode="outlined"
                         onPress={() => setCurrentStep(prev => prev - 1)}
                         style={styles.navButton}
                         textColor="#64748B"
@@ -328,10 +445,10 @@ export const CreateClientScreen = () => {
                         Atrás
                       </Button>
                     )}
-                    
+
                     {currentStep < steps.length - 1 ? (
-                      <Button 
-                        mode="contained" 
+                      <Button
+                        mode="contained"
                         onPress={validateCurrentStep}
                         style={[styles.navButton, styles.nextButton]}
                         buttonColor="#065911"

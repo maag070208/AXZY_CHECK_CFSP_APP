@@ -57,6 +57,7 @@ export const ZonesScreen = ({ navigation }: any) => {
   const [tempClientId, setTempClientId] = useState<number | string>("");
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingZone, setEditingZone] = useState<IZone | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -159,19 +160,32 @@ export const ZonesScreen = ({ navigation }: any) => {
   };
 
   const handleCreate = () => {
+    setEditingZone(null);
+    setModalVisible(true);
+  };
+
+  const handleEdit = (item: IZone) => {
+    setEditingZone(item);
     setModalVisible(true);
   };
 
   const handleSubmit = async (data: any) => {
     setSubmitting(true);
     try {
-        const res = await createZone(data);
+        const res = editingZone 
+            ? await updateZone(editingZone.id, data)
+            : await createZone(data);
+            
         if (res && res.success) {
             setModalVisible(false);
-            dispatch(showToast({ message: 'Zona creada correctamente', type: 'success' }));
+            setEditingZone(null);
+            dispatch(showToast({ 
+                message: editingZone ? 'Zona actualizada' : 'Zona creada correctamente', 
+                type: 'success' 
+            }));
             fetchData(1);
         } else {
-            const msg = res?.messages?.[0] || 'Error al crear zona';
+            const msg = res?.messages?.[0] || 'Error al procesar zona';
             dispatch(showToast({ message: msg, type: 'error' }));
         }
     } catch (error: any) {
@@ -241,12 +255,20 @@ export const ZonesScreen = ({ navigation }: any) => {
 
         <View style={styles.actions}>
           {isAdmin ? (
-            <IconButton
-                icon="trash-can-outline"
-                size={20}
-                onPress={() => handleDelete(item)}
-                iconColor="#ba1a1a"
-            />
+            <View style={{ flexDirection: 'row' }}>
+                <IconButton
+                    icon="pencil-outline"
+                    size={20}
+                    onPress={() => handleEdit(item)}
+                    iconColor="#64748B"
+                />
+                <IconButton
+                    icon="trash-can-outline"
+                    size={20}
+                    onPress={() => handleDelete(item)}
+                    iconColor="#ba1a1a"
+                />
+            </View>
           ) : (
             <IconButton icon="chevron-right" iconColor="#CBD5E1" size={24} />
           )}
@@ -369,7 +391,11 @@ export const ZonesScreen = ({ navigation }: any) => {
 
       <ZoneFormModal
         visible={modalVisible}
-        onDismiss={() => setModalVisible(false)}
+        initialData={editingZone}
+        onDismiss={() => {
+            setModalVisible(false);
+            setEditingZone(null);
+        }}
         onSubmit={handleSubmit}
         loading={submitting}
       />

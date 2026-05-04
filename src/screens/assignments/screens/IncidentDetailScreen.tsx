@@ -127,8 +127,7 @@ export const IncidentDetailScreen = () => {
 
   const isPending = incident.status === 'PENDING' || !incident.status;
   const canResolve =
-    isPending &&
-    (user.role === UserRole.ADMIN || user.role === UserRole.SHIFT_GUARD);
+    isPending && (user.role === UserRole.ADMIN || user.role === UserRole.SHIFT);
   const canDelete = user.role === UserRole.ADMIN;
 
   const handleDelete = async () => {
@@ -472,7 +471,9 @@ export const IncidentDetailScreen = () => {
             </View>
             <View style={styles.descriptionContainer}>
               <Text style={styles.guardName}>{incident.client.name}</Text>
-              <Text style={styles.guardRole}>{incident.client.address || 'Sin dirección registrada'}</Text>
+              <Text style={styles.guardRole}>
+                {incident.client.address || 'Sin dirección registrada'}
+              </Text>
             </View>
           </View>
         )}
@@ -510,9 +511,6 @@ export const IncidentDetailScreen = () => {
                 >
                   Turno completo
                 </Chip>
-                <Text style={styles.guardId}>
-                  ID: {incident.guard?.id || 'N/A'}
-                </Text>
               </View>
             </View>
           </View>

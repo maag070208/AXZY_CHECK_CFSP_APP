@@ -1,31 +1,39 @@
 import dayjs from 'dayjs';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { 
-  ActivityIndicator, 
-  FlatList, 
-  RefreshControl, 
-  StatusBar, 
-  StyleSheet, 
-  TouchableOpacity, 
-  View, 
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
   ScrollView,
-  Modal
+  Modal,
 } from 'react-native';
-import { 
-  Avatar, 
-  Button, 
-  Card, 
-  IconButton, 
-  Text, 
-  Searchbar, 
-  Portal, 
-  Icon 
+import {
+  Avatar,
+  Button,
+  Card,
+  IconButton,
+  Text,
+  Searchbar,
+  Portal,
+  Icon,
 } from 'react-native-paper';
-import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
+import {
+  useFocusEffect,
+  useIsFocused,
+  useNavigation,
+} from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DatePickerModal } from 'react-native-paper-dates';
 
-import { getPaginatedRounds, IRound, getRoundsUsers } from '../service/rounds.service';
+import {
+  getPaginatedRounds,
+  IRound,
+  getRoundsUsers,
+} from '../service/rounds.service';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
 import ModernStyles from '../../../shared/theme/app.styles';
 import { theme } from '../../../shared/theme/theme';
@@ -33,12 +41,12 @@ import { theme } from '../../../shared/theme/theme';
 export const RoundsListScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  
+
   const [rounds, setRounds] = useState<IRound[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -47,25 +55,31 @@ export const RoundsListScreen = ({ navigation }: any) => {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  
-  const [appliedFilters, setAppliedFilters] = useState<{ guardId?: number }>({});
+
+  const [appliedFilters, setAppliedFilters] = useState<{ guardId?: number }>(
+    {},
+  );
   const [appliedDate, setAppliedDate] = useState<Date | undefined>(undefined);
-  
+
   const [tempFilters, setTempFilters] = useState<{ guardId?: number }>({});
   const [tempDate, setTempDate] = useState<Date | undefined>(undefined);
   const [openDatePicker, setOpenDatePicker] = useState(false);
 
-  const [usersCatalog, setUsersCatalog] = useState<{label: string, value: number}[]>([]);
-  const lastFetchRef = useRef("");
+  const [usersCatalog, setUsersCatalog] = useState<
+    { label: string; value: number }[]
+  >([]);
+  const lastFetchRef = useRef('');
 
   const fetchCatalogs = async () => {
     try {
       const res = await getRoundsUsers();
       if (res.success && Array.isArray(res.data)) {
-          setUsersCatalog(res.data.map(u => ({
-              label: u.value, // En catálogos el nombre viene en .value
-              value: u.id
-          })));
+        setUsersCatalog(
+          res.data.map(u => ({
+            label: u.value, // En catálogos el nombre viene en .value
+            value: u.id,
+          })),
+        );
       }
     } catch (error) {
       console.error('Error fetching catalogs:', error);
@@ -79,56 +93,71 @@ export const RoundsListScreen = ({ navigation }: any) => {
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
-        setDebouncedSearch(search);
+      setDebouncedSearch(search);
     }, 500);
     return () => clearTimeout(timer);
   }, [search]);
 
-  const fetchRounds = useCallback(async (pageNum: number, isRefreshing = false) => {
-    try {
-      if (pageNum === 1) {
+  const fetchRounds = useCallback(
+    async (pageNum: number, isRefreshing = false) => {
+      try {
+        if (pageNum === 1) {
           if (!isRefreshing) setLoading(true);
-      } else {
+        } else {
           setLoadingMore(true);
-      }
+        }
 
-      const finalFilters: any = { ...appliedFilters };
-      if (debouncedSearch) finalFilters.search = debouncedSearch;
-      if (appliedDate) finalFilters.date = dayjs(appliedDate).format('YYYY-MM-DD');
+        const finalFilters: any = { ...appliedFilters };
+        if (debouncedSearch) finalFilters.search = debouncedSearch;
+        if (appliedDate)
+          finalFilters.date = dayjs(appliedDate).format('YYYY-MM-DD');
 
-      const res = await getPaginatedRounds({ 
+        const res = await getPaginatedRounds({
           page: pageNum,
           limit: 15,
-          filters: finalFilters
-      });
-      
-      if (res.success && res.data) {
+          filters: finalFilters,
+        });
+
+        if (res.success && res.data) {
           const data = res.data;
-          const newRows = Array.isArray(data.rows) ? data.rows : (Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []));
-          const totalRows = typeof data.total === 'number' ? data.total : newRows.length;
+          const newRows = Array.isArray(data.rows)
+            ? data.rows
+            : Array.isArray(data.data)
+            ? data.data
+            : Array.isArray(data)
+            ? data
+            : [];
+          const totalRows =
+            typeof data.total === 'number' ? data.total : newRows.length;
 
           setRounds(prev => {
-              const combined = pageNum === 1 ? newRows : [...prev, ...newRows];
-              setHasMore(combined.length < totalRows);
-              return combined;
+            const combined = pageNum === 1 ? newRows : [...prev, ...newRows];
+            setHasMore(combined.length < totalRows);
+            return combined;
           });
 
           setTotal(totalRows);
           setPage(pageNum);
+        }
+      } catch (error) {
+        console.error('Error fetching rounds:', error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(true); // Wait, loadingMore should be false
+        setLoadingMore(false);
       }
-    } catch (error) {
-      console.error('Error fetching rounds:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-      setLoadingMore(true); // Wait, loadingMore should be false
-      setLoadingMore(false);
-    }
-  }, [debouncedSearch, appliedFilters, appliedDate]);
+    },
+    [debouncedSearch, appliedFilters, appliedDate],
+  );
 
   useEffect(() => {
     if (!isFocused) return;
-    const currentParams = JSON.stringify({ debouncedSearch, appliedFilters, appliedDate });
+    const currentParams = JSON.stringify({
+      debouncedSearch,
+      appliedFilters,
+      appliedDate,
+    });
     if (currentParams === lastFetchRef.current) return;
     lastFetchRef.current = currentParams;
     fetchRounds(1);
@@ -141,19 +170,19 @@ export const RoundsListScreen = ({ navigation }: any) => {
 
   const handleLoadMore = () => {
     if (!loadingMore && hasMore && rounds.length > 0) {
-        fetchRounds(page + 1);
+      fetchRounds(page + 1);
     }
   };
 
   const handleApplyFilters = () => {
-      setAppliedFilters(tempFilters);
-      setAppliedDate(tempDate);
-      setShowFilters(false);
+    setAppliedFilters(tempFilters);
+    setAppliedDate(tempDate);
+    setShowFilters(false);
   };
 
   const handleClearFilters = () => {
-      setTempFilters({});
-      setTempDate(undefined);
+    setTempFilters({});
+    setTempDate(undefined);
   };
 
   const activeFiltersCount = [
@@ -163,71 +192,84 @@ export const RoundsListScreen = ({ navigation }: any) => {
 
   const getStatusInfo = (status: string) => {
     if (status === 'COMPLETED') {
-        return { label: 'Finalizada', color: '#10B981', icon: 'check-circle' };
+      return { label: 'Finalizada', color: '#10B981', icon: 'check-circle' };
     }
     return { label: 'En curso', color: '#F59E0B', icon: 'clock-outline' };
   };
 
-  const renderItem = ({ item }: { item: IRound }) => {
+  const renderItem = ({ item }: { item: any }) => {
     const statusInfo = getStatusInfo(item.status);
-    const routeTitle = item.client?.name || 'Recorrido General';
-    const guardName = `${item.guard.name} ${item.guard.lastName || ''}`;
+    const config = item.recurringConfiguration || item.recurringConfig;
+    const routeTitle = config?.title || 'Recorrido General';
+    const clientName = 
+      item.client?.name || 
+      config?.client?.name || 
+      item.guard?.client?.name || 
+      'SIN CLIENTE';
+    const guardName = `${item.guard?.name || 'N/A'} ${item.guard?.lastName || ''}`;
 
     return (
-      <Card 
-        style={styles.card} 
+      <Card
+        style={styles.card}
         onPress={() => navigation.navigate('ROUND_DETAIL', { id: item.id })}
         elevation={1}
       >
         <View style={styles.cardLayout}>
-            <View style={styles.avatarSection}>
-                <Avatar.Text 
-                    size={56} 
-                    label={item.guard.name.substring(0, 2).toUpperCase()} 
-                    style={styles.avatar} 
-                    labelStyle={{ color: '#64748B', fontWeight: 'bold' }}
+          <View style={styles.avatarSection}>
+            <Avatar.Text
+              size={56}
+              label={item.guard.name.substring(0, 2).toUpperCase()}
+              style={styles.avatar}
+              labelStyle={{ color: '#64748B', fontWeight: 'bold' }}
+            />
+            <View
+              style={[
+                styles.statusIndicator,
+                { backgroundColor: statusInfo.color },
+              ]}
+            />
+          </View>
+
+          <View style={styles.infoSection}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.locationName} numberOfLines={1}>
+                {routeTitle}
+              </Text>
+              <View style={styles.badgeContainer}>
+                <Icon
+                  source={statusInfo.icon}
+                  size={14}
+                  color={statusInfo.color}
                 />
-                <View style={[styles.statusIndicator, { backgroundColor: statusInfo.color }]} />
+              </View>
             </View>
 
-            <View style={styles.infoSection}>
-                <View style={styles.cardHeader}>
-                    <Text style={styles.locationName} numberOfLines={1}>
-                        {routeTitle}
-                    </Text>
-                    <View style={styles.badgeContainer}>
-                        <Icon source={statusInfo.icon} size={14} color={statusInfo.color} />
-                        <Text style={[styles.statusLabel, { color: statusInfo.color }]}>
-                            {statusInfo.label}
-                        </Text>
-                    </View>
-                </View>
+            <Text style={styles.clientName}>{clientName}</Text>
+            <Text style={styles.guardName}>#{item.id.split('-')[0]}... • {guardName}</Text>
 
-                <Text style={styles.guardName}>#{item.id} • {guardName}</Text>
-
-                <View style={styles.detailsRow}>
-                    <View style={styles.detailItem}>
-                        <Icon source="clock-start" size={16} color="#94A3B8" />
-                        <Text style={styles.detailText}>
-                            {dayjs(item.startTime).format('HH:mm')}
-                        </Text>
-                    </View>
-                    <View style={styles.detailItem}>
-                        <Icon source="calendar" size={16} color="#94A3B8" />
-                        <Text style={styles.detailText}>
-                            {dayjs(item.startTime).format('DD/MM/YY')}
-                        </Text>
-                    </View>
-                    {item.endTime && (
-                      <View style={styles.detailItem}>
-                          <Icon source="clock-end" size={16} color="#94A3B8" />
-                          <Text style={styles.detailText}>
-                              {dayjs(item.endTime).format('HH:mm')}
-                          </Text>
-                      </View>
-                    )}
+            <View style={styles.detailsRow}>
+              <View style={styles.detailItem}>
+                <Icon source="clock-start" size={16} color="#94A3B8" />
+                <Text style={styles.detailText}>
+                  {dayjs(item.startTime).format('HH:mm')}
+                </Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Icon source="calendar" size={16} color="#94A3B8" />
+                <Text style={styles.detailText}>
+                  {dayjs(item.startTime).format('DD/MM/YY')}
+                </Text>
+              </View>
+              {item.endTime && (
+                <View style={styles.detailItem}>
+                  <Icon source="clock-end" size={16} color="#94A3B8" />
+                  <Text style={styles.detailText}>
+                    {dayjs(item.endTime).format('HH:mm')}
+                  </Text>
                 </View>
+              )}
             </View>
+          </View>
         </View>
       </Card>
     );
@@ -236,7 +278,7 @@ export const RoundsListScreen = ({ navigation }: any) => {
   return (
     <View style={ModernStyles.screenContainer}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Header Plano Estilo Kardex Premium */}
       <View style={[styles.header]}>
         {/* Top Context Row */}
@@ -245,16 +287,24 @@ export const RoundsListScreen = ({ navigation }: any) => {
         <View style={styles.headerMainRow}>
           <View>
             <Text style={styles.headerTitleLarge}>Recorridos</Text>
-            <Text style={styles.headerSubtitleText}>{total} registros encontrados</Text>
+            <Text style={styles.headerSubtitleText}>
+              {total} registros encontrados
+            </Text>
           </View>
-          <TouchableOpacity 
-              onPress={() => setShowFilters(true)}
-              style={styles.filterButtonCircle}
+          <TouchableOpacity
+            onPress={() => setShowFilters(true)}
+            style={styles.filterButtonCircle}
           >
-            <Icon source={activeFiltersCount > 0 ? "filter" : "filter-variant"} size={22} color="#1E293B" />
+            <Icon
+              source={activeFiltersCount > 0 ? 'filter' : 'filter-variant'}
+              size={22}
+              color="#1E293B"
+            />
             {activeFiltersCount > 0 && (
               <View style={styles.filterBadgeSmall}>
-                  <Text style={styles.filterBadgeTextSmall}>{activeFiltersCount}</Text>
+                <Text style={styles.filterBadgeTextSmall}>
+                  {activeFiltersCount}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -275,31 +325,42 @@ export const RoundsListScreen = ({ navigation }: any) => {
       <FlatList
         data={rounds}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={item => item.id.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+          />
         }
-        ListFooterComponent={() => (
-          loadingMore ? <ActivityIndicator style={{ marginVertical: 20 }} color={theme.colors.primary} /> : null
-        )}
+        ListFooterComponent={() =>
+          loadingMore ? (
+            <ActivityIndicator
+              style={{ marginVertical: 20 }}
+              color={theme.colors.primary}
+            />
+          ) : null
+        }
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
               <Icon source="clipboard-text-clock" size={80} color="#E2E8F0" />
               <Text style={styles.emptyTitle}>No hay recorridos</Text>
-              <Text style={styles.emptySubtitle}>No se encontraron resultados para tu búsqueda.</Text>
+              <Text style={styles.emptySubtitle}>
+                No se encontraron resultados para tu búsqueda.
+              </Text>
             </View>
           ) : null
         }
       />
 
       {/* Modal de Filtros Nativo Full Screen */}
-      <Modal 
-        visible={showFilters} 
+      <Modal
+        visible={showFilters}
         animationType="slide"
         presentationStyle="fullScreen"
         onRequestClose={() => setShowFilters(false)}
@@ -307,17 +368,36 @@ export const RoundsListScreen = ({ navigation }: any) => {
         <View style={styles.modalFullScreen}>
           <View style={[styles.modalHeader, { paddingTop: insets.top + 20 }]}>
             <View style={styles.modalHeaderTitle}>
-              <Icon source="filter-variant" size={24} color={theme.colors.primary} />
+              <Icon
+                source="filter-variant"
+                size={24}
+                color={theme.colors.primary}
+              />
               <Text style={styles.modalTitle}>Filtros de Recorridos</Text>
             </View>
-            <IconButton icon="close" size={24} onPress={() => setShowFilters(false)} iconColor="#94A3B8" />
+            <IconButton
+              icon="close"
+              size={24}
+              onPress={() => setShowFilters(false)}
+              iconColor="#94A3B8"
+            />
           </View>
 
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.modalScroll}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.filterGroup}>
               <Text style={styles.filterLabel}>POR FECHA</Text>
-              <TouchableOpacity onPress={() => setOpenDatePicker(true)} style={styles.dateSelector}>
-                <Icon source="calendar-range" size={20} color={theme.colors.primary} />
+              <TouchableOpacity
+                onPress={() => setOpenDatePicker(true)}
+                style={styles.dateSelector}
+              >
+                <Icon
+                  source="calendar-range"
+                  size={20}
+                  color={theme.colors.primary}
+                />
                 <Text style={styles.dateValue}>
                   {tempDate ? tempDate.toLocaleDateString() : 'Cualquier fecha'}
                 </Text>
@@ -331,16 +411,35 @@ export const RoundsListScreen = ({ navigation }: any) => {
                 placeholder="Seleccionar guardia"
                 options={usersCatalog}
                 value={tempFilters.guardId}
-                onSelect={(val) => setTempFilters({...tempFilters, guardId: val ? Number(val) : undefined})}
+                onSelect={val =>
+                  setTempFilters({
+                    ...tempFilters,
+                    guardId: val ? Number(val) : undefined,
+                  })
+                }
               />
             </View>
           </ScrollView>
 
-          <View style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}>
-            <Button mode="outlined" onPress={handleClearFilters} style={styles.footerButton} textColor="#64748B">
+          <View
+            style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
+          >
+            <Button
+              mode="outlined"
+              onPress={handleClearFilters}
+              style={styles.footerButton}
+              textColor="#64748B"
+            >
               Limpiar
             </Button>
-            <Button mode="contained" onPress={handleApplyFilters} style={[styles.footerButton, { backgroundColor: theme.colors.primary }]}>
+            <Button
+              mode="contained"
+              onPress={handleApplyFilters}
+              style={[
+                styles.footerButton,
+                { backgroundColor: theme.colors.primary },
+              ]}
+            >
               Aplicar Filtros
             </Button>
           </View>
@@ -353,7 +452,7 @@ export const RoundsListScreen = ({ navigation }: any) => {
         visible={openDatePicker}
         onDismiss={() => setOpenDatePicker(false)}
         date={tempDate}
-        onConfirm={(params) => {
+        onConfirm={params => {
           setOpenDatePicker(false);
           setTempDate(params.date);
         }}
@@ -522,6 +621,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
     textTransform: 'uppercase',
+  },
+  clientName: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    textTransform: 'uppercase',
+    marginBottom: 2,
   },
   guardName: {
     fontSize: 13,

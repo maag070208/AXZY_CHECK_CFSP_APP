@@ -3,6 +3,7 @@ import { get, post } from '../../../core/axios';
 export interface IKardexFilter {
     userId?: string;
     locationId?: string;
+    clientId?: string;
     startDate?: string;
     endDate?: string;
     search?: string;

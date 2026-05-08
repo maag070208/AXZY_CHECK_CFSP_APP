@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GuardListScreen } from '../screens/GuardListScreen';
 import { GuardDetailScreen } from '../screens/GuardDetailScreen';
+import { AssignmentDetailScreen } from '../../assignments/screens/AssignmentDetailScreen';
 import { KardexDetailScreen } from '../../kardex/screens/KardexDetailScreen';
 import { HeaderBack } from '../../../navigation/header/HeaderBack';
 
@@ -44,6 +45,19 @@ export const GuardsStack = () => {
             <HeaderBack
               navigation={navigation}
               title="Detalle de Reporte"
+              back={true}
+            />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="ASSIGNMENT_DETAIL"
+        component={AssignmentDetailScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <HeaderBack
+              navigation={navigation}
+              title="Detalle de Asignación"
               back={true}
             />
           ),

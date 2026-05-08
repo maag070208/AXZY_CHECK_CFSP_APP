@@ -1,27 +1,30 @@
-import { UserRole } from "../../../core/types/IUser";
-
+import { UserRole } from '../../../core/types/IUser';
 
 export interface CreateUserDTO {
-    name: string;
-    lastName: string;
-    username: string;
-    password?: string;
-    roleId?: number;
-    role?: any;
-    scheduleId?: number;
+  name: string;
+  lastName: string;
+  username: string;
+  password?: string;
+  roleId?: string;
+  role?: any;
+  scheduleId?: string;
 }
 
 export interface IUser {
-    id: number;
+  id: string;
+  name: string;
+  lastName: string;
+  username: string;
+  role: {
+    id: string;
     name: string;
-    lastName: string;
-    username: string;
-    role: {
-        id: number;
-        name: string;
-        value: string;
-    };
-    active: boolean;
-    shiftStart?: string;
-    shiftEnd?: string;
+    value: string;
+  };
+  active: boolean;
+  shiftStart?: string;
+  shiftEnd?: string;
+}
+export interface IRoleOption {
+  label: string;
+  value: string | null;
 }

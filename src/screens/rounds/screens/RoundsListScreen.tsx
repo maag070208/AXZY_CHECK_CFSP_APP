@@ -10,6 +10,7 @@ import {
   View,
   ScrollView,
   Modal,
+  Linking,
 } from 'react-native';
 import {
   Avatar,
@@ -20,6 +21,7 @@ import {
   Searchbar,
   Portal,
   Icon,
+  Dialog,
 } from 'react-native-paper';
 import {
   useFocusEffect,
@@ -33,14 +35,22 @@ import {
   getPaginatedRounds,
   IRound,
   getRoundsUsers,
+  shareRoundReport,
 } from '../service/rounds.service';
+import { endRound } from '../../home/service/round.service';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
 import ModernStyles from '../../../shared/theme/app.styles';
 import { theme } from '../../../shared/theme/theme';
+import { useDispatch, useSelector } from 'react-redux';
+import { showToast } from '../../../core/store/slices/toast.slice';
+import Share from 'react-native-share';
+import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
 
-export const RoundsListScreen = ({ navigation }: any) => {
+export const RoundsListScreen = ({ navigation, route }: any) => {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+
+  const routeClientId = route.params?.clientId;
 
   const [rounds, setRounds] = useState<IRound[]>([]);
   const [loading, setLoading] = useState(false);
@@ -56,8 +66,8 @@ export const RoundsListScreen = ({ navigation }: any) => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  const [appliedFilters, setAppliedFilters] = useState<{ guardId?: number }>(
-    {},
+  const [appliedFilters, setAppliedFilters] = useState<{ guardId?: number; clientId?: any }>(
+    { clientId: routeClientId },
   );
   const [appliedDate, setAppliedDate] = useState<Date | undefined>(undefined);
 
@@ -197,16 +207,70 @@ export const RoundsListScreen = ({ navigation }: any) => {
     return { label: 'En curso', color: '#F59E0B', icon: 'clock-outline' };
   };
 
+  const dispatch = useDispatch();
+  const [stoppingId, setStoppingId] = useState<string | null>(null);
+  const [showStopDialog, setShowStopDialog] = useState(false);
+  const [roundToStop, setRoundToStop] = useState<string | null>(null);
+
+  const handleStopRound = (roundId: string) => {
+    setRoundToStop(roundId);
+    setShowStopDialog(true);
+  };
+
+  const [sharingId, setSharingId] = useState<string | null>(null);
+
+  const token = useSelector((state: any) => state.userState.token);
+
+  const handleSharePDF = async (roundId: string) => {
+    try {
+      const url = `${API_CONSTANTS.BASE_URL}/rounds/${roundId}/report?token=${token}`;
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error('Error opening PDF:', error);
+      dispatch(showToast({ message: 'Error al abrir el reporte', type: 'error' }));
+    }
+  };
+
+  const confirmStopRound = async () => {
+    if (!roundToStop) return;
+    setStoppingId(roundToStop);
+    setShowStopDialog(false);
+    try {
+      const res = await endRound(roundToStop);
+      if (res.success) {
+        dispatch(
+          showToast({ message: 'Ronda finalizada correctamente', type: 'success' }),
+        );
+        fetchRounds(1);
+      } else {
+        dispatch(
+          showToast({
+            message: 'No se pudo finalizar la ronda',
+            type: 'error',
+          }),
+        );
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setStoppingId(null);
+      setRoundToStop(null);
+    }
+  };
+
   const renderItem = ({ item }: { item: any }) => {
     const statusInfo = getStatusInfo(item.status);
     const config = item.recurringConfiguration || item.recurringConfig;
     const routeTitle = config?.title || 'Recorrido General';
-    const clientName = 
-      item.client?.name || 
-      config?.client?.name || 
-      item.guard?.client?.name || 
+    const clientName =
+      item.client?.name ||
+      config?.client?.name ||
+      item.guard?.client?.name ||
       'SIN CLIENTE';
-    const guardName = `${item.guard?.name || 'N/A'} ${item.guard?.lastName || ''}`;
+    const guardName = `${item.guard?.name || 'N/A'} ${
+      item.guard?.lastName || ''
+    }`;
+    const isInProgress = item.status === 'IN_PROGRESS';
 
     return (
       <Card
@@ -245,7 +309,9 @@ export const RoundsListScreen = ({ navigation }: any) => {
             </View>
 
             <Text style={styles.clientName}>{clientName}</Text>
-            <Text style={styles.guardName}>#{item.id.split('-')[0]}... • {guardName}</Text>
+            <Text style={styles.guardName}>
+              #{item.id.split('-')[0]}... • {guardName}
+            </Text>
 
             <View style={styles.detailsRow}>
               <View style={styles.detailItem}>
@@ -267,6 +333,40 @@ export const RoundsListScreen = ({ navigation }: any) => {
                     {dayjs(item.endTime).format('HH:mm')}
                   </Text>
                 </View>
+              )}
+            </View>
+
+            <View style={styles.actionsRow}>
+              {isInProgress && (
+                <Button
+                  mode="contained"
+                  compact
+                  onPress={() => handleStopRound(item.id)}
+                  loading={stoppingId === item.id}
+                  disabled={!!stoppingId}
+                  buttonColor="#EF4444"
+                  textColor="#FFF"
+                  style={styles.actionButton}
+                  labelStyle={{ fontSize: 11 }}
+                >
+                  Detener
+                </Button>
+              )}
+              {item.status === 'COMPLETED' && (
+                <Button
+                  mode="contained-tonal"
+                  compact
+                  icon="file-pdf-box"
+                  onPress={() => handleSharePDF(item.id)}
+                  loading={sharingId === item.id}
+                  disabled={!!sharingId}
+                  buttonColor="#EFF6FF"
+                  textColor="#3B82F6"
+                  style={styles.actionButton}
+                  labelStyle={{ fontSize: 11 }}
+                >
+                  Generar PDF
+                </Button>
               )}
             </View>
           </View>
@@ -457,6 +557,38 @@ export const RoundsListScreen = ({ navigation }: any) => {
           setTempDate(params.date);
         }}
       />
+
+      <Portal>
+        <Dialog
+          visible={showStopDialog}
+          onDismiss={() => setShowStopDialog(false)}
+          style={styles.stopDialog}
+        >
+          <Dialog.Title style={styles.stopDialogTitle}>Detener Ronda</Dialog.Title>
+          <Dialog.Content>
+            <Text style={styles.stopDialogContent}>
+              ¿Estás seguro que deseas finalizar esta ronda? Esta acción no se puede deshacer.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions style={styles.stopDialogActions}>
+            <Button 
+              onPress={() => setShowStopDialog(false)} 
+              textColor="#64748B"
+              style={styles.stopDialogButton}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              mode="contained"
+              onPress={confirmStopRound} 
+              buttonColor="#EF4444"
+              style={[styles.stopDialogButton, styles.stopDialogConfirm]}
+            >
+              Finalizar
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 };
@@ -648,6 +780,17 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontWeight: '500',
   },
+  actionsRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 8,
+  },
+  actionButton: {
+    borderRadius: 10,
+    flex: 1,
+    height: 40,
+    justifyContent: 'center',
+  },
   // Modal Styles
   modalFullScreen: {
     backgroundColor: 'white',
@@ -711,5 +854,37 @@ const styles = StyleSheet.create({
   footerButton: {
     flex: 1,
     borderRadius: 14,
+  },
+  stopDialog: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 8,
+  },
+  stopDialogTitle: {
+    textAlign: 'center',
+    fontWeight: '800',
+    color: '#1E293B',
+    fontSize: 22,
+  },
+  stopDialogContent: {
+    textAlign: 'center',
+    color: '#64748B',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  stopDialogActions: {
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  stopDialogButton: {
+    flex: 1,
+    borderRadius: 12,
+    height: 48,
+    justifyContent: 'center',
+  },
+  stopDialogConfirm: {
+    elevation: 0,
   },
 });

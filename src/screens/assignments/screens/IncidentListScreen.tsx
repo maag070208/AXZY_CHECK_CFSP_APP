@@ -1,8 +1,4 @@
-import {
-  useFocusEffect,
-  useIsFocused,
-  useNavigation,
-} from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,36 +6,40 @@ import {
   Modal,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   TouchableOpacity,
   View,
 } from 'react-native';
 import {
-  Text,
-  Icon,
-  Card,
+  Avatar,
   FAB,
+  Icon,
   IconButton,
-  Button,
   Portal,
   Searchbar,
-  Avatar,
 } from 'react-native-paper';
-import { useDispatch, useSelector } from 'react-redux';
+import { DatePickerModal } from 'react-native-paper-dates';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { UserRole } from '../../../core/types/IUser';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DatePickerModal } from 'react-native-paper-dates';
+import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
+import {
+  ITButton,
+  ITCard,
+  ITScreenWrapper,
+  ITText,
+  LoaderComponent,
+} from '../../../shared/components';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
-import { getPaginatedIncidents } from '../service/incident.service';
 import { getCatalog } from '../../../shared/service/catalog.service';
 import ModernStyles from '../../../shared/theme/app.styles';
 import { theme } from '../../../shared/theme/theme';
 import { COLORS } from '../../../shared/utils/constants';
+import { getPaginatedIncidents } from '../service/incident.service';
 
 export const IncidentListScreen = () => {
-  const navigation = useNavigation<any>();
+  const { navigateToScreen } = useAppNavigation();
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const user = useSelector((state: RootState) => state.userState);
@@ -95,7 +95,7 @@ export const IncidentListScreen = () => {
   useEffect(() => {
     const fetchCatalogs = async () => {
       try {
-        const [guardsRes, catRes, typeRes] = await Promise.all([
+        const [guardsRes, catRes, typeRes, clientsRes] = await Promise.all([
           getCatalog('guard'),
           getCatalog('incident_category'),
           getCatalog('incident_type'),
@@ -120,10 +120,10 @@ export const IncidentListScreen = () => {
         if (typeRes.success) {
           setIncidentTypes(typeRes.data);
         }
-        if (guardsRes.success && guardsRes.data) {
+        if (clientsRes.success) {
           setClients(
-            guardsRes.data.map((c: any) => ({
-              label: c.name || c.value,
+            clientsRes.data.map((c: any) => ({
+              label: c.name,
               value: c.id,
             })),
           );
@@ -255,8 +255,6 @@ export const IncidentListScreen = () => {
   };
 
   const renderItem = ({ item }: { item: any }) => {
-    console.log({ item });
-
     const catInfo = getCategoryInfo(item.categoryId);
     const date = new Date(item.createdAt);
     const timeStr = date.toLocaleTimeString([], {
@@ -266,12 +264,13 @@ export const IncidentListScreen = () => {
     const isPending = item.status === 'PENDING';
 
     return (
-      <Card
+      <ITCard
         style={[styles.card, isPending && styles.pendingCard]}
         onPress={() =>
-          navigation.navigate('INCIDENT_DETAIL', { incident: item })
+          navigateToScreen('INCIDENTS_STACK', 'INCIDENT_DETAIL', {
+            incident: item,
+          })
         }
-        elevation={1}
       >
         <View style={styles.cardLayout}>
           <View style={styles.avatarSection}>
@@ -318,15 +317,24 @@ export const IncidentListScreen = () => {
                   size={12}
                   color={catInfo.color}
                 />
-                <Text style={[styles.categoryText, { color: catInfo.color }]}>
-                  {catInfo.label}
-                </Text>
+                <ITText
+                  variant="labelSmall"
+                  weight="bold"
+                  style={{ color: catInfo.color, fontSize: 10 }}
+                >
+                  {catInfo.label?.toUpperCase() || ''}
+                </ITText>
               </View>
             </View>
 
-            <Text style={styles.incidentTitle} numberOfLines={1}>
+            <ITText
+              variant="titleMedium"
+              weight="bold"
+              color={COLORS.textPrimary}
+              numberOfLines={1}
+            >
               {item.title}
-            </Text>
+            </ITText>
 
             {item.client && (
               <View style={styles.clientRow}>
@@ -335,22 +343,38 @@ export const IncidentListScreen = () => {
                   size={14}
                   color={COLORS.primary}
                 />
-                <Text style={styles.clientText} numberOfLines={1}>
+                <ITText
+                  variant="labelSmall"
+                  color={COLORS.textSecondary}
+                  numberOfLines={1}
+                  style={{ marginLeft: 4 }}
+                >
                   {item.client.name}
-                </Text>
+                </ITText>
               </View>
             )}
 
             <View style={styles.detailsRow}>
               <View style={styles.detailItem}>
                 <Icon source="account-outline" size={14} color="#64748B" />
-                <Text style={styles.detailText} numberOfLines={1}>
+                <ITText
+                  variant="labelSmall"
+                  color="#64748B"
+                  numberOfLines={1}
+                  style={{ marginLeft: 4 }}
+                >
                   {item.guard?.name}
-                </Text>
+                </ITText>
               </View>
               <View style={[styles.detailItem, styles.ml12]}>
                 <Icon source="calendar-outline" size={14} color="#64748B" />
-                <Text style={styles.detailText}>{timeStr}</Text>
+                <ITText
+                  variant="labelSmall"
+                  color="#64748B"
+                  style={{ marginLeft: 4 }}
+                >
+                  {timeStr}
+                </ITText>
               </View>
             </View>
           </View>
@@ -361,21 +385,26 @@ export const IncidentListScreen = () => {
             size={24}
           />
         </View>
-      </Card>
+      </ITCard>
     );
   };
 
   return (
-    <View style={ModernStyles.screenContainer}>
-      <StatusBar barStyle="dark-content" />
-
+    <ITScreenWrapper
+      padding={false}
+      scrollable={false}
+      style={ModernStyles.screenContainer}
+    >
+      <LoaderComponent visible={loading} />
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.headerTitle}>Incidencias</Text>
-            <Text style={styles.headerSubtitle}>
+            <ITText variant="headlineSmall" weight="bold" color="#1E293B">
+              Incidencias
+            </ITText>
+            <ITText variant="labelMedium" color="#64748B">
               {total} reportes registrados
-            </Text>
+            </ITText>
           </View>
           <IconButton
             icon="filter-variant"
@@ -422,7 +451,7 @@ export const IncidentListScreen = () => {
         }
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: insets.bottom + 20 },
+          { paddingBottom: insets.bottom + 100 },
         ]}
         ListEmptyComponent={
           !loading ? (
@@ -432,26 +461,34 @@ export const IncidentListScreen = () => {
                 size={64}
                 color="#E2E8F0"
               />
-              <Text style={styles.emptyText}>No se encontraron resultados</Text>
-              <Button
+              <ITText
+                variant="bodyLarge"
+                color="#94A3B8"
+                style={{ marginTop: 12 }}
+              >
+                No se encontraron resultados
+              </ITText>
+              <ITButton
                 mode="text"
                 onPress={() => fetchIncidents(1)}
-                textColor={theme.colors.primary}
-              >
-                Actualizar lista
-              </Button>
+                label="Actualizar lista"
+              />
             </View>
           ) : null
         }
       />
 
-      {user.role === UserRole.ADMIN && (
-        <FAB
-          icon="plus"
-          style={[styles.fab, { bottom: insets.bottom + 16 }]}
-          onPress={() => navigation.navigate('INCIDENT_REPORT')}
-          color="white"
-        />
+      {user.role === UserRole.ADMIN && isFocused && (
+        <Portal>
+          <FAB
+            icon="plus"
+            style={[styles.fab, { bottom: insets.bottom + 24 }]}
+            onPress={() =>
+              navigateToScreen('INCIDENTS_STACK', 'INCIDENT_REPORT')
+            }
+            color="white"
+          />
+        </Portal>
       )}
 
       <Portal>
@@ -463,7 +500,13 @@ export const IncidentListScreen = () => {
                 size={24}
                 color={theme.colors.primary}
               />
-              <Text style={styles.modalTitle}>Filtros de Incidencias</Text>
+              <ITText
+                variant="titleLarge"
+                weight="bold"
+                style={styles.modalTitle}
+              >
+                Filtros
+              </ITText>
             </View>
             <IconButton
               icon="close"
@@ -478,7 +521,14 @@ export const IncidentListScreen = () => {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR FECHA</Text>
+              <ITText
+                variant="labelLarge"
+                weight="bold"
+                color="#94A3B8"
+                style={styles.filterLabel}
+              >
+                POR FECHA
+              </ITText>
               <TouchableOpacity
                 onPress={() => setOpenDate(true)}
                 style={styles.dateSelector}
@@ -488,18 +538,25 @@ export const IncidentListScreen = () => {
                   size={20}
                   color={theme.colors.primary}
                 />
-                <Text style={styles.dateValue}>
+                <ITText variant="titleMedium" style={styles.dateValue}>
                   {appliedRange.startDate
                     ? `${appliedRange.startDate.toLocaleDateString()} - ${
                         appliedRange.endDate?.toLocaleDateString() || ''
                       }`
                     : 'Todos los reportes'}
-                </Text>
+                </ITText>
               </TouchableOpacity>
             </View>
 
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR CLIENTE</Text>
+              <ITText
+                variant="labelLarge"
+                weight="bold"
+                color="#94A3B8"
+                style={styles.filterLabel}
+              >
+                POR CLIENTE
+              </ITText>
               <SearchComponent
                 label="Cliente"
                 placeholder="Todos los clientes"
@@ -510,7 +567,14 @@ export const IncidentListScreen = () => {
             </View>
 
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR GUARDIA</Text>
+              <ITText
+                variant="labelLarge"
+                weight="bold"
+                color="#94A3B8"
+                style={styles.filterLabel}
+              >
+                POR GUARDIA
+              </ITText>
               <SearchComponent
                 label="Guardia"
                 placeholder="Todos los guardias"
@@ -521,7 +585,14 @@ export const IncidentListScreen = () => {
             </View>
 
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR CATEGORÍA</Text>
+              <ITText
+                variant="labelLarge"
+                weight="bold"
+                color="#94A3B8"
+                style={styles.filterLabel}
+              >
+                POR CATEGORÍA
+              </ITText>
               <SearchComponent
                 label="Categoría"
                 placeholder="Todas las categorías"
@@ -536,7 +607,9 @@ export const IncidentListScreen = () => {
 
             {tempCategory !== 'ALL' && (
               <View style={styles.filterGroup}>
-                <Text style={styles.filterLabel}>POR TIPO</Text>
+                <ITText variant="titleMedium" style={styles.filterLabel}>
+                  POR TIPO
+                </ITText>
                 <SearchComponent
                   label="Tipo de reporte"
                   placeholder="Todos los tipos"
@@ -553,24 +626,18 @@ export const IncidentListScreen = () => {
           <View
             style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
           >
-            <Button
+            <ITButton
               mode="outlined"
               onPress={handleClearFilters}
               style={styles.footerButton}
-              textColor="#64748B"
-            >
-              Limpiar
-            </Button>
-            <Button
+              label="Limpiar"
+            />
+            <ITButton
               mode="contained"
               onPress={handleApplyFilters}
-              style={[
-                styles.footerButton,
-                { backgroundColor: theme.colors.primary },
-              ]}
-            >
-              Aplicar Filtros
-            </Button>
+              style={styles.footerButton}
+              label="Aplicar Filtros"
+            />
           </View>
         </Modal>
       </Portal>
@@ -587,7 +654,7 @@ export const IncidentListScreen = () => {
           setTempRange({ startDate, endDate });
         }}
       />
-    </View>
+    </ITScreenWrapper>
   );
 };
 

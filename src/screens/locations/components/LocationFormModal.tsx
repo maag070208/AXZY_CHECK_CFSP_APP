@@ -1,35 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Formik } from 'formik';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Modal as RNModal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import {
   Button,
   HelperText,
-  Modal,
-  Portal,
+  IconButton,
   Text,
   TextInput,
-  IconButton,
-  ActivityIndicator,
 } from 'react-native-paper';
-import { Formik } from 'formik';
 import * as Yup from 'yup';
-import { ILocation, ILocationCreate } from '../type/location.types';
+import { SearchComponent } from '../../../shared/components/SearchComponent';
 import { getClients } from '../../clients/service/client.service';
 import { getPaginatedZones } from '../../zones/service/zone.service';
-import { SearchComponent } from '../../../shared/components/SearchComponent';
+import { ILocation, ILocationCreate } from '../type/location.types';
 
 interface Props {
   visible: boolean;
   onDismiss: () => void;
-  onSubmit: (data: ILocationCreate) => void;
+  onSubmit: (data: ILocationCreate, keepOpen?: boolean) => Promise<boolean>;
   initialData?: ILocation | null;
   loading?: boolean;
+  preselectedClientId?: string | number;
 }
 
 const validationSchema = Yup.object().shape({
   clientId: Yup.string().required('El cliente es obligatorio'),
   zoneId: Yup.string().required('El recurrente (zona) es obligatorio'),
   name: Yup.string().required('El nombre de ubicación es obligatorio'),
-  reference: Yup.string().optional(),
 });
 
 export const LocationFormModal = ({
@@ -38,11 +43,15 @@ export const LocationFormModal = ({
   onSubmit,
   initialData,
   loading,
+  preselectedClientId,
 }: Props) => {
   const [clients, setClients] = useState<any[]>([]);
   const [zones, setZones] = useState<any[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [loadingZones, setLoadingZones] = useState(false);
+
+  const [showSuccess, setShowSuccess] = useState(false);
+  const nameInputRef = useRef<any>(null);
 
   useEffect(() => {
     if (visible) {
@@ -65,221 +74,318 @@ export const LocationFormModal = ({
   };
 
   const initialValues = {
-    clientId: initialData?.clientId || '',
+    clientId: initialData?.clientId || preselectedClientId || '',
     zoneId: initialData?.zoneId || '',
     name: initialData?.name || '',
-    reference: initialData?.reference || '',
   };
 
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={onDismiss}
-        contentContainerStyle={styles.modal}
-      >
+    <RNModal
+      visible={visible}
+      onRequestClose={onDismiss}
+      animationType="slide"
+      presentationStyle="fullScreen"
+    >
+      <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text variant="headlineSmall" style={styles.title}>
-            {initialData ? 'Editar Ubicación' : 'Nueva Ubicación'}
-          </Text>
-          <Text variant="bodySmall" style={styles.subtitle}>
-            Sincronizado con el catálogo de clientes y zonas
-          </Text>
+          <View>
+            <Text variant="headlineSmall" style={styles.title}>
+              {initialData ? 'Editar Ubicación' : 'Nueva Ubicación'}
+            </Text>
+            <Text variant="bodySmall" style={styles.subtitle}>
+              Sincronizado con el catálogo de clientes y zonas
+            </Text>
+          </View>
+          <IconButton icon="close" onPress={onDismiss} disabled={loading} />
         </View>
 
-        <Formik
-          initialValues={initialValues}
-          enableReinitialize
-          validationSchema={validationSchema}
-          onSubmit={values => {
-            onSubmit({
-              clientId: values.clientId,
-              zoneId: values.zoneId,
-              name: values.name,
-              reference: values.reference,
-            });
-          }}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
         >
-          {({
-            handleChange,
-            handleBlur,
-            handleSubmit,
-            setFieldValue,
-            values,
-            errors,
-            touched,
-          }) => {
-            // Trigger zone load when client changes
-            useEffect(() => {
-              if (values.clientId) loadZones(values.clientId);
-            }, [values.clientId]);
+          <ScrollView
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContent}
+          >
+            <Formik
+              initialValues={initialValues}
+              enableReinitialize
+              validationSchema={validationSchema}
+              onSubmit={() => {}} // Not used as we use custom buttons
+            >
+              {({
+                handleChange,
+                handleBlur,
+                setFieldValue,
+                values,
+                errors,
+                touched,
+              }) => {
+                useEffect(() => {
+                  if (values.clientId) loadZones(values.clientId);
+                }, [values.clientId]);
 
-            const selectedClientName = clients.find(c => c.id === values.clientId)?.name || 'Selecciona un cliente';
+                const handleSaveAndNew = async () => {
+                  const selectedClient = clients.find(c => String(c.id) === String(values.clientId));
+                  const selectedZone = zones.find(z => String(z.id) === String(values.zoneId));
+                  
+                  const clientName = selectedClient?.name || 'S/C';
+                  const zoneName = selectedZone?.name || 'S/Z';
+                  const prefix = `${clientName}-${zoneName}-`;
+                  
+                  let finalName = values.name;
+                  if (!finalName.startsWith(prefix)) {
+                    finalName = `${prefix}${finalName}`;
+                  }
 
-            return (
-              <View style={styles.formContent}>
-                <View style={styles.inputContainer}>
-                  <SearchComponent
-                    label="CLIENTE *"
-                    placeholder="Selecciona un cliente"
-                    options={clients.map(c => ({ label: c.name, value: c.id }))}
-                    value={values.clientId}
-                    onSelect={(val) => {
-                        setFieldValue('clientId', val);
-                        setFieldValue('zoneId', '');
-                    }}
-                    error={touched.clientId && errors.clientId}
-                  />
-                </View>
+                  const success = await onSubmit({ ...values, name: finalName }, true);
+                  if (success) {
+                    setShowSuccess(true);
+                    setFieldValue('name', '');
+                    setTimeout(() => {
+                      setShowSuccess(false);
+                      nameInputRef.current?.focus();
+                    }, 1000);
+                  }
+                };
 
-                <View style={styles.inputContainer}>
-                  <SearchComponent
-                    label="RECURRENTE (ZONA) *"
-                    placeholder={values.clientId ? "Selecciona una zona" : "Primero selecciona un cliente"}
-                    disabled={!values.clientId || loadingZones}
-                    options={zones.map(z => ({ label: z.name, value: z.id }))}
-                    value={values.zoneId}
-                    onSelect={(val) => setFieldValue('zoneId', val)}
-                    error={touched.zoneId && errors.zoneId}
-                    helperText={loadingZones ? "Cargando zonas..." : undefined}
-                  />
-                </View>
+                const handleNormalSubmit = async () => {
+                  const selectedClient = clients.find(c => String(c.id) === String(values.clientId));
+                  const selectedZone = zones.find(z => String(z.id) === String(values.zoneId));
+                  
+                  const clientName = selectedClient?.name || 'S/C';
+                  const zoneName = selectedZone?.name || 'S/Z';
+                  const prefix = `${clientName}-${zoneName}-`;
+                  
+                  let finalName = values.name;
+                  if (!finalName.startsWith(prefix)) {
+                    finalName = `${prefix}${finalName}`;
+                  }
 
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>NOMBRE UBICACIÓN *</Text>
-                  <TextInput
-                    mode="outlined"
-                    placeholder="Ej: Recepción, Oficina 101"
-                    value={values.name}
-                    onChangeText={handleChange('name')}
-                    onBlur={handleBlur('name')}
-                    error={touched.name && !!errors.name}
-                    style={styles.input}
-                    outlineStyle={styles.inputOutline}
-                  />
-                  {touched.name && errors.name && (
-                    <HelperText type="error" visible={true}>{errors.name}</HelperText>
-                  )}
-                </View>
+                  const success = await onSubmit({ ...values, name: finalName }, false);
+                  if (success) {
+                    onDismiss();
+                  }
+                };
 
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>REFERENCIA (OPCIONAL)</Text>
-                  <TextInput
-                    mode="outlined"
-                    placeholder="Ej: A un lado del elevador"
-                    value={values.reference}
-                    onChangeText={handleChange('reference')}
-                    onBlur={handleBlur('reference')}
-                    style={styles.input}
-                    outlineStyle={styles.inputOutline}
-                  />
-                </View>
+                return (
+                  <View style={styles.formContent}>
+                    {showSuccess && (
+                      <View style={styles.successBanner}>
+                        <IconButton
+                          icon="check-circle"
+                          iconColor="#059669"
+                          size={20}
+                          style={{ margin: 0 }}
+                        />
+                        <Text style={styles.successText}>
+                          ¡Ubicación creada!
+                        </Text>
+                      </View>
+                    )}
+                    <View
+                      style={[
+                        styles.inputContainer,
+                        loading && { opacity: 0.6 },
+                      ]}
+                      pointerEvents={loading ? 'none' : 'auto'}
+                    >
+                      <SearchComponent
+                        label="CLIENTE *"
+                        placeholder="Selecciona un cliente"
+                        options={clients.map(c => ({
+                          label: c.name,
+                          value: c.id,
+                        }))}
+                        value={values.clientId}
+                        onSelect={val => {
+                          setFieldValue('clientId', val);
+                          setFieldValue('zoneId', '');
+                        }}
+                        error={touched.clientId && errors.clientId}
+                        disabled={!!initialData || loading}
+                      />
+                    </View>
 
-                <View style={styles.actions}>
-                  <Button mode="text" onPress={onDismiss} textColor="#64748b">Cancelar</Button>
-                  <Button 
-                    mode="contained" 
-                    onPress={() => handleSubmit()} 
-                    loading={loading} 
-                    disabled={loading}
-                    buttonColor="#059669"
-                    style={styles.saveButton}
-                  >
-                    Guardar Ubicación
-                  </Button>
-                </View>
-              </View>
-            );
-          }}
-        </Formik>
-      </Modal>
-    </Portal>
+                    <View
+                      style={[
+                        styles.inputContainer,
+                        loading && { opacity: 0.6 },
+                      ]}
+                      pointerEvents={loading ? 'none' : 'auto'}
+                    >
+                      <SearchComponent
+                        label="RECURRENTE (ZONA) *"
+                        placeholder={
+                          values.clientId
+                            ? 'Selecciona una zona'
+                            : 'Primero selecciona un cliente'
+                        }
+                        disabled={
+                          !!initialData ||
+                          !values.clientId ||
+                          loadingZones ||
+                          loading
+                        }
+                        options={zones.map(z => ({
+                          label: z.name,
+                          value: z.id,
+                        }))}
+                        value={values.zoneId}
+                        onSelect={val => setFieldValue('zoneId', val)}
+                        error={touched.zoneId && errors.zoneId}
+                        helperText={
+                          loadingZones ? 'Cargando zonas...' : undefined
+                        }
+                      />
+                    </View>
+
+                    <View
+                      style={[
+                        styles.inputContainer,
+                        loading && { opacity: 0.6 },
+                      ]}
+                      pointerEvents={loading ? 'none' : 'auto'}
+                    >
+                      <Text style={styles.label}>NOMBRE UBICACIÓN *</Text>
+                      <TextInput
+                        ref={nameInputRef}
+                        mode="outlined"
+                        placeholder="Ej: Recepción, Oficina 101"
+                        value={values.name}
+                        onChangeText={handleChange('name')}
+                        onBlur={handleBlur('name')}
+                        error={touched.name && !!errors.name}
+                        style={styles.input}
+                        outlineStyle={styles.inputOutline}
+                        disabled={loading}
+                      />
+                      {touched.name && errors.name && (
+                        <HelperText type="error" visible={true}>
+                          {errors.name}
+                        </HelperText>
+                      )}
+                    </View>
+
+                    <View style={styles.actions}>
+                      {!initialData && (
+                        <Button
+                          mode="outlined"
+                          onPress={handleSaveAndNew}
+                          style={styles.button}
+                          loading={loading}
+                          disabled={
+                            loading ||
+                            !values.name ||
+                            !values.clientId ||
+                            !values.zoneId
+                          }
+                          textColor="#059669"
+                        >
+                          Guardar y Nueva
+                        </Button>
+                      )}
+                      <Button
+                        mode="contained"
+                        onPress={handleNormalSubmit}
+                        loading={loading}
+                        disabled={loading}
+                        buttonColor="#059669"
+                        style={[styles.button, styles.saveButton]}
+                      >
+                        {initialData ? 'Actualizar' : 'Guardar'}
+                      </Button>
+                    </View>
+                  </View>
+                );
+              }}
+            </Formik>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </RNModal>
   );
 };
 
 const styles = StyleSheet.create({
-  modal: {
-    backgroundColor: 'white',
-    margin: 20,
-    borderRadius: 24,
-    overflow: 'hidden',
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    backgroundColor: '#f8fafc',
-    padding: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#F1F5F9',
   },
   title: {
     fontWeight: '800',
-    color: '#1e293b',
+    color: '#1E293B',
+    fontSize: 22,
   },
   subtitle: {
-    color: '#64748b',
-    marginTop: 4,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   formContent: {
-    padding: 24,
+    padding: 20,
+    flex: 1,
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   label: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '900',
-    color: '#64748b',
+    color: '#64748B',
     marginBottom: 8,
     letterSpacing: 1,
   },
   input: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#FFFFFF',
   },
   inputOutline: {
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: '#E2E8F0',
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     gap: 12,
-    marginTop: 24,
+    marginTop: 'auto',
+    paddingVertical: 20,
+  },
+  button: {
+    borderRadius: 12,
+    flex: 1,
+    height: 48,
+    justifyContent: 'center',
+    borderColor: '#059669',
   },
   saveButton: {
     borderRadius: 12,
   },
-  selectorModal: {
-    backgroundColor: 'white',
-    padding: 24,
-    margin: 30,
-    borderRadius: 20,
-    maxHeight: '70%',
-  },
-  selectorTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1e293b',
-    marginBottom: 20,
-  },
-  optionItem: {
+  successBanner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#ECFDF5',
+    padding: 8,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
   },
-  optionText: {
-    fontSize: 15,
-    color: '#334155',
+  successText: {
+    color: '#065F46',
+    fontWeight: '700',
+    fontSize: 13,
   },
-  emptySelector: {
-    padding: 40,
-    alignItems: 'center',
-  }
 });
-
-// Mock Icon component if not available
-const Icon = ({ name, size, color }: any) => (
-    <IconButton icon={name} size={size} iconColor={color} style={{ margin: 0 }} />
-);

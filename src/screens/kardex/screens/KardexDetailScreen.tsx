@@ -6,18 +6,14 @@ import {
   TouchableOpacity, 
   Image, 
   Linking, 
-  Dimensions, 
   Platform, 
   StatusBar,
   ImageStyle
 } from 'react-native';
 import { 
-  Text, 
-  ActivityIndicator, 
-  Chip, 
-  Avatar, 
-  Icon, 
-  Button 
+  Divider,
+  Icon,
+  ActivityIndicator
 } from 'react-native-paper';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
@@ -30,12 +26,18 @@ import { getKardexById, IKardexEntry } from '../service/kardex.service';
 import { updateAssignmentStatus, getAllAssignments } from '../../assignments/service/assignment.service';
 import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
 import { PreviewMedia } from '../../../shared/components/PreviewMedia';
+import { 
+  ITScreenWrapper, 
+  ITText, 
+  ITCard, 
+  ITButton, 
+  LoaderComponent 
+} from '../../../shared/components';
 import { theme } from '../../../shared/theme/theme';
+import { COLORS } from '../../../shared/utils/constants';
 
 // Configurar dayjs en español
 dayjs.locale('es');
-
-const { width } = Dimensions.get('window');
 
 export const KardexDetailScreen = ({ route }: any) => {
   const { item: initialItem, kardexId: paramId } = route.params;
@@ -148,14 +150,16 @@ export const KardexDetailScreen = ({ route }: any) => {
         <View style={styles.checklistContainer}>
           {headerText ? (
             <View style={styles.mainNotes}>
-              <Text style={styles.notesText}>{headerText}</Text>
+              <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant}>{headerText}</ITText>
             </View>
           ) : null}
           
-          <View style={styles.checklistCard}>
+          <ITCard style={styles.checklistCard}>
             <View style={styles.checklistHeader}>
-              <Icon source="clipboard-check-outline" size={18} color="#6366F1" />
-              <Text style={styles.checklistTitle}>LISTA DE VERIFICACIÓN</Text>
+              <Icon source="clipboard-check-outline" size={18} color={COLORS.primary} />
+              <ITText variant="labelSmall" weight="900" color={COLORS.primary} style={styles.checklistTitle}>
+                LISTA DE VERIFICACIÓN
+              </ITText>
             </View>
             
             {lines.map((line, idx) => {
@@ -166,25 +170,28 @@ export const KardexDetailScreen = ({ route }: any) => {
                   <Icon 
                     source={isCompleted ? 'checkbox-marked' : 'checkbox-blank-outline'} 
                     size={20} 
-                    color={isCompleted ? '#10B981' : '#D1D5DB'} 
+                    color={isCompleted ? COLORS.emerald : theme.colors.outlineVariant} 
                   />
-                  <Text style={[
-                    styles.checklistText,
-                    isCompleted && styles.checklistTextCompleted
-                  ]}>
+                  <ITText 
+                    variant="bodyMedium" 
+                    style={[
+                        styles.checklistText,
+                        isCompleted && styles.checklistTextCompleted
+                    ]}
+                  >
                     {text}
-                  </Text>
+                  </ITText>
                 </View>
               );
             })}
-          </View>
+          </ITCard>
         </View>
       );
     }
 
     return (
       <View style={styles.mainNotes}>
-        <Text style={styles.notesText}>{notes}</Text>
+        <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant}>{notes}</ITText>
       </View>
     );
   }, []);
@@ -192,8 +199,10 @@ export const KardexDetailScreen = ({ route }: any) => {
   const renderMedia = useCallback(() => {
     if (!item?.media?.length) return (
       <View style={styles.emptyMedia}>
-        <Icon source="image-off-outline" size={40} color="#94A3B8" />
-        <Text style={styles.emptyMediaText}>Sin evidencia multimedia</Text>
+        <Icon source="image-off-outline" size={40} color={theme.colors.outline} />
+        <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant} style={styles.emptyMediaText}>
+          Sin evidencia multimedia
+        </ITText>
       </View>
     );
 
@@ -244,7 +253,9 @@ export const KardexDetailScreen = ({ route }: any) => {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={styles.loadingText}>Cargando detalle del reporte...</Text>
+        <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant} style={styles.loadingText}>
+            Cargando detalle del reporte...
+        </ITText>
       </View>
     );
   }
@@ -252,61 +263,70 @@ export const KardexDetailScreen = ({ route }: any) => {
   if (!item) return null;
 
   return (
-    <View style={styles.container}>
+    <ITScreenWrapper padding={false} style={styles.container}>
+      <LoaderComponent visible={confirming} />
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
-        {/* Header Estilo Web Modal */}
-        <View style={[styles.modernHeader, { paddingTop: insets.top }]}>
-          <View style={styles.headerTopRow}>
-            <View style={styles.headerTitles}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Text style={styles.headerTitle}>Detalle de Actividad</Text>
-                <View style={styles.idBadge}>
-                  <Text style={styles.idText}>#{item.id}</Text>
+        {/* Header Section */}
+        <View style={[styles.modernHeader, { paddingTop: insets.top + 16 }]}>
+           <View style={styles.headerTopRow}>
+              <View style={styles.headerTitles}>
+                <View style={styles.titleRow}>
+                  <ITText variant="headlineSmall" weight="bold" style={styles.headerTitle}>
+                    Detalle de Actividad
+                  </ITText>
+                  <View style={styles.idBadge}>
+                    <ITText variant="labelSmall" weight="bold" color={theme.colors.onSurfaceVariant}>
+                        #{item.id.split('-')[0]}...
+                    </ITText>
+                  </View>
+                </View>
+                <ITText variant="bodySmall" color={theme.colors.onSurfaceVariant} style={styles.headerSubtitle}>
+                  Registrado el {dayjs(item.timestamp).format('DD [de] MMMM, YYYY [a las] HH:mm a')}
+                </ITText>
+              </View>
+           </View>
+
+           <View style={styles.headerMetaContainer}>
+              <View style={styles.metaItem}>
+                <View style={[styles.metaIconBg, { backgroundColor: '#EEF2FF' }]}>
+                  <Icon source="account" size={18} color="#6366F1" />
+                </View>
+                <View style={styles.metaTextContainer}>
+                  <ITText variant="labelSmall" weight="bold" color={theme.colors.outline} style={styles.metaLabel}>REALIZADO POR</ITText>
+                  <ITText variant="bodyMedium" weight="bold" style={styles.metaValue}>{item.user.name} {item.user.lastName}</ITText>
                 </View>
               </View>
-              <Text style={styles.headerSubtitle}>
-                Registrado el {dayjs(item.timestamp).format('DD [de] MMMM, YYYY [a las] HH:mm a')}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.headerMetaRow}>
-            <View style={styles.metaItem}>
-              <View style={[styles.metaIconBg, { backgroundColor: '#EEF2FF' }]}>
-                <Icon source="account" size={18} color="#6366F1" />
+              
+              <View style={styles.metaItem}>
+                <View style={[styles.metaIconBg, { backgroundColor: '#ECFDF5' }]}>
+                  <Icon source="map-marker" size={18} color={COLORS.emerald} />
+                </View>
+                <View style={styles.metaTextContainer}>
+                  <ITText variant="labelSmall" weight="bold" color={theme.colors.outline} style={styles.metaLabel}>UBICACIÓN</ITText>
+                  <ITText variant="bodyMedium" weight="bold" style={styles.metaValue} numberOfLines={2}>
+                    {item.location.name}
+                  </ITText>
+                </View>
               </View>
-              <View>
-                <Text style={styles.metaLabel}>REALIZADO POR</Text>
-                <Text style={styles.metaValue}>{item.user.name} {item.user.lastName}</Text>
-              </View>
-            </View>
-            <View style={styles.metaItem}>
-              <View style={[styles.metaIconBg, { backgroundColor: '#ECFDF5' }]}>
-                <Icon source="map-marker" size={18} color="#10B981" />
-              </View>
-              <View>
-                <Text style={styles.metaLabel}>UBICACIÓN</Text>
-                <Text style={styles.metaValue}>{item.location.name}</Text>
-              </View>
-            </View>
-          </View>
+           </View>
         </View>
 
-        {/* Section: Scan Location (Interactive Map) */}
-        <View style={styles.sectionCard}>
+        {/* Section: Scan Location */}
+        <ITCard style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <View style={styles.titleIndicator} />
-              <Text style={styles.sectionTitle}>Ubicación de Escaneo</Text>
+              <ITText variant="titleMedium" weight="bold">Ubicación de Escaneo</ITText>
             </View>
             {item.latitude && item.longitude && (
               <TouchableOpacity style={styles.mapAction} onPress={handleOpenMap}>
                 <Icon source="google-maps" size={16} color="#6366F1" />
-                <Text style={styles.mapActionText}>Abrir GPS</Text>
+                <ITText variant="labelSmall" weight="bold" color="#6366F1">Abrir GPS</ITText>
               </TouchableOpacity>
             )}
           </View>
@@ -333,58 +353,57 @@ export const KardexDetailScreen = ({ route }: any) => {
                 />
               </MapView>
               <View style={styles.mapCoordsBadge}>
-                <Text style={styles.mapCoordsText}>
+                <ITText variant="labelSmall" color={theme.colors.onSurfaceVariant}>
                    GPS: {item.latitude.toFixed(6)}, {item.longitude.toFixed(6)}
-                </Text>
+                </ITText>
               </View>
             </View>
           ) : (
             <View style={styles.emptyMap}>
-               <Icon source="map-marker-off" size={32} color="#CBD5E1" />
-               <Text style={styles.emptyMapText}>Sin coordenadas registradas</Text>
+               <Icon source="map-marker-off" size={32} color={theme.colors.outlineVariant} />
+               <ITText variant="bodySmall" color={theme.colors.outline}>Sin coordenadas registradas</ITText>
             </View>
           )}
-        </View>
+        </ITCard>
 
         {/* Section: Multimedia Evidence */}
-        <View style={styles.sectionCard}>
+        <ITCard style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <View style={[styles.titleIndicator, { backgroundColor: '#8B5CF6' }]} />
-              <Text style={styles.sectionTitle}>Evidencia Multimedia</Text>
+              <ITText variant="titleMedium" weight="bold">Evidencia Multimedia</ITText>
             </View>
             {item.media && item.media.length > 0 && (
               <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>{item.media.length} elementos</Text>
+                <ITText variant="labelSmall" weight="bold" color="#7C3AED">{item.media.length} elementos</ITText>
               </View>
             )}
           </View>
           {renderMedia()}
-        </View>
+        </ITCard>
 
         {/* Section: Observations & Checklist */}
-        <View style={styles.sectionCard}>
+        <ITCard style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
-              <View style={[styles.titleIndicator, { backgroundColor: '#10B981' }]} />
-              <Text style={styles.sectionTitle}>Observaciones</Text>
+              <View style={[styles.titleIndicator, { backgroundColor: COLORS.emerald }]} />
+              <ITText variant="titleMedium" weight="bold">Observaciones</ITText>
             </View>
             <View style={[styles.countBadge, { backgroundColor: '#ECFDF5' }]}>
-               <Text style={[styles.countBadgeText, { color: '#059669' }]}>
+               <ITText variant="labelSmall" weight="bold" color={COLORS.emerald}>
                  {tasks.length > 0 ? `${tasks.length} tareas` : 'Notas'}
-               </Text>
+               </ITText>
             </View>
           </View>
           
           <View style={styles.checklistContainer}>
             {renderNotes(item.notes)}
 
-            {/* If there are separate assignment tasks not in the notes, show them too */}
             {tasks.length > 0 && !item.notes?.includes('--- LISTA DE VERIFICACIÓN ---') && (
-              <View style={styles.checklistCard}>
+              <ITCard style={styles.checklistCard}>
                 <View style={styles.checklistHeader}>
                   <Icon source="clipboard-check-outline" size={18} color="#6366F1" />
-                  <Text style={styles.checklistTitle}>TAREAS DEL SERVICIO</Text>
+                  <ITText variant="labelSmall" weight="900" color="#6366F1" style={styles.checklistTitle}>TAREAS DEL SERVICIO</ITText>
                 </View>
                 
                 {tasks.map((task, idx) => (
@@ -392,35 +411,35 @@ export const KardexDetailScreen = ({ route }: any) => {
                     <Icon 
                       source={task.completed ? 'checkbox-marked' : 'checkbox-blank-outline'} 
                       size={20} 
-                      color={task.completed ? '#10B981' : '#D1D5DB'} 
+                      color={task.completed ? COLORS.emerald : theme.colors.outlineVariant} 
                     />
-                    <Text style={[
-                      styles.checklistText,
-                      task.completed && styles.checklistTextCompleted
-                    ]}>
+                    <ITText 
+                      variant="bodyMedium" 
+                      style={[
+                        styles.checklistText,
+                        task.completed && styles.checklistTextCompleted
+                      ]}
+                    >
                       {task.description}
-                    </Text>
+                    </ITText>
                   </View>
                 ))}
-              </View>
+              </ITCard>
             )}
           </View>
-        </View>
+        </ITCard>
 
-        {/* Action: Validation Confirmation */}
+        {/* Action Button */}
         {item.assignmentId && item.assignment?.status === 'UNDER_REVIEW' && (
           <View style={styles.actionSection}>
-            <Button 
-              mode="contained" 
+            <ITButton 
+              label="Validar y Confirmar Reporte"
               onPress={handleConfirmReport} 
               loading={confirming}
-              disabled={confirming}
-              style={styles.webConfirmButton}
-              labelStyle={styles.webConfirmButtonLabel}
               icon="check-circle"
-            >
-              Validar y Confirmar Reporte
-            </Button>
+              backgroundColor={COLORS.emerald}
+              style={styles.confirmButton}
+            />
           </View>
         )}
 
@@ -433,7 +452,7 @@ export const KardexDetailScreen = ({ route }: any) => {
         type={previewType}
         onClose={() => setPreviewVisible(false)}
       />
-    </View>
+    </ITScreenWrapper>
   );
 };
 
@@ -449,12 +468,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
   },
   loadingText: {
     marginTop: 12,
-    color: '#64748B',
-    fontSize: 14,
   },
   modernHeader: {
     backgroundColor: '#fff',
@@ -464,33 +480,22 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F1F5F9',
   },
   headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     marginBottom: 20,
   },
-  closeButtonCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F8FAFC',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   headerTitles: {
-    flex: 1,
+    gap: 4,
   },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 4,
-    fontWeight: '500',
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    letterSpacing: -0.5,
+    color: theme.colors.onSurface,
+  },
+  headerSubtitle: {
+    fontWeight: '500',
   },
   idBadge: {
     backgroundColor: '#F1F5F9',
@@ -498,20 +503,17 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  idText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#64748B',
-  },
-  headerMetaRow: {
+  headerMetaContainer: {
     flexDirection: 'row',
-    gap: 20,
-    marginTop: 4,
+    gap: 16,
+    flexWrap: 'wrap',
   },
   metaItem: {
+    flex: 1,
+    minWidth: '45%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   metaIconBg: {
     width: 36,
@@ -520,30 +522,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  metaTextContainer: {
+    flex: 1,
+  },
   metaLabel: {
     fontSize: 9,
-    fontWeight: 'bold',
-    color: '#94A3B8',
     letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   metaValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#334155',
+    color: theme.colors.onSurface,
   },
   sectionCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginTop: 16,
-    borderRadius: 20,
     padding: 20,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+    borderRadius: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -562,11 +556,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#6366F1',
     borderRadius: 2,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
   mapAction: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -576,17 +565,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 6,
   },
-  mapActionText: {
-    fontSize: 11,
-    color: '#6366F1',
-    fontWeight: 'bold',
-  },
   mapPreviewContainer: {
     height: 180,
     borderRadius: 16,
     backgroundColor: '#F8FAFC',
     overflow: 'hidden',
-    position: 'relative',
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -604,12 +587,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  mapCoordsText: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
   emptyMap: {
     height: 120,
     backgroundColor: '#F8FAFC',
@@ -620,21 +597,11 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: '#CBD5E1',
   },
-  emptyMapText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#94A3B8',
-  },
   countBadge: {
     backgroundColor: '#F5F3FF',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-  },
-  countBadgeText: {
-    fontSize: 11,
-    color: '#7C3AED',
-    fontWeight: 'bold',
   },
   mediaGallery: {
     marginHorizontal: -20,
@@ -674,9 +641,6 @@ const styles = StyleSheet.create({
   },
   emptyMediaText: {
     marginTop: 12,
-    fontSize: 13,
-    color: '#94A3B8',
-    fontWeight: '500',
   },
   checklistContainer: {
     gap: 16,
@@ -687,11 +651,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 15,
-    elevation: 5,
+    padding: 0,
   },
   checklistHeader: {
     flexDirection: 'row',
@@ -704,9 +664,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F1F5F9',
   },
   checklistTitle: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#6366F1',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
@@ -720,12 +677,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F8FAFC',
   },
   checklistText: {
-    fontSize: 14,
-    color: '#334155',
-    fontWeight: '500',
+    flex: 1,
+    color: theme.colors.onSurface,
   },
   checklistTextCompleted: {
-    color: '#94A3B8',
+    color: theme.colors.outline,
     textDecorationLine: 'line-through',
   },
   mainNotes: {
@@ -733,66 +689,14 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderLeftWidth: 3,
-    borderLeftColor: '#10B98133',
-  },
-  notesText: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 22,
-  },
-  tasksWrapper: {
-    gap: 8,
-  },
-  webTaskItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    gap: 12,
-  },
-  taskCheckbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#CBD5E1',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  taskCheckboxActive: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
-  },
-  webTaskText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#475569',
-    fontWeight: '500',
-  },
-  webTaskTextDone: {
-    color: '#94A3B8',
-    textDecorationLine: 'line-through',
+    borderLeftColor: COLORS.emerald + '33',
   },
   actionSection: {
     marginTop: 24,
     paddingHorizontal: 16,
   },
-  webConfirmButton: {
-    backgroundColor: '#10B981',
+  confirmButton: {
     borderRadius: 16,
-    paddingVertical: 8,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  webConfirmButtonLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 

@@ -1,32 +1,27 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  Linking,
-  Dimensions,
-  StatusBar,
-  ImageStyle,
-} from 'react-native';
-import {
-  Text,
-  ActivityIndicator,
-  Chip,
-  Avatar,
-  Icon,
-} from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import Video from 'react-native-video';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Dimensions,
+  Image,
+  ImageStyle,
+  Linking,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+import { ActivityIndicator, Icon, Text } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Video from 'react-native-video';
 
-import { getRoundDetail, IRoundDetail } from '../service/rounds.service';
+import { useSelector } from 'react-redux';
 import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
 import { PreviewMedia } from '../../../shared/components/PreviewMedia';
+import { getRoundDetail, IRoundDetail } from '../service/rounds.service';
 
 // Configurar dayjs en español
 dayjs.locale('es');
@@ -75,6 +70,23 @@ export const RoundDetailScreen = ({ route }: any) => {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewType, setPreviewType] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
+
+  const [sharing, setSharing] = useState(false);
+
+  const token = useSelector((state: any) => state.userState.token);
+
+  const handleSharePDF = async () => {
+    if (!data || sharing) return;
+    setSharing(true);
+    try {
+      const url = `${API_CONSTANTS.BASE_URL}/rounds/${id}/report?token=${token}`;
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error('Error opening PDF:', error);
+    } finally {
+      setSharing(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -172,7 +184,12 @@ export const RoundDetailScreen = ({ route }: any) => {
       previousTime = current;
     });
 
-    const expectedLocs = data.round.client?.locations || [];
+    const expectedLocs =
+      data.round.recurringConfiguration?.recurringLocations?.map(
+        (rl: any) => rl.location,
+      ) ||
+      data.round.client?.locations ||
+      [];
     const missingLocs = expectedLocs.filter(
       (l: any) => !visitedLocations.has(String(l.id)),
     );
@@ -487,6 +504,21 @@ export const RoundDetailScreen = ({ route }: any) => {
                 {dayjs(data.round.startTime).format('DD [de] MMMM, YYYY')}
               </Text>
             </View>
+
+            <TouchableOpacity
+              style={[styles.shareBtn, sharing && { opacity: 0.6 }]}
+              onPress={handleSharePDF}
+              disabled={sharing}
+            >
+              {sharing ? (
+                <ActivityIndicator size="small" color="#3B82F6" />
+              ) : (
+                <View style={styles.shareBtnContent}>
+                  <Icon source="file-pdf-box" size={20} color="#3B82F6" />
+                  <Text style={styles.shareBtnText}>Reporte</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
 
           <View style={styles.headerMetaRow}>
@@ -1422,6 +1454,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
     fontWeight: '500',
+  },
+  shareBtn: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  shareBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  shareBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#64748B',
   },
 });
 

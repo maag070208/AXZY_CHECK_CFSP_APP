@@ -1,6 +1,15 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, View, Modal, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  View,
+  Modal,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import {
   ActivityIndicator,
   Avatar,
@@ -15,10 +24,13 @@ import {
   Divider,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { showLoader } from '../../../core/store/slices/loader.slice';
+import { ITAlert } from '../../../shared/components';
 import {
   getPaginatedZones,
   deleteZone,
-  createZone
+  createZone,
+  updateZone,
 } from '../service/zone.service';
 import { getClients } from '../../clients/service/client.service';
 import { IZone } from '../type/zone.types';
@@ -38,7 +50,7 @@ export const ZonesScreen = ({ navigation }: any) => {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.userState);
   const isAdmin = user.role === UserRole.ADMIN;
-  
+
   const [zones, setZones] = useState<IZone[]>([]);
   const [clients, setClients] = useState<IClient[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,13 +60,13 @@ export const ZonesScreen = ({ navigation }: any) => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Filters
   const [showFilters, setShowFilters] = useState(false);
-  const [appliedClientId, setAppliedClientId] = useState<number | string>("");
-  const [tempClientId, setTempClientId] = useState<number | string>("");
+  const [appliedClientId, setAppliedClientId] = useState<number | string>('');
+  const [tempClientId, setTempClientId] = useState<number | string>('');
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingZone, setEditingZone] = useState<IZone | null>(null);
@@ -71,7 +83,7 @@ export const ZonesScreen = ({ navigation }: any) => {
         setClients(res.data || []);
       }
     } catch (error) {
-      console.error("Error loading clients for filter:", error);
+      console.error('Error loading clients for filter:', error);
     }
   };
 
@@ -88,43 +100,47 @@ export const ZonesScreen = ({ navigation }: any) => {
 
   const fetchData = async (pageNum: number, isRefreshing = false) => {
     if (pageNum === 1) {
-        if (!isRefreshing) setLoading(true);
+      if (!isRefreshing) {
+        setLoading(true);
+        dispatch(showLoader(true));
+      }
     } else {
-        setLoadingMore(true);
+      setLoadingMore(true);
     }
 
     const params = {
-        page: pageNum,
-        limit: 20,
-        filters: {
-            search: debouncedSearch,
-            clientId: appliedClientId || undefined
-        }
+      page: pageNum,
+      limit: 20,
+      filters: {
+        search: debouncedSearch,
+        clientId: appliedClientId || undefined,
+      },
     };
 
     try {
-        const res = await getPaginatedZones(params);
-        if (res && res.success && res.data) {
-            const newRows = res.data.rows || [];
-            const totalRows = res.data.total || 0;
+      const res = await getPaginatedZones(params);
+      if (res && res.success && res.data) {
+        const newRows = res.data.rows || [];
+        const totalRows = res.data.total || 0;
 
-            if (pageNum === 1) {
-                setZones(newRows);
-                setHasMore(newRows.length < totalRows);
-            } else {
-                setZones(prev => [...prev, ...newRows]);
-                setHasMore(zones.length + newRows.length < totalRows);
-            }
-
-            setTotal(totalRows);
-            setPage(pageNum);
+        if (pageNum === 1) {
+          setZones(newRows);
+          setHasMore(newRows.length < totalRows);
+        } else {
+          setZones(prev => [...prev, ...newRows]);
+          setHasMore(zones.length + newRows.length < totalRows);
         }
+
+        setTotal(totalRows);
+        setPage(pageNum);
+      }
     } catch (error) {
-        console.error("Error fetching zones:", error);
+      console.error('Error fetching zones:', error);
     } finally {
-        setLoading(false);
-        setRefreshing(false);
-        setLoadingMore(false);
+      setLoading(false);
+      dispatch(showLoader(false));
+      setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
@@ -135,7 +151,7 @@ export const ZonesScreen = ({ navigation }: any) => {
 
   const handleLoadMore = () => {
     if (!loading && !loadingMore && hasMore) {
-        fetchData(page + 1);
+      fetchData(page + 1);
     }
   };
 
@@ -156,7 +172,7 @@ export const ZonesScreen = ({ navigation }: any) => {
   };
 
   const handleClearFilters = () => {
-    setTempClientId("");
+    setTempClientId('');
   };
 
   const handleCreate = () => {
@@ -172,57 +188,71 @@ export const ZonesScreen = ({ navigation }: any) => {
   const handleSubmit = async (data: any) => {
     setSubmitting(true);
     try {
-        const res = editingZone 
-            ? await updateZone(editingZone.id, data)
-            : await createZone(data);
-            
-        if (res && res.success) {
-            setModalVisible(false);
-            setEditingZone(null);
-            dispatch(showToast({ 
-                message: editingZone ? 'Zona actualizada' : 'Zona creada correctamente', 
-                type: 'success' 
-            }));
-            fetchData(1);
-        } else {
-            const msg = res?.messages?.[0] || 'Error al procesar zona';
-            dispatch(showToast({ message: msg, type: 'error' }));
-        }
-    } catch (error: any) {
-        const msg = error?.messages?.[0] || 'Ocurrió un error inesperado';
+      const res = editingZone
+        ? await updateZone(editingZone.id, data)
+        : await createZone(data);
+
+      if (res && res.success) {
+        setModalVisible(false);
+        setEditingZone(null);
+        dispatch(
+          showToast({
+            message: editingZone
+              ? 'Zona actualizada'
+              : 'Zona creada correctamente',
+            type: 'success',
+          }),
+        );
+        fetchData(1);
+      } else {
+        const msg = res?.messages?.[0] || 'Error al procesar zona';
         dispatch(showToast({ message: msg, type: 'error' }));
+      }
+    } catch (error: any) {
+      const msg = error?.messages?.[0] || 'Ocurrió un error inesperado';
+      dispatch(showToast({ message: msg, type: 'error' }));
     } finally {
-        setSubmitting(false);
+      setSubmitting(false);
     }
   };
 
-  const handleDelete = (item: IZone) => {
-    Alert.alert(
-      'Eliminar zona',
-      `¿Estás seguro de que deseas eliminar "${item.name}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Eliminar', 
-          style: 'destructive',
-          onPress: async () => {
-            const res = await deleteZone(item.id);
-            if (res && res.success) {
-              dispatch(showToast({ message: 'Zona eliminada', type: 'success' }));
-              fetchData(1);
-            }
-          }
-        },
-      ]
-    );
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [zoneToDelete, setZoneToDelete] = useState<IZone | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeletePress = (item: IZone) => {
+    setZoneToDelete(item);
+    setDeleteDialogVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!zoneToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteZone(zoneToDelete.id);
+      if (res && res.success) {
+        dispatch(showToast({ message: 'Zona eliminada', type: 'success' }));
+        fetchData(1);
+      } else {
+        dispatch(
+          showToast({ message: 'No se pudo eliminar la zona', type: 'error' }),
+        );
+      }
+    } catch (error) {
+      dispatch(showToast({ message: 'Error al eliminar', type: 'error' }));
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogVisible(false);
+      setZoneToDelete(null);
+    }
   };
 
   const clientOptions = clients.map(c => ({
     label: c.name,
-    value: c.id
+    value: c.id,
   }));
 
-  const activeFiltersCount = appliedClientId !== "" ? 1 : 0;
+  const activeFiltersCount = appliedClientId !== '' ? 1 : 0;
 
   const renderItem = ({ item }: { item: IZone }) => (
     <Card
@@ -230,44 +260,57 @@ export const ZonesScreen = ({ navigation }: any) => {
       elevation={1}
       onPress={() => {
         navigation.navigate('LOCATIONS_STACK', {
-            screen: 'LOCATIONS_MAIN',
-            params: { zoneId: item.id, zoneName: item.name }
+          screen: 'LOCATIONS_MAIN',
+          params: { zoneId: item.id, zoneName: item.name },
         });
       }}
     >
       <View style={styles.cardLayout}>
         <View style={styles.avatarSection}>
-          <Avatar.Icon 
-            size={56} 
-            icon="map-clock-outline" 
-            style={styles.avatar} 
+          <Avatar.Icon
+            size={56}
+            icon="map-clock-outline"
+            style={styles.avatar}
             color="#0F4C3A"
           />
-          <View style={[styles.statusBadge, { backgroundColor: item.active ? '#059669' : '#64748B' }]}>
-            <Icon source={item.active ? "check" : "minus"} size={10} color="#fff" />
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: item.active ? '#059669' : '#64748B' },
+            ]}
+          >
+            <Icon
+              source={item.active ? 'check' : 'minus'}
+              size={10}
+              color="#fff"
+            />
           </View>
         </View>
 
         <View style={styles.infoSection}>
-          <Text style={styles.propertyName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.ownerText} numberOfLines={1}>Cliente: {item.client?.name || 'N/A'}</Text>
+          <Text style={styles.propertyName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.ownerText} numberOfLines={1}>
+            Cliente: {item.client?.name || 'N/A'}
+          </Text>
         </View>
 
         <View style={styles.actions}>
           {isAdmin ? (
             <View style={{ flexDirection: 'row' }}>
-                <IconButton
-                    icon="pencil-outline"
-                    size={20}
-                    onPress={() => handleEdit(item)}
-                    iconColor="#64748B"
-                />
-                <IconButton
-                    icon="trash-can-outline"
-                    size={20}
-                    onPress={() => handleDelete(item)}
-                    iconColor="#ba1a1a"
-                />
+              <IconButton
+                icon="pencil-outline"
+                size={20}
+                onPress={() => handleEdit(item)}
+                iconColor="#64748B"
+              />
+              <IconButton
+                icon="trash-can-outline"
+                size={20}
+                onPress={() => handleDeletePress(item)}
+                iconColor="#ba1a1a"
+              />
             </View>
           ) : (
             <IconButton icon="chevron-right" iconColor="#CBD5E1" size={24} />
@@ -293,7 +336,7 @@ export const ZonesScreen = ({ navigation }: any) => {
             onPress={handleOpenFilters}
           />
         </View>
-        
+
         <Searchbar
           placeholder="Buscar zona por nombre..."
           onChangeText={setSearch}
@@ -306,26 +349,26 @@ export const ZonesScreen = ({ navigation }: any) => {
         />
       </View>
 
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-          <Text style={styles.loadingText}>Cargando zonas...</Text>
-        </View>
-      ) : (
+      {!loading || refreshing ? (
         <FlatList
           data={zones}
           keyExtractor={item => String(item.id)}
           renderItem={renderItem}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[PRIMARY_COLOR]} tintColor={PRIMARY_COLOR} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[PRIMARY_COLOR]}
+              tintColor={PRIMARY_COLOR}
+            />
           }
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={
             loadingMore ? (
-                <View style={styles.footerLoader}>
-                    <ActivityIndicator size="small" color={PRIMARY_COLOR} />
-                </View>
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color={PRIMARY_COLOR} />
+              </View>
             ) : null
           }
           contentContainerStyle={styles.listContainer}
@@ -333,27 +376,35 @@ export const ZonesScreen = ({ navigation }: any) => {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <View style={styles.emptyIcon}>
-                <IconButton icon="map-off-outline" size={40} iconColor="#94A3B8" />
+                <IconButton
+                  icon="map-off-outline"
+                  size={40}
+                  iconColor="#94A3B8"
+                />
               </View>
               <Text style={styles.emptyTitle}>Sin zonas</Text>
-              <Text style={styles.emptyText}>No se encontraron zonas registradas.</Text>
+              <Text style={styles.emptyText}>
+                No se encontraron zonas registradas.
+              </Text>
             </View>
           }
         />
+      ) : (
+        <></>
       )}
 
       {isAdmin && (
-          <FAB
-            icon="plus"
-            style={[styles.fab, { bottom: insets.bottom + 24 }]}
-            onPress={handleCreate}
-            color="white"
-          />
+        <FAB
+          icon="plus"
+          style={[styles.fab, { bottom: insets.bottom + 24 }]}
+          onPress={handleCreate}
+          color="white"
+        />
       )}
 
       <Portal>
-        <Modal 
-          visible={showFilters} 
+        <Modal
+          visible={showFilters}
           onDismiss={() => setShowFilters(false)}
           contentContainerStyle={styles.modalFullScreen}
         >
@@ -362,10 +413,18 @@ export const ZonesScreen = ({ navigation }: any) => {
               <Icon source="filter-variant" size={24} color={PRIMARY_COLOR} />
               <Text style={styles.modalTitle}>Filtros de Zonas</Text>
             </View>
-            <IconButton icon="close" size={24} onPress={() => setShowFilters(false)} iconColor="#94A3B8" />
+            <IconButton
+              icon="close"
+              size={24}
+              onPress={() => setShowFilters(false)}
+              iconColor="#94A3B8"
+            />
           </View>
 
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.modalScroll}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.filterGroup}>
               <Text style={styles.filterLabel}>POR CLIENTE</Text>
               <SearchComponent
@@ -378,11 +437,22 @@ export const ZonesScreen = ({ navigation }: any) => {
             </View>
           </ScrollView>
 
-          <View style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}>
-            <Button mode="outlined" onPress={handleClearFilters} style={styles.footerButton} textColor="#64748B">
+          <View
+            style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
+          >
+            <Button
+              mode="outlined"
+              onPress={handleClearFilters}
+              style={styles.footerButton}
+              textColor="#64748B"
+            >
               Limpiar
             </Button>
-            <Button mode="contained" onPress={handleApplyFilters} style={[styles.footerButton, { backgroundColor: PRIMARY_COLOR }]}>
+            <Button
+              mode="contained"
+              onPress={handleApplyFilters}
+              style={[styles.footerButton, { backgroundColor: PRIMARY_COLOR }]}
+            >
               Aplicar Filtros
             </Button>
           </View>
@@ -393,11 +463,22 @@ export const ZonesScreen = ({ navigation }: any) => {
         visible={modalVisible}
         initialData={editingZone}
         onDismiss={() => {
-            setModalVisible(false);
-            setEditingZone(null);
+          setModalVisible(false);
+          setEditingZone(null);
         }}
         onSubmit={handleSubmit}
         loading={submitting}
+      />
+
+      <ITAlert
+        visible={deleteDialogVisible}
+        onDismiss={() => setDeleteDialogVisible(false)}
+        onConfirm={confirmDelete}
+        title="Eliminar Zona"
+        description={`¿Estás seguro de que deseas eliminar la zona "${zoneToDelete?.name}"? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        type="danger"
+        loading={isDeleting}
       />
     </View>
   );

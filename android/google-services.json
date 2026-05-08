@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "283907146623",
+    "project_id": "checkapp-8dc38",
+    "storage_bucket": "checkapp-8dc38.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:283907146623:android:ce729f559ccd90a94b504a",
+        "android_client_info": {
+          "package_name": "com.checkapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtmVG1lXaWhtgDoEme1XSAz4x8AzpnVwQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

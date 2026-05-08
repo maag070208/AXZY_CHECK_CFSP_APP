@@ -43,7 +43,9 @@ export type RootStackParamList = {
 
   GUARDS_STACK: {
     GUARD_LIST: ScreenParams;
-    GUARD_DETAIL: ScreenParams<{ guardId: number }>;
+    GUARD_DETAIL: ScreenParams<{ guard: any }>;
+    ASSIGNMENT_DETAIL: ScreenParams<{ assignment: any }>;
+    GUARD_KARDEX_DETAIL: ScreenParams<{ kardexId: string }>;
   };
 
   ASSIGNMENTS_STACK: {
@@ -131,6 +133,8 @@ export const AppStacks: RootStackParamList = {
   GUARDS_STACK: {
     GUARD_LIST: {},
     GUARD_DETAIL: {},
+    ASSIGNMENT_DETAIL: {},
+    GUARD_KARDEX_DETAIL: {},
   },
   ASSIGNMENTS_STACK: {
     ASSIGNMENT_LIST: {},

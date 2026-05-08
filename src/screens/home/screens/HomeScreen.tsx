@@ -1,39 +1,61 @@
-import { FlatList, StyleSheet, View } from 'react-native';
-import { COLORS } from '../../../shared/utils/constants';
-import ModernStyles from '../../../shared/theme/app.styles';
-import { HomeItemComponent } from '../components/HomeItemComponent';
-import { UserRole } from '../../../core/types/IUser';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
+import {
+  Dimensions,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { Icon, useTheme } from 'react-native-paper';
 import { useSelector } from 'react-redux';
+
 import { RootState } from '../../../core/store/redux.config';
+import { UserRole } from '../../../core/types/IUser';
+import { ITScreenWrapper, ITText } from '../../../shared/components';
+import { COLORS } from '../../../shared/utils/constants';
+import { getDashboardStats } from '../../home/service/home.service';
+import { HomeItemComponent } from '../components/HomeItemComponent';
+import { IActiveRound } from '../types/HomeTypes';
 import { GuardDashboard } from './GuardDashboard';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
-import { getPendingIncidentsCount } from '../../assignments/service/incident.service';
+
+const { width } = Dimensions.get('window');
 
 export const HomeScreen = () => {
   const user = useSelector((state: RootState) => state.userState);
-  const [pendingIncidents, setPendingIncidents] = useState(0);
+  const navigation = useNavigation<any>();
+  const theme = useTheme();
 
-  // If user is GUARD, SHIFT_GUARD, or MANTENIMIENTO, show Dashboard directly
-  if (
-    user.role === UserRole.GUARD ||
-    user.role === UserRole.SHIFT ||
-    user.role === UserRole.MAINT
-  ) {
+  const [pendingIncidents, setPendingIncidents] = useState(0);
+  const [pendingMaintenance, setPendingMaintenance] = useState(0);
+  const [activeRounds, setActiveRounds] = useState<IActiveRound[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  if (user.role !== UserRole.ADMIN && user.role !== UserRole.RESDN) {
     return <GuardDashboard />;
   }
 
+  const loadDashboardData = async () => {
+    try {
+      const res = await getDashboardStats();
+      if (res.success && res.data) {
+        setPendingIncidents(res.data.pendingIncidentsCount);
+        setPendingMaintenance(res.data.pendingMaintenanceCount);
+        setActiveRounds(res.data.activeRounds);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
-      const loadCount = async () => {
-        if (user.role === UserRole.ADMIN) {
-          const res = await getPendingIncidentsCount();
-          if (res.success && res.data) {
-            setPendingIncidents((res.data as any).count);
-          }
-        }
-      };
-      loadCount();
+      loadDashboardData();
     }, [user.role]),
   );
 
@@ -44,261 +66,302 @@ export const HomeScreen = () => {
       icon: 'account-plus',
       stack: 'USERS_STACK',
       screen: 'USER_LIST',
-      color: COLORS.pink,
-      gradient: [COLORS.pink, '#ec4899'],
+      color: '#6366F1',
       roles: [UserRole.ADMIN],
     },
     {
       id: 'guards',
       label: 'Guardias',
-      icon: 'account-group',
+      icon: 'shield-check',
       stack: 'GUARDS_STACK',
       screen: 'GUARD_LIST',
-      color: COLORS.purple,
-      gradient: [COLORS.purple, '#8b5cf6'],
-      roles: [UserRole.ADMIN, UserRole.SHIFT],
+      color: '#8B5CF6',
+      roles: [UserRole.ADMIN],
     },
     {
       id: 'incidents',
-      label: 'Incidencias',
-      icon: 'alert-circle-outline',
+      label: 'Alertas',
+      icon: 'alert-rhombus',
       stack: 'INCIDENTS_STACK',
       screen: 'INCIDENT_LIST',
-      color: COLORS.red,
-      gradient: [COLORS.red, '#ef4444'],
+      color: COLORS.incidents,
       roles: [UserRole.ADMIN],
-      badge: pendingIncidents > 0 ? pendingIncidents : undefined,
+      badge: pendingIncidents,
     },
     {
       id: 'maintenance',
-      label: 'Mantenimiento',
-      icon: 'toolbox-outline',
+      label: 'Manto.',
+      icon: 'wrench',
       stack: 'MAINTENANCE_STACK',
       screen: 'MAINTENANCE_LIST',
-      color: COLORS.primary,
-      gradient: [COLORS.primary, '#fb8c00'],
-      roles: [UserRole.ADMIN, UserRole.MAINT],
+      color: COLORS.maintenance,
+      roles: [UserRole.ADMIN],
+      badge: pendingMaintenance,
     },
     {
       id: 'locations',
-      label: 'Ubicaciones',
-      icon: 'map-marker-outline',
+      label: 'Puntos',
+      icon: 'map-marker',
       stack: 'LOCATIONS_STACK',
       screen: 'LOCATIONS_MAIN',
-      color: COLORS.blue,
-      gradient: [COLORS.blue, '#3b82f6'],
-      roles: [UserRole.ADMIN, UserRole.SHIFT],
+      color: '#0EA5E9',
+      roles: [UserRole.ADMIN],
     },
     {
       id: 'recurring',
       label: 'Rutas',
-      icon: 'clipboard-clock-outline',
+      icon: 'repeat',
       stack: 'RECURRING_STACK',
       screen: 'RECURRING_LIST',
-      color: COLORS.emerald,
-      gradient: [COLORS.emerald, '#10b981'],
-      roles: [UserRole.ADMIN, UserRole.SHIFT],
+      color: '#10B981',
+      roles: [UserRole.ADMIN],
     },
     {
       id: 'rounds_history',
-      label: 'Hist. Recorridos',
-      icon: 'clipboard-text-clock',
+      label: 'Recorridos',
+      icon: 'map-marker-distance',
       stack: 'ROUNDS_STACK',
       screen: 'ROUNDS_LIST',
-      color: COLORS.indigo,
-      gradient: [COLORS.indigo, '#6366f1'],
-      roles: [UserRole.ADMIN, UserRole.SHIFT],
-    },
-    {
-      id: 'kardex',
-      label: 'Kardex',
-      icon: 'history',
-      stack: 'Kardex',
-      screen: 'KARDEX_LIST',
-      color: COLORS.cyan,
-      gradient: [COLORS.cyan, '#06b6d4'],
-      roles: [UserRole.ADMIN, UserRole.SHIFT],
+      color: '#64748B',
+      roles: [UserRole.ADMIN, UserRole.RESDN],
     },
     {
       id: 'schedules',
       label: 'Horarios',
-      icon: 'clock-outline',
+      icon: 'calendar-clock',
       stack: 'SCHEDULES_STACK',
       screen: 'SCHEDULES_LIST',
-      color: COLORS.amber,
-      gradient: [COLORS.amber, '#fbbf24'],
-      roles: [UserRole.ADMIN],
-    },
-    {
-      id: 'clients',
-      label: 'Clientes',
-      icon: 'office-building',
-      stack: 'CLIENTS_STACK',
-      screen: 'CLIENTS_MAIN',
-      color: COLORS.emerald,
-      gradient: [COLORS.emerald, '#10b981'],
+      color: '#F59E0B',
       roles: [UserRole.ADMIN],
     },
     {
       id: 'zones',
       label: 'Zonas',
-      icon: 'map-clock-outline',
+      icon: 'layers-outline',
       stack: 'ZONES_STACK',
       screen: 'ZONES_MAIN',
-      color: COLORS.indigo,
-      gradient: [COLORS.indigo, '#6366f1'],
+      color: '#EC4899',
       roles: [UserRole.ADMIN],
     },
-    {
-      id: 'invitation_form',
-      label: 'Generar Pase',
-      icon: 'qrcode-plus',
-      stack: 'INVITATIONS_STACK',
-      screen: 'INVITATION_FORM',
-      color: COLORS.emerald,
-      roles: [UserRole.RESDN],
-    },
-    {
-      id: 'invitations_list',
-      label: 'Mis Pases',
-      icon: 'card-account-details-outline',
-      stack: 'INVITATIONS_STACK',
-      screen: 'INVITATIONS_MAIN',
-      color: COLORS.cyan,
-      roles: [UserRole.RESDN],
-    },
-    {
-      id: 'my_contacts',
-      label: 'Contactos',
-      icon: 'book-account-outline',
-      stack: 'RESIDENTS_STACK',
-      screen: 'RESIDENT_CONTACTS',
-      color: COLORS.indigo,
-      params: { residentId: user.id },
-      roles: [UserRole.RESDN],
-    },
-    {
-      id: 'my_profile',
-      label: 'Mi Perfil',
-      icon: 'account-cog-outline',
-      stack: 'RESIDENTS_STACK',
-      screen: 'RESIDENT_PROFILE',
-      color: COLORS.indigo,
-      roles: [UserRole.RESDN],
-    },
   ];
+
   const filteredModules = MODULES.filter(m =>
     m.roles.includes(user.role as UserRole),
   );
 
-  return (
-    <View style={[ModernStyles.screenContainer, styles.container]}>
-      {/* Grid de módulos */}
-      <FlatList
-        data={filteredModules}
-        numColumns={2}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <HomeItemComponent
-            icon={item.icon}
-            label={item.label}
-            stack={item.stack}
-            screen={item.screen}
-            color={item.color}
-            gradient={item.gradient}
-            badge={item.badge}
-          />
-        )}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.grid}
-        showsVerticalScrollIndicator={false}
-      />
+  const renderActiveRound = ({ item }: { item: IActiveRound }) => (
+    <View style={styles.miniRoundCard}>
+      <View style={styles.statusBadge}>
+        <View style={styles.pulseDot} />
+        <ITText
+          variant="labelSmall"
+          weight="bold"
+          style={{ color: COLORS.emerald, fontSize: 10 }}
+        >
+          LIVE
+        </ITText>
+      </View>
+      <ITText variant="bodySmall" weight="bold" numberOfLines={1}>
+        {item.guard?.name}
+      </ITText>
+      <ITText variant="labelSmall" style={{ opacity: 0.5 }} numberOfLines={1}>
+        {item.client?.name}
+      </ITText>
     </View>
+  );
+
+  return (
+    <ITScreenWrapper
+      scrollable={false}
+      padding={false}
+      style={styles.container}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadDashboardData();
+            }}
+          />
+        }
+      >
+        {/* Header Compacto */}
+        <View style={styles.header}>
+          <View>
+            <ITText
+              variant="titleLarge"
+              weight="bold"
+              style={styles.welcomeText}
+            >
+              Hola, Administrador
+            </ITText>
+            <ITText variant="bodySmall" style={{ color: '#94A3B8' }}>
+              Estado del sistema hoy
+            </ITText>
+          </View>
+          {/* <TouchableOpacity style={styles.profileBtn}>
+            <Icon source="bell-outline" size={22} color="#64748B" />
+          </TouchableOpacity> */}
+        </View>
+
+        {/* KPIs Compactos (Estilo Píldora) */}
+        <View style={styles.kpiContainer}>
+          <View style={styles.kpiPill}>
+            <Icon source="walk" size={18} color="#6366F1" />
+            <ITText weight="bold" style={styles.kpiValue}>
+              {activeRounds.length}
+            </ITText>
+            <ITText style={styles.kpiLabel}>Rondas</ITText>
+          </View>
+          <View style={styles.kpiPill}>
+            <Icon
+              source="alert-circle-outline"
+              size={18}
+              color={COLORS.incidents}
+            />
+            <ITText
+              weight="bold"
+              style={[styles.kpiValue, { color: COLORS.incidents }]}
+            >
+              {pendingIncidents}
+            </ITText>
+            <ITText style={styles.kpiLabel}>Alertas</ITText>
+          </View>
+          <View style={styles.kpiPill}>
+            <Icon source="tools" size={18} color={COLORS.maintenance} />
+            <ITText weight="bold" style={styles.kpiValue}>
+              {pendingMaintenance}
+            </ITText>
+            <ITText style={styles.kpiLabel}>Tareas</ITText>
+          </View>
+        </View>
+
+        {/* Live Status Horizontal (Más pequeño) */}
+        {activeRounds.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ITText variant="labelLarge" weight="bold">
+                Personal Activo
+              </ITText>
+            </View>
+            <FlatList
+              data={activeRounds}
+              renderItem={renderActiveRound}
+              keyExtractor={item => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10 }}
+            />
+          </View>
+        )}
+
+        {/* Grid 3 Columnas (Reduce Scroll) */}
+        <View style={[styles.section, { marginTop: 10 }]}>
+          <ITText
+            variant="labelLarge"
+            weight="bold"
+            style={{ marginBottom: 12 }}
+          >
+            Accesos Directos
+          </ITText>
+          <View style={styles.compactGrid}>
+            {filteredModules.map(item => (
+              <View key={item.id} style={styles.compactGridItem}>
+                <HomeItemComponent
+                  icon={item.icon}
+                  label={item.label}
+                  stack={item.stack}
+                  screen={item.screen}
+                  color={item.color}
+                  badge={item.badge}
+                  params={item.params}
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={{ height: 30 }} />
+      </ScrollView>
+    </ITScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 0,
-    backgroundColor: '#f6fbf4',
-  },
+  container: { backgroundColor: '#F8FAFC' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 32,
-    backgroundColor: '#ffffff',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    ...ModernStyles.shadowLg,
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    marginBottom: 15,
   },
-  headerContent: {
-    flex: 1,
-  },
-  welcomeText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f1f5f9',
+  welcomeText: { letterSpacing: -0.5 },
+  profileBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  grid: {
-    padding: 16,
-    paddingBottom: 120,
-  },
-  row: {
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  quickActions: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#ffffff',
-    padding: 24,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    ...ModernStyles.shadowLg,
-  },
-  quickActionsTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 16,
-  },
-  quickActionsGrid: {
+  kpiContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 8,
   },
-  quickActionItem: {
+  kpiPill: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 12,
-    backgroundColor: '#f8fafc',
-    minWidth: 80,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    gap: 6,
   },
-  quickActionText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
-    marginTop: 8,
-    textAlign: 'center',
+  kpiValue: { fontSize: 14, color: '#1E293B' },
+  kpiLabel: { fontSize: 10, color: '#64748B', fontWeight: '500' },
+  section: { paddingHorizontal: 20, marginBottom: 15 },
+  sectionHeader: { marginBottom: 10 },
+  miniRoundCard: {
+    backgroundColor: '#FFF',
+    padding: 10,
+    borderRadius: 14,
+    width: 130,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.emerald,
+  },
+  compactGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -5,
+  },
+  compactGridItem: {
+    width: '33.33%', // Cambio a 3 columnas para ahorrar espacio vertical
+    paddingHorizontal: 5,
+    marginBottom: 10,
   },
 });

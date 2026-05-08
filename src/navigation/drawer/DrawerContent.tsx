@@ -21,6 +21,14 @@ interface MenuItem {
   roles: Role[];
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Administrador',
+  SHIFT: 'Jefe de Turno',
+  GUARD: 'Guardia',
+  MAINT: 'Mantenimiento',
+  RESDN: 'Usuario',
+};
+
 /* ======================================================
    MENU CONFIG
 ====================================================== */
@@ -54,7 +62,7 @@ const MENU_ITEMS: MenuItem[] = [
     roles: ['ADMIN'],
   },
   {
-    label: 'Historial',
+    label: 'Kardex',
     icon: 'history',
     route: 'Tabs',
     screen: 'Kardex',
@@ -124,7 +132,7 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
   const userRole = userState.role;
 
   const filteredMenuItems = MENU_ITEMS.filter(item =>
-    item.roles.includes(userRole as any) 
+    item.roles.includes(userRole as any),
   );
 
   return (
@@ -142,7 +150,7 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
             {userState.fullName || 'Usuario'}
           </Text>
           <Text variant="bodySmall" style={styles.userRole}>
-            {userState.role}
+            {ROLE_LABELS[userState.role || ''] || userState.role}
           </Text>
         </View>
 
@@ -166,7 +174,10 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
             key={index}
             style={styles.menuItem}
             onPress={() => {
-              const params = item.label === 'Contactos' ? { residentId: Number(userState.id) } : undefined;
+              const params =
+                item.label === 'Contactos'
+                  ? { residentId: Number(userState.id) }
+                  : undefined;
               resetToModule(item.route as any, item.screen, params);
             }}
           >
@@ -187,13 +198,15 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
           style={styles.logoutBtn}
           onPress={async () => {
             try {
-               const { logout: logoutApi } = require('../../screens/auth/services/AuthService');
-               if (userState.id) {
-                   await logoutApi(userState.id);
-               }
+              const {
+                logout: logoutApi,
+              } = require('../../screens/auth/services/AuthService');
+              if (userState.id) {
+                await logoutApi(userState.id);
+              }
             } catch (e) {
             } finally {
-               dispatch(logout());
+              dispatch(logout());
             }
           }}
         >
@@ -201,7 +214,7 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
 
-        <Text style={styles.versionText}>v1.0.19</Text>
+        <Text style={styles.versionText}>v1.0.22</Text>
       </View>
     </View>
   );

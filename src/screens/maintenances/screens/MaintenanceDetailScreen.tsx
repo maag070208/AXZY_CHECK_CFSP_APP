@@ -1,114 +1,180 @@
+import { useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, TouchableOpacity, Modal, SafeAreaView, Alert } from 'react-native';
-import { Text, Surface, IconButton, Avatar, Chip, Button } from 'react-native-paper';
+import {
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  ScrollView,
+} from 'react-native';
+import { Avatar, IconButton, Icon } from 'react-native-paper';
 import Video from 'react-native-video';
-import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
-import { resolveMaintenance } from '../service/maintenance.service';
-import { CATEGORIES_INFO as CATEGORIES, COLORS } from '../../../shared/utils/constants';
+import {
+  CATEGORIES_INFO as CATEGORIES,
+  COLORS,
+} from '../../../shared/utils/constants';
+import {
+  deleteMaintenance,
+  resolveMaintenance,
+} from '../service/maintenance.service';
+import {
+  ITScreenWrapper,
+  ITCard,
+  ITText,
+  ITButton,
+  ITAlert,
+} from '../../../shared/components';
+import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 
-
+const { width } = Dimensions.get('window');
 
 export const MaintenanceDetailScreen = () => {
+  const { goBack } = useAppNavigation();
   const route = useRoute<any>();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.userState);
-  
+
   const [maintenance, setMaintenance] = useState(route.params.maintenance);
   const [resolving, setResolving] = useState(false);
   const [fullMedia, setFullMedia] = useState<any>(null);
-  const [videoPlaying, setVideoPlaying] = useState(false);
+  const [showResolveAlert, setShowResolveAlert] = useState(false);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
-  const getCategoryInfo = (category: string) => {
-    return CATEGORIES[category as keyof typeof CATEGORIES] || { 
-      label: category, 
-      color: COLORS.textSecondary,
-      icon: 'alert'
-    };
+  const getCategoryInfo = (category: any) => {
+    if (category && typeof category === 'object') {
+      return {
+        label: category.name || category.value || 'General',
+        color: category.color || COLORS.textSecondary,
+        icon: category.icon || 'wrench',
+      };
+    }
+    return (
+      CATEGORIES[category as keyof typeof CATEGORIES] || {
+        label: category || 'Mantenimiento',
+        color: COLORS.textSecondary,
+        icon: 'wrench',
+      }
+    );
   };
 
-  const handleResolve = async () => {
-      Alert.alert(
-          'Confirmar',
-          '¿Marcar este mantenimiento como atendido?',
-          [
-              { text: 'Cancelar', style: 'cancel' },
-              { 
-                  text: 'Sí, atender', 
-                  onPress: async () => {
-                      setResolving(true);
-                      const res = await resolveMaintenance(maintenance.id);
-                      setResolving(false);
-                      
-                      if (res.success && res.data) {
-                          setMaintenance(res.data);
-                          dispatch(showToast({ message: 'Mantenimiento atendido correctamente', type: 'success' }));
-                      } else {
-                          Alert.alert('Error', 'No se pudo actualizar el estado.');
-                      }
-                  }
-              }
-          ]
+  const onConfirmResolve = async () => {
+    setShowResolveAlert(false);
+    setResolving(true);
+    const res = await resolveMaintenance(maintenance.id);
+    setResolving(false);
+
+    if (res.success && res.data) {
+      setMaintenance(res.data);
+      dispatch(
+        showToast({
+          message: 'Mantenimiento atendido correctamente',
+          type: 'success',
+        }),
       );
+      // Regresar a la lista después de atender
+      setTimeout(() => {
+        goBack();
+      }, 1500);
+    } else {
+      dispatch(
+        showToast({
+          message: 'No se pudo actualizar el estado',
+          type: 'error',
+        }),
+      );
+    }
   };
 
-  const getTimeAgo = (date: string) => {
-    const now = new Date();
-    const dDate = new Date(date);
-    const diffMs = now.getTime() - dDate.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
+  const onConfirmDelete = async () => {
+    setShowDeleteAlert(false);
+    setResolving(true);
+    const res = await deleteMaintenance(maintenance.id);
+    setResolving(false);
 
-    if (diffMins < 60) return `Hace ${diffMins} minutos`;
-    else if (diffHours < 24) return `Hace ${diffHours} horas`;
-    else if (diffDays < 7) return `Hace ${diffDays} días`;
-    else return dDate.toLocaleDateString();
+    if (res.success) {
+      dispatch(
+        showToast({
+          message: 'Mantenimiento eliminado correctamente',
+          type: 'success',
+        }),
+      );
+      goBack();
+    } else {
+      dispatch(
+        showToast({
+          message: 'No se pudo eliminar el mantenimiento',
+          type: 'error',
+        }),
+      );
+    }
   };
 
   const getDateTime = (date: string) => {
     const d = new Date(date);
     return {
-      date: d.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-      time: d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+      date: d.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      time: d.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
     };
   };
 
   const categoryInfo = getCategoryInfo(maintenance.category);
   const dateTime = getDateTime(maintenance.createdAt);
-  const guardInitials = maintenance.guard?.name?.charAt(0) + (maintenance.guard?.lastName?.charAt(0) || '');
-  const timeAgo = getTimeAgo(maintenance.createdAt);
 
   const isPending = maintenance.status === 'PENDING' || !maintenance.status;
-  const canResolve = isPending && (user.role === UserRole.ADMIN || user.role === UserRole.SHIFT_GUARD || user.role === UserRole.MANTENIMIENTO);
+  const canResolve =
+    isPending &&
+    (user.role === UserRole.ADMIN ||
+      user.role === UserRole.SHIFT ||
+      user.role === UserRole.MAINT);
 
   const renderMediaItem = (media: any, index: number) => {
-    const isVideo = media.type === 'VIDEO';
-    
+    const isVideo = media?.type?.toUpperCase() === 'VIDEO';
     return (
-      <TouchableOpacity 
-        key={index} 
+      <TouchableOpacity
+        key={index}
         style={styles.mediaCard}
-        onPress={() => setFullMedia({ url: media.url, type: media.type })}
-        activeOpacity={0.8}
+        onPress={() => setFullMedia(media)}
+        activeOpacity={0.9}
       >
         {isVideo ? (
           <View style={styles.videoContainer}>
-            <Video source={{ uri: media.url }} style={styles.videoPreview} resizeMode="cover" paused={true} />
+            <Video
+              source={{ uri: media.url }}
+              style={styles.videoPreview}
+              resizeMode="cover"
+              paused={true}
+            />
             <View style={styles.videoOverlay}>
-              <IconButton icon="play-circle" size={40} iconColor="#FFFFFF" style={styles.playIcon} />
-              <Text style={styles.videoLabel}>VIDEO</Text>
+              <IconButton icon="play-circle" size={44} iconColor="#FFFFFF" />
             </View>
           </View>
         ) : (
-          <Image source={{ uri: media.url }} style={styles.imagePreview} resizeMode="cover" />
+          <Image
+            source={{ uri: media.url }}
+            style={styles.imagePreview}
+            resizeMode="cover"
+          />
         )}
-        <View style={styles.mediaInfo}>
-          <Text style={styles.mediaType}>{isVideo ? 'Video' : 'Foto'} {index + 1}</Text>
-          <IconButton icon="magnify-plus" size={20} iconColor={COLORS.textSecondary} />
+        <View style={styles.mediaTypeBadge}>
+          <Icon source={isVideo ? 'video' : 'camera'} size={12} color="#fff" />
+          <ITText variant="labelSmall" style={{ color: '#fff', marginLeft: 4 }}>
+            {isVideo ? 'VIDEO' : 'FOTO'}
+          </ITText>
         </View>
       </TouchableOpacity>
     );
@@ -116,270 +182,348 @@ export const MaintenanceDetailScreen = () => {
 
   const FullScreenMedia = () => {
     if (!fullMedia) return null;
-    const isVideo = fullMedia.type === 'VIDEO' || fullMedia.type === 'video';
-    
+    const isVideo = fullMedia?.type?.toUpperCase() === 'VIDEO';
+
     return (
       <Modal visible={!!fullMedia} transparent={true} animationType="fade">
-        <SafeAreaView style={styles.fullScreenContainer}>
-          <View style={styles.fullScreenHeader}>
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={() => { setFullMedia(null); setVideoPlaying(false); }}
-            >
-              <IconButton icon="close" size={28} iconColor="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.fullScreenTitle}>{isVideo ? 'Video' : 'Foto'} de evidencia</Text>
-          </View>
-          
+        <View style={styles.fullScreenContainer}>
+          <IconButton
+            icon="close"
+            size={32}
+            iconColor="#FFFFFF"
+            style={styles.closeButton}
+            onPress={() => setFullMedia(null)}
+          />
           {isVideo ? (
-            <View style={styles.fullScreenVideoContainer}>
-              <Video 
-                source={{ uri: fullMedia.url }} 
-                style={styles.fullScreenVideo}
-                resizeMode="contain"
-                controls={true}
-                onEnd={() => setVideoPlaying(false)}
-              />
-            </View>
+            <Video
+              source={{ uri: fullMedia.url }}
+              style={styles.fullScreenVideo}
+              resizeMode="contain"
+              controls={true}
+            />
           ) : (
-            <Image source={{ uri: fullMedia.url }} style={styles.fullScreenImage} resizeMode="contain" />
+            <Image
+              source={{ uri: fullMedia.url }}
+              style={styles.fullScreenImage}
+              resizeMode="contain"
+            />
           )}
-        </SafeAreaView>
+          <View style={styles.fullScreenFooter}>
+            <ITText variant="bodyMedium" style={{ color: '#fff' }}>
+              Evidencia de {categoryInfo.label}
+            </ITText>
+          </View>
+        </View>
       </Modal>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        
-        <View style={styles.mainSection}>
-          <View style={styles.categoryRow}>
-            <View style={[styles.categoryBadge, { backgroundColor: categoryInfo.color + '20' }]}>
-              <IconButton icon={categoryInfo.icon} size={20} iconColor={categoryInfo.color} style={styles.categoryIcon} />
-              <Text style={[styles.categoryText, { color: categoryInfo.color }]}>{categoryInfo.label}</Text>
-            </View>
-            <Text style={styles.timeAgo}>{timeAgo}</Text>
-          </View>
-          
-          <Text style={styles.incidentTitle}>{maintenance.title}</Text>
-          
-          <View style={styles.datetimeContainer}>
-            <View style={styles.datetimeItem}>
-              <IconButton icon="calendar" size={18} iconColor={COLORS.textSecondary} style={styles.datetimeIcon} />
-              <Text style={styles.datetimeText}>{dateTime.date}</Text>
-            </View>
-            <View style={styles.datetimeItem}>
-              <IconButton icon="clock-outline" size={18} iconColor={COLORS.textSecondary} style={styles.datetimeIcon} />
-              <Text style={styles.datetimeText}>{dateTime.time}</Text>
-            </View>
-          </View>
-        </View>
-
-        {!isPending && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <IconButton icon="check-circle" size={22} iconColor={COLORS.success} style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>RESOLUCIÓN</Text>
-            </View>
-            <View style={[styles.descriptionContainer, { backgroundColor: COLORS.surfaceVariant }]}>
-               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: COLORS.success }}>
-                    MANTENIMIENTO ATENDIDO
-                  </Text>
-               </View>
-
-               {maintenance.resolvedBy && (
-                   <>
-                     <Text style={{ color: COLORS.textPrimary, fontSize: 14, marginBottom: 4 }}>
-                        <Text style={{ fontWeight: 'bold' }}>Atendido por: </Text>
-                        {maintenance.resolvedBy.name} {maintenance.resolvedBy.lastName}
-                     </Text>
-                     <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginBottom: 4 }}>
-                        {new Date(maintenance.resolvedAt).toLocaleString()}
-                     </Text>
-                      {maintenance.resolvedAt && (
-                        <View style={{ flexDirection: 'row', marginTop: 6, alignItems: 'center' }}>
-                            <IconButton icon="timer-outline" size={16} iconColor={COLORS.primary} style={{ margin: 0, marginRight: 4 }} />
-                            <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 13 }}>
-                                Tiempo de respuesta: {
-                                    (() => {
-                                        const start = new Date(maintenance.createdAt).getTime();
-                                        const end = new Date(maintenance.resolvedAt).getTime();
-                                        const diff = end - start;
-                                        const mins = Math.floor(diff / 60000);
-                                        const hours = Math.floor(mins / 60);
-                                        
-                                        if (hours > 0) return `${hours}h ${mins % 60}m`;
-                                        return `${mins} min`;
-                                    })()
-                                }
-                            </Text>
-                        </View>
-                      )}
-                   </>
-               )}
-            </View>
-          </View>
-        )}
-
-        {maintenance.description ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <IconButton icon="text-box" size={22} iconColor={COLORS.primary} style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>DESCRIPCIÓN</Text>
-            </View>
-            <View style={styles.descriptionContainer}>
-              <Text style={styles.descriptionText}>{maintenance.description}</Text>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <IconButton icon="text-box-outline" size={22} iconColor={COLORS.textSecondary} style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>DESCRIPCIÓN</Text>
-            </View>
-            <View style={styles.noDescriptionContainer}>
-              <Text style={styles.noDescriptionText}>No se agregó descripción adicional</Text>
-            </View>
-          </View>
-        )}
-
-        {maintenance.client && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <IconButton icon="domain" size={22} iconColor={COLORS.primary} style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>CLIENTE / UBICACIÓN</Text>
-            </View>
-            <View style={styles.descriptionContainer}>
-              <Text style={styles.guardName}>{maintenance.client.name}</Text>
-              <Text style={styles.guardRole}>{maintenance.client.address || 'Sin dirección registrada'}</Text>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <IconButton icon="account" size={22} iconColor={COLORS.primary} style={styles.sectionIcon} />
-            <Text style={styles.sectionTitle}>REPORTADO POR</Text>
-          </View>
-          
-          <View style={styles.guardContainer}>
-            <Avatar.Text size={60} label={guardInitials || 'G'} style={styles.guardAvatar} labelStyle={styles.guardAvatarLabel} />
-            <View style={styles.guardInfo}>
-              <Text style={styles.guardName}>{maintenance.guard?.name || 'Sistema'}</Text>
-              <Text style={styles.guardRole}>Guardia de seguridad</Text>
-              <View style={styles.guardMeta}>
-                <Chip icon="shield-check" style={styles.guardChip} textStyle={styles.guardChipText}>Turno completo</Chip>
-                <Text style={styles.guardId}>ID: {maintenance.guard?.id || 'N/A'}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <IconButton icon="camera" size={22} iconColor={COLORS.primary} style={styles.sectionIcon} />
-            <Text style={styles.sectionTitle}>EVIDENCIA</Text>
-            <Chip style={styles.mediaCountChip} textStyle={styles.mediaCountText}>{maintenance.media?.length || 0}</Chip>
-          </View>
-          
-          {maintenance.media && maintenance.media.length > 0 ? (
-            <View style={styles.mediaContainer}>
-              <Text style={styles.mediaSubtitle}>Fotos y videos adjuntos al reporte</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaScroll}>
-                {maintenance.media.map((m: any, i: number) => renderMediaItem(m, i))}
-              </ScrollView>
-            </View>
-          ) : (
-            <View style={styles.noMediaContainer}>
-              <IconButton icon="image-off" size={48} iconColor={COLORS.border} style={styles.noMediaIcon} />
-              <Text style={styles.noMediaText}>No se adjuntó evidencia</Text>
-              <Text style={styles.noMediaSubtext}>Este reporte no incluye fotos o videos</Text>
-            </View>
-          )}
-        </View>
-
-      {canResolve && (
-        <View style={styles.footer}>
-            <Button 
-                mode="contained" 
-                onPress={handleResolve} 
-                loading={resolving}
-                style={styles.footerResolveButton}
-                contentStyle={{ height: 50 }}
-                icon="check-circle-outline"
+    <ITScreenWrapper padding={false} scrollable={false}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor: isPending
+                  ? '#F59E0B20'
+                  : COLORS.emerald + '20',
+              },
+            ]}
+          >
+            <ITText
+              variant="labelLarge"
+              weight="bold"
+              style={{ color: isPending ? '#F59E0B' : COLORS.emerald }}
             >
-                MARCAR COMO ATENDIDA
-            </Button>
+              {isPending ? 'PENDIENTE' : 'ATENDIDO'}
+            </ITText>
+          </View>
+          <ITText variant="headlineMedium" weight="bold" style={styles.title}>
+            {maintenance.title}
+          </ITText>
+          <View style={styles.metaRow}>
+            <Icon source="calendar" size={16} color={COLORS.textSecondary} />
+            <ITText
+              variant="bodyMedium"
+              color={COLORS.textSecondary}
+              style={styles.metaText}
+            >
+              {dateTime.date} a las {dateTime.time}
+            </ITText>
+          </View>
         </View>
-      )}
 
+        <ITCard style={styles.sectionCard}>
+          <ITText
+            variant="titleMedium"
+            weight="bold"
+            style={styles.sectionTitle}
+          >
+            Ubicación y Cliente
+          </ITText>
+          <View style={styles.infoRow}>
+            <Icon source="office-building" size={20} color={COLORS.primary} />
+            <View style={styles.infoContent}>
+              <ITText variant="labelSmall" color={COLORS.textSecondary}>
+                CLIENTE
+              </ITText>
+              <ITText variant="bodyLarge" weight="bold">
+                {maintenance.client?.name || 'N/A'}
+              </ITText>
+            </View>
+          </View>
+        </ITCard>
+
+        <ITCard style={styles.sectionCard}>
+          <ITText
+            variant="titleMedium"
+            weight="bold"
+            style={styles.sectionTitle}
+          >
+            Reportado por
+          </ITText>
+          <View style={styles.guardRow}>
+            <Avatar.Text
+              size={48}
+              label={maintenance.guard?.name?.charAt(0) || 'G'}
+              style={{ backgroundColor: COLORS.primary }}
+            />
+            <View style={styles.guardInfo}>
+              <ITText variant="bodyLarge" weight="bold">
+                {maintenance.guard?.name}
+              </ITText>
+              <ITText variant="labelSmall" color={COLORS.textSecondary}>
+                GUARDIA DE SEGURIDAD
+              </ITText>
+            </View>
+          </View>
+        </ITCard>
+
+        <ITCard style={styles.sectionCard}>
+          <ITText
+            variant="titleMedium"
+            weight="bold"
+            style={styles.sectionTitle}
+          >
+            Descripción
+          </ITText>
+          <ITText variant="bodyLarge" style={styles.description}>
+            {maintenance.description || 'Sin descripción detallada.'}
+          </ITText>
+        </ITCard>
+
+        {maintenance.media && maintenance.media.length > 0 && (
+          <View style={styles.mediaSection}>
+            <ITText
+              variant="titleMedium"
+              weight="bold"
+              style={styles.mediaTitle}
+            >
+              Evidencia Multimedia
+            </ITText>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mediaList}
+            >
+              {maintenance.media.map((item: any, index: number) =>
+                renderMediaItem(item, index),
+              )}
+            </ScrollView>
+          </View>
+        )}
+
+        <View style={styles.actions}>
+          {canResolve && (
+            <ITButton
+              mode="contained"
+              onPress={() => setShowResolveAlert(true)}
+              loading={resolving}
+              style={styles.resolveButton}
+              icon="check-circle"
+              label="MARCAR COMO ATENDIDO"
+            />
+          )}
+          {user.role === UserRole.ADMIN && (
+            <ITButton
+              mode="outlined"
+              onPress={() => setShowDeleteAlert(true)}
+              style={styles.deleteButton}
+              icon="delete"
+              textColor={COLORS.white}
+              iconColor={COLORS.white}
+              label="ELIMINAR REPORTE"
+            />
+          )}
+          <View style={{ height: 80 }} />
+        </View>
       </ScrollView>
+      <ITAlert
+        visible={showResolveAlert}
+        title="Confirmar"
+        description="¿Marcar este mantenimiento como atendido?"
+        confirmLabel="Sí, atender"
+        onDismiss={() => setShowResolveAlert(false)}
+        onConfirm={onConfirmResolve}
+        loading={resolving}
+      />
+      <ITAlert
+        visible={showDeleteAlert}
+        title="Eliminar Reporte"
+        description="¿Estás seguro de que deseas eliminar permanentemente este reporte?"
+        confirmLabel="Eliminar"
+        type="danger"
+        onDismiss={() => setShowDeleteAlert(false)}
+        onConfirm={onConfirmDelete}
+        loading={resolving}
+      />
       <FullScreenMedia />
-    </SafeAreaView>
+    </ITScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: { padding: 16, paddingBottom: 40 },
-  mainSection: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 20, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, borderWidth: 1, borderColor: COLORS.border },
-  categoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  categoryBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 },
-  categoryIcon: { margin: 0, padding: 0 },
-  categoryText: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' },
-  timeAgo: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '500' },
-  incidentTitle: { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 16, lineHeight: 30 },
-  datetimeContainer: { flexDirection: 'row', gap: 16 },
-  datetimeItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  datetimeIcon: { margin: 0 },
-  datetimeText: { fontSize: 14, color: COLORS.textSecondary },
-  section: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 20, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, borderWidth: 1, borderColor: COLORS.border },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  sectionIcon: { margin: 0, marginRight: 12 },
-  sectionTitle: { fontSize: 15, fontWeight: 'bold', color: COLORS.textPrimary, flex: 1, textTransform: 'uppercase' },
-  descriptionContainer: { backgroundColor: COLORS.surfaceVariant, borderRadius: 12, padding: 16 },
-  descriptionText: { fontSize: 15, color: COLORS.textPrimary, lineHeight: 22 },
-  noDescriptionContainer: { backgroundColor: COLORS.surfaceVariant, borderRadius: 12, padding: 24, alignItems: 'center' },
-  noDescriptionText: { fontSize: 14, color: COLORS.textSecondary, fontStyle: 'italic', textAlign: 'center' },
-  guardContainer: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  guardAvatar: { backgroundColor: COLORS.primaryLight },
-  guardAvatarLabel: { color: COLORS.primary, fontSize: 20, fontWeight: 'bold' },
-  guardInfo: { flex: 1 },
-  guardName: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 4 },
-  guardRole: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 8 },
-  guardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  guardChip: { backgroundColor: COLORS.primaryLight, height: 28 },
-  guardChipText: { fontSize: 11, fontWeight: '600', color: COLORS.primary },
-  guardId: { fontSize: 12, color: COLORS.textSecondary, fontFamily: 'monospace' },
-  mediaCountChip: { backgroundColor: COLORS.primary, marginLeft: 8 },
-  mediaCountText: { color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' },
-  mediaContainer: { marginTop: 8 },
-  mediaSubtitle: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 12 },
-  mediaScroll: { flexDirection: 'row' },
-  mediaCard: { width: 160, marginRight: 12, backgroundColor: COLORS.surfaceVariant, borderRadius: 12, overflow: 'hidden', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 4 },
-  videoContainer: { width: '100%', height: 120, backgroundColor: '#000000' },
-  videoPreview: { width: '100%', height: '100%' },
-  videoOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
-  playIcon: { margin: 0 },
-  videoLabel: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold', marginTop: 4, textTransform: 'uppercase' },
-  imagePreview: { width: '100%', height: 120 },
-  mediaInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: COLORS.surface },
-  mediaType: { fontSize: 12, fontWeight: '600', color: COLORS.textPrimary },
-  noMediaContainer: { alignItems: 'center', padding: 24, backgroundColor: COLORS.surfaceVariant, borderRadius: 12 },
-  noMediaIcon: { margin: 0, marginBottom: 8 },
-  noMediaText: { fontSize: 16, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 4 },
-  noMediaSubtext: { fontSize: 13, color: COLORS.textSecondary },
-  footer: { marginTop: 8, marginBottom: 24 },
-  footerResolveButton: { borderRadius: 12, backgroundColor: COLORS.success, elevation: 4 },
-  fullScreenContainer: { flex: 1, backgroundColor: '#000000' },
-  fullScreenHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10 },
-  closeButton: { marginRight: 16 },
-  fullScreenTitle: { fontSize: 18, color: '#FFFFFF', fontWeight: 'bold' },
-  fullScreenImage: { flex: 1, width: '100%', height: '100%' },
-  fullScreenVideoContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  fullScreenVideo: { width: '100%', height: '100%' },
-  fullScreenFooter: { padding: 20, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center' },
-  fullScreenCaption: { color: '#FFFFFF', fontSize: 14 }
+  header: {
+    padding: 24,
+    backgroundColor: '#fff',
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  title: {
+    color: COLORS.textPrimary,
+    marginBottom: 8,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaText: {
+    marginLeft: 8,
+  },
+  sectionCard: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 16,
+    borderRadius: 16,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+    color: COLORS.textSecondary,
+    letterSpacing: 0.5,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoContent: {
+    marginLeft: 16,
+  },
+  guardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  guardInfo: {
+    marginLeft: 16,
+  },
+  description: {
+    lineHeight: 24,
+    color: '#334155',
+  },
+  mediaSection: {
+    marginVertical: 16,
+  },
+  mediaTitle: {
+    marginLeft: 24,
+    marginBottom: 12,
+    color: COLORS.textSecondary,
+  },
+  mediaList: {
+    paddingLeft: 24,
+    paddingRight: 16,
+    gap: 12,
+  },
+  mediaCard: {
+    width: width * 0.7,
+    height: 200,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
+    position: 'relative',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+  },
+  videoContainer: {
+    width: '100%',
+    height: '100%',
+  },
+  videoPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mediaTypeBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  actions: {
+    padding: 24,
+    gap: 12,
+  },
+  resolveButton: {
+    borderRadius: 12,
+    paddingVertical: 4,
+  },
+  deleteButton: {
+    borderRadius: 12,
+    backgroundColor: COLORS.red,
+    borderColor: COLORS.red,
+  },
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  fullScreenVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  fullScreenFooter: {
+    position: 'absolute',
+    bottom: 40,
+    width: '100%',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
 });

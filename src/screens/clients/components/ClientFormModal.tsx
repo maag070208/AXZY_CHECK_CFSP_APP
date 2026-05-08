@@ -42,7 +42,7 @@ const validationSchema = Yup.object().shape({
     .max(10, 'El teléfono debe tener máximo 10 dígitos')
     .optional(),
   active: Yup.boolean().required(),
-  appUsername: Yup.string().min(4, 'Mínimo 4 caracteres').optional(),
+  appUsername: Yup.string().min(2, 'Mínimo 2 caracteres').optional(),
   appPassword: Yup.string().min(6, 'Mínimo 6 caracteres').optional(),
 });
 

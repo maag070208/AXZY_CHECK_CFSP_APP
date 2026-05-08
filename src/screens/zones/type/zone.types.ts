@@ -1,13 +1,13 @@
 export interface IZone {
-  id: number;
+  id: string;
   name: string;
-  clientId?: number;
+  clientId?: string;
   client?: any;
   active: boolean;
 }
 
 export interface IZoneCreate {
   name: string;
-  clientId: number;
+  clientId: string;
   active?: boolean;
 }

@@ -1,8 +1,4 @@
-import {
-  useFocusEffect,
-  useIsFocused,
-  useNavigation,
-} from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,16 +13,10 @@ import {
 } from 'react-native';
 import {
   Avatar,
-  Badge,
-  Button,
-  Chip,
   IconButton,
   Portal,
   Searchbar,
-  Surface,
-  Text,
   Icon,
-  Card,
   FAB,
 } from 'react-native-paper';
 import { useSelector } from 'react-redux';
@@ -40,11 +30,21 @@ import { getCatalog } from '../../../shared/service/catalog.service';
 import ModernStyles from '../../../shared/theme/app.styles';
 import { theme } from '../../../shared/theme/theme';
 import { CATEGORIES_INFO, COLORS } from '../../../shared/utils/constants';
+import {
+  ITScreenWrapper,
+  ITCard,
+  ITText,
+  ITButton,
+  LoaderComponent,
+} from '../../../shared/components';
+import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 
 export const MaintenanceListScreen = () => {
-  const navigation = useNavigation<any>();
+  const { navigateToScreen } = useAppNavigation();
   const insets = useSafeAreaInsets();
   const user = useSelector((state: RootState) => state.userState);
+
+  const isFocused = useIsFocused();
 
   const [maintenances, setMaintenances] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +59,7 @@ export const MaintenanceListScreen = () => {
   // Catalogs
   const [guards, setGuards] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
 
   // Filters State
   const [showFilters, setShowFilters] = useState(false);
@@ -91,9 +92,10 @@ export const MaintenanceListScreen = () => {
   useEffect(() => {
     const fetchCatalogs = async () => {
       try {
-        const [guardsRes, clientsRes] = await Promise.all([
+        const [guardsRes, clientsRes, catRes] = await Promise.all([
           getCatalog('guard'),
           getCatalog('client'),
+          getCatalog('incident_category'),
         ]);
         if (guardsRes.success) {
           setGuards(
@@ -108,12 +110,33 @@ export const MaintenanceListScreen = () => {
             })),
           );
         }
+        if (catRes.success) {
+          setCategories(
+            catRes.data.map((c: any) => ({
+              label: c.name,
+              value: c.id,
+              color: c.color,
+              icon: c.icon,
+            })),
+          );
+        }
       } catch (error) {
         console.error('Error fetching catalogs:', error);
       }
     };
     fetchCatalogs();
   }, []);
+
+  const getCategoryInfo = (categoryId: string) => {
+    const cat = categories.find(c => c.value === categoryId);
+    return (
+      cat || {
+        label: 'Mantenimiento',
+        color: '#64748B',
+        icon: 'wrench',
+      }
+    );
+  };
 
   // Debounce effect for search
   useEffect(() => {
@@ -135,7 +158,7 @@ export const MaintenanceListScreen = () => {
         const filters: any = {};
         if (debouncedSearch) filters.search = debouncedSearch;
         if (appliedGuardId !== 'ALL') filters.guardId = appliedGuardId;
-        if (appliedCategory !== 'ALL') filters.category = appliedCategory;
+        if (appliedCategory !== 'ALL') filters.categoryId = appliedCategory;
         if (appliedClientId !== 'ALL') filters.clientId = appliedClientId;
         if (appliedRange.startDate) filters.startDate = appliedRange.startDate;
         if (appliedRange.endDate) filters.endDate = appliedRange.endDate;
@@ -223,18 +246,8 @@ export const MaintenanceListScreen = () => {
     appliedClientId !== 'ALL' ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
-  const getCategoryInfo = (category: string) => {
-    return (
-      CATEGORIES_INFO[category as keyof typeof CATEGORIES_INFO] || {
-        label: category,
-        color: '#64748B',
-        icon: 'wrench',
-      }
-    );
-  };
-
   const renderItem = ({ item }: { item: any }) => {
-    const catInfo = getCategoryInfo(item.category);
+    const catInfo = getCategoryInfo(item.categoryId);
     const date = new Date(item.createdAt);
     const timeStr = date.toLocaleTimeString([], {
       hour: '2-digit',
@@ -243,12 +256,13 @@ export const MaintenanceListScreen = () => {
     const isPending = item.status === 'PENDING' || !item.status;
 
     return (
-      <Card
+      <ITCard
         style={[styles.card, isPending && styles.pendingCard]}
         onPress={() =>
-          navigation.navigate('MAINTENANCE_DETAIL', { maintenance: item })
+          navigateToScreen('MAINTENANCE_STACK', 'MAINTENANCE_DETAIL', {
+            maintenance: item,
+          })
         }
-        elevation={1}
       >
         <View style={styles.cardLayout}>
           <View style={styles.avatarSection}>
@@ -257,7 +271,7 @@ export const MaintenanceListScreen = () => {
               label={item.guard?.name?.charAt(0) || 'G'}
               style={[
                 styles.avatar,
-                { backgroundColor: isPending ? '#ffffffff' : '#F1F5F9' },
+                { backgroundColor: isPending ? '#ffffff' : '#F1F5F9' },
               ]}
               labelStyle={{
                 color: isPending ? COLORS.primary : '#64748B',
@@ -291,15 +305,24 @@ export const MaintenanceListScreen = () => {
                   size={12}
                   color={catInfo.color}
                 />
-                <Text style={[styles.categoryText, { color: catInfo.color }]}>
-                  {catInfo.label}
-                </Text>
+                <ITText
+                  variant="labelSmall"
+                  weight="bold"
+                  style={{ color: catInfo.color, fontSize: 10 }}
+                >
+                  {catInfo.label?.toUpperCase() || ''}
+                </ITText>
               </View>
             </View>
 
-            <Text style={styles.maintenanceTitle} numberOfLines={1}>
+            <ITText
+              variant="titleMedium"
+              weight="bold"
+              color={COLORS.textPrimary}
+              numberOfLines={1}
+            >
               {item.title}
-            </Text>
+            </ITText>
 
             {item.client && (
               <View style={styles.clientRow}>
@@ -308,43 +331,65 @@ export const MaintenanceListScreen = () => {
                   size={14}
                   color={COLORS.primary}
                 />
-                <Text style={styles.clientText} numberOfLines={1}>
+                <ITText
+                  variant="labelSmall"
+                  weight="bold"
+                  color={COLORS.primary}
+                  numberOfLines={1}
+                  style={{ marginLeft: 4 }}
+                >
                   {item.client.name}
-                </Text>
+                </ITText>
               </View>
             )}
 
             <View style={styles.detailsRow}>
               <View style={styles.detailItem}>
                 <Icon source="account-outline" size={14} color="#64748B" />
-                <Text style={styles.detailText} numberOfLines={1}>
+                <ITText
+                  variant="labelSmall"
+                  color="#64748B"
+                  numberOfLines={1}
+                  style={{ marginLeft: 4 }}
+                >
                   {item.guard?.name}
-                </Text>
+                </ITText>
               </View>
               <View style={[styles.detailItem, styles.ml12]}>
                 <Icon source="calendar-outline" size={14} color="#64748B" />
-                <Text style={styles.detailText}>{timeStr}</Text>
+                <ITText
+                  variant="labelSmall"
+                  color="#64748B"
+                  style={{ marginLeft: 4 }}
+                >
+                  {timeStr}
+                </ITText>
               </View>
             </View>
           </View>
 
           <IconButton icon="chevron-right" iconColor="#CBD5E1" size={24} />
         </View>
-      </Card>
+      </ITCard>
     );
   };
 
   return (
-    <View style={ModernStyles.screenContainer}>
-      <StatusBar barStyle="dark-content" />
-
+    <ITScreenWrapper
+      padding={false}
+      scrollable={false}
+      style={ModernStyles.screenContainer}
+    >
+      <LoaderComponent visible={loading} />
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.headerTitle}>Mantenimientos</Text>
-            <Text style={styles.headerSubtitle}>
+            <ITText variant="headlineSmall" weight="bold" color="#1E293B">
+              Mantenimientos
+            </ITText>
+            <ITText variant="labelMedium" color="#64748B">
               {total} reportes registrados
-            </Text>
+            </ITText>
           </View>
           <IconButton
             icon="filter-variant"
@@ -386,33 +431,40 @@ export const MaintenanceListScreen = () => {
         }
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: insets.bottom + 20 },
+          { paddingBottom: insets.bottom + 100 },
         ]}
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
               <Icon source="toolbox-outline" size={64} color="#E2E8F0" />
-              <Text style={styles.emptyText}>No se encontraron reportes</Text>
-              <Button
+              <ITText
+                variant="bodyLarge"
+                color="#94A3B8"
+                style={{ marginTop: 12 }}
+              >
+                No se encontraron reportes
+              </ITText>
+              <ITButton
                 mode="text"
                 onPress={() => fetchMaintenances(1)}
-                textColor={COLORS.primary}
-              >
-                Actualizar lista
-              </Button>
+                label="Actualizar lista"
+              />
             </View>
           ) : null
         }
       />
 
-      {user.role === UserRole.ADMIN && (
-        <FAB
-          icon="plus"
-          style={[styles.fab, { bottom: insets.bottom + 16 }]}
-          onPress={() => navigation.navigate('MAINTENANCE_REPORT')}
-          label="REPORTE"
-          color="white"
-        />
+      {user.role === UserRole.ADMIN && isFocused && (
+        <Portal>
+          <FAB
+            icon="plus"
+            style={[styles.fab, { bottom: insets.bottom + 24 }]}
+            onPress={() =>
+              navigateToScreen('MAINTENANCE_STACK', 'MAINTENANCE_REPORT')
+            }
+            color="white"
+          />
+        </Portal>
       )}
 
       <Portal>
@@ -424,7 +476,9 @@ export const MaintenanceListScreen = () => {
           <View style={[styles.modalHeader, { paddingTop: insets.top + 20 }]}>
             <View style={styles.modalHeaderTitle}>
               <Icon source="filter-variant" size={24} color={COLORS.primary} />
-              <Text style={styles.modalTitle}>Filtros de Mantenimiento</Text>
+              <ITText variant="titleLarge" weight="bold">
+                Filtros
+              </ITText>
             </View>
             <IconButton
               icon="close"
@@ -439,7 +493,14 @@ export const MaintenanceListScreen = () => {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR FECHA</Text>
+              <ITText
+                variant="labelLarge"
+                weight="bold"
+                color="#94A3B8"
+                style={styles.filterLabel}
+              >
+                POR FECHA
+              </ITText>
               <TouchableOpacity
                 onPress={() => setOpenDate(true)}
                 style={styles.dateSelector}
@@ -449,18 +510,25 @@ export const MaintenanceListScreen = () => {
                   size={20}
                   color={COLORS.primary}
                 />
-                <Text style={styles.dateValue}>
+                <ITText style={styles.dateValue}>
                   {appliedRange.startDate
                     ? `${appliedRange.startDate.toLocaleDateString()} - ${
                         appliedRange.endDate?.toLocaleDateString() || ''
                       }`
                     : 'Todos los reportes'}
-                </Text>
+                </ITText>
               </TouchableOpacity>
             </View>
 
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR GUARDIA</Text>
+              <ITText
+                variant="labelLarge"
+                weight="bold"
+                color="#94A3B8"
+                style={styles.filterLabel}
+              >
+                POR GUARDIA
+              </ITText>
               <SearchComponent
                 label="Guardia"
                 placeholder="Todos los guardias"
@@ -471,7 +539,14 @@ export const MaintenanceListScreen = () => {
             </View>
 
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR CLIENTE</Text>
+              <ITText
+                variant="labelLarge"
+                weight="bold"
+                color="#94A3B8"
+                style={styles.filterLabel}
+              >
+                POR CLIENTE
+              </ITText>
               <SearchComponent
                 label="Cliente"
                 placeholder="Todos los clientes"
@@ -482,7 +557,14 @@ export const MaintenanceListScreen = () => {
             </View>
 
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR CATEGORÍA</Text>
+              <ITText
+                variant="labelLarge"
+                weight="bold"
+                color="#94A3B8"
+                style={styles.filterLabel}
+              >
+                POR CATEGORÍA
+              </ITText>
               <SearchComponent
                 label="Categoría"
                 placeholder="Todas las categorías"
@@ -500,21 +582,18 @@ export const MaintenanceListScreen = () => {
           <View
             style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
           >
-            <Button
+            <ITButton
               mode="outlined"
               onPress={handleClearFilters}
               style={styles.footerButton}
-              textColor="#64748B"
-            >
-              Limpiar
-            </Button>
-            <Button
+              label="Limpiar"
+            />
+            <ITButton
               mode="contained"
               onPress={handleApplyFilters}
-              style={[styles.footerButton, { backgroundColor: COLORS.primary }]}
-            >
-              Aplicar Filtros
-            </Button>
+              style={styles.footerButton}
+              label="Aplicar Filtros"
+            />
           </View>
         </Modal>
       </Portal>
@@ -531,7 +610,7 @@ export const MaintenanceListScreen = () => {
           setTempRange({ startDate, endDate });
         }}
       />
-    </View>
+    </ITScreenWrapper>
   );
 };
 

@@ -8,6 +8,7 @@ export interface IUserState {
 
   fullName: string | null;
   role: string | null;
+  clientId: string | null;
   token: string | null;
   isSignedIn: boolean;
 }
@@ -18,6 +19,7 @@ const initialState: IUserState = {
 
   fullName: null,
   role: null,
+  clientId: null,
   token: null,
   isSignedIn: false,
 };
@@ -33,9 +35,9 @@ export const userSlice = createSlice({
 
       state.id = String(decoded.id);
       state.username = decoded.username;
-      state.username = decoded.username;
       state.fullName = `${decoded.name} ${decoded.lastName}`;
       state.role = decoded.role;
+      state.clientId = decoded.clientId;
 
       state.isSignedIn = true;
       state.token = action.payload;

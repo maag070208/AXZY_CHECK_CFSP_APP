@@ -76,18 +76,21 @@ export const CheckScreen = ({ navigation }: any) => {
     try {
         // Try to parse the code as JSON
         const parsedCode = JSON.parse(code);
-        if (parsedCode && parsedCode.id !== undefined && parsedCode.id !== null) {
-            // Find by ID
-             location = locations.find((l) => l.id === Number(parsedCode.id));
+        if (parsedCode && parsedCode.name) {
+            // Find by Name (To Upper Case)
+             location = locations.find((l) => l.name.toUpperCase() === String(parsedCode.name).toUpperCase());
+        } else if (parsedCode && parsedCode.id) {
+             // Fallback to ID for old QRs
+             location = locations.find((l) => String(l.id) === String(parsedCode.id));
         }
     } catch (e) {
         // If parsing fails, treat as legacy string extraction or just raw match
         console.log("QR Code is not JSON, trying direct match");
     }
 
-    // Fallback: If not found by ID (or parse failed), try finding by name (Legacy)
+    // Fallback: If not found by Name (or parse failed), try finding by name (Legacy)
     if (!location) {
-         location = locations.find((l) => l.name === code);
+         location = locations.find((l) => l.name.toUpperCase() === code.toUpperCase());
     }
 
     if (location) {

@@ -1,486 +1,499 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Image, Dimensions, StatusBar, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
-import { Text, TextInput, Button, Chip, IconButton, Surface, TouchableRipple, Icon, Portal, Dialog } from 'react-native-paper';
-import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { theme } from '../../../shared/theme/theme';
-import { COLORS } from '../../../shared/utils/constants';
+import Geolocation from '@react-native-community/geolocation';
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
+import { Formik } from 'formik';
+import React, { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Icon, useTheme } from 'react-native-paper';
+import { useDispatch, useSelector } from 'react-redux';
+import * as Yup from 'yup';
+
 import { APP_SETTINGS } from '../../../core/constants/APP_SETTINGS';
+import { RootState } from '../../../core/store/redux.config';
+import { showLoader } from '../../../core/store/slices/loader.slice';
+import { showToast } from '../../../core/store/slices/toast.slice';
+import { UserRole } from '../../../core/types/IUser';
+import {
+  ITButton,
+  ITCategorySelector,
+  ITInput,
+  ITMediaPicker,
+  ITScreenWrapper,
+  ITText,
+  ITTypeSelector,
+  MediaItem,
+} from '../../../shared/components';
+import { SearchComponent } from '../../../shared/components/SearchComponent';
+import { getCatalog } from '../../../shared/service/catalog.service';
+import { uploadFile } from '../../../shared/service/upload.service';
+import { COLORS } from '../../../shared/utils/constants';
 import { CameraModal } from '../../check/components/CameraModal';
 import { createIncident } from '../service/incident.service';
-import { useDispatch } from 'react-redux';
-import { showToast } from '../../../core/store/slices/toast.slice';
-import { uploadFile } from '../../../shared/service/upload.service';
-import { getCatalog } from '../../../shared/service/catalog.service';
-import Geolocation from '@react-native-community/geolocation';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../../core/store/redux.config';
-import { UserRole } from '../../../core/types/IUser';
-import { SearchComponent } from '../../../shared/components/SearchComponent';
 
 const { width } = Dimensions.get('window');
 
 interface CatalogItem {
-    id: number;
-    name: string;
-    value: string;
-    color?: string;
-    icon?: string;
-    type?: string;
-    categoryId?: number;
+  id: string;
+  name: string;
+  value: string;
+  color?: string;
+  icon?: string;
+  type?: string;
+  categoryId?: string;
 }
 
-interface MediaItem {
-    id: string;
-    uri: string;
-    type: 'video' | 'photo';
-    uploading: boolean;
-    error: boolean;
-    url?: string;
-}
+
 
 export const IncidentReportScreen = () => {
-    const navigation = useNavigation();
-    const route = useRoute<any>();
-    const dispatch = useDispatch();
-    const user = useSelector((state: RootState) => state.userState);
-    
-    const { initialCategory, roundId } = route.params || {};
+  const navigation = useNavigation();
+  const route = useRoute<any>();
+  const dispatch = useDispatch();
+  const theme = useTheme();
+  const user = useSelector((state: RootState) => state.userState);
+  const { loading } = useSelector((state: RootState) => state.loaderState);
 
-    const [categories, setCategories] = useState<CatalogItem[]>([]);
-    const [allTypes, setAllTypes] = useState<CatalogItem[]>([]);
-    const [clients, setClients] = useState<any[]>([]);
-    
-    const [categoryId, setCategoryId] = useState<number | null>(null);
-    const [typeId, setTypeId] = useState<number | null>(null);
-    
-    const [description, setDescription] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [media, setMedia] = useState<MediaItem[]>([]);
-    const [clientId, setClientId] = useState<string | null>(user.clientId || null);
-    
-    const [cameraVisible, setCameraVisible] = useState(false);
-    const [cameraMode, setCameraMode] = useState<'photo' | 'video'>('photo');
+  const { initialCategory, roundId } = route.params || {};
 
-    // Fetch catalogs
-    useFocusEffect(
-        useCallback(() => {
-            const fetchCatalogs = async () => {
-                try {
-                    const [catRes, typeRes, clientsRes] = await Promise.all([
-                        getCatalog('incident_category'),
-                        getCatalog('incident_type'),
-                        getCatalog('client')
-                    ]);
-                    
-                    if (catRes.success && catRes.data) {
-                        // Filter only INCIDENT type for this screen
-                        setCategories(catRes.data.filter((c: CatalogItem) => c.type === 'INCIDENT'));
-                    }
-                    if (typeRes.success && typeRes.data) {
-                        setAllTypes(typeRes.data);
-                    }
-                    if (clientsRes.success && clientsRes.data) {
-                        setClients(clientsRes.data.map((c: any) => ({ label: c.name || c.value, value: c.id })));
-                    }
-                } catch (e) {
-                    console.error('Error fetching incident catalogs:', e);
-                }
-            };
-            
-            Geolocation.requestAuthorization();
-            fetchCatalogs();
+  const [categories, setCategories] = useState<CatalogItem[]>([]);
+  const [allTypes, setAllTypes] = useState<CatalogItem[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [cameraVisible, setCameraVisible] = useState(false);
+  const [cameraMode, setCameraMode] = useState<'photo' | 'video'>('photo');
 
-            return () => {
-                // Cleanup on blur
-                setCategoryId(null);
-                setTypeId(null);
-                setDescription('');
-                setMedia([]);
-                setLoading(false);
-            };
-        }, [])
-    );
+  const validationSchema = Yup.object().shape({
+    categoryId: Yup.string().required('Selecciona una categoría'),
+    typeId: Yup.string().required('Selecciona el tipo de incidencia'),
+    clientId: Yup.string().when('isAdmin', {
+      is: true,
+      then: schema => schema.required('El cliente es obligatorio'),
+      otherwise: schema => schema.optional(),
+    }),
+    description: Yup.string().optional(),
+  });
 
-    const handleCapture = async (file: { uri: string; type: 'video' | 'photo' }) => {
-        // optimistically add to list with uploading flag
-        const tempId = Date.now().toString();
-        const newItem: MediaItem = { 
-            id: tempId,
-            uri: file.uri, 
-            type: file.type, 
-            uploading: true, 
-            error: false 
-        };
-        
-        setMedia(prev => [...prev, newItem]);
+  const fetchCatalogs = async () => {
+    try {
+      const [catRes, typeRes, clientsRes] = await Promise.all([
+        getCatalog('incident_category'),
+        getCatalog('incident_type'),
+        getCatalog('client'),
+      ]);
 
-        try {
-            const res = await uploadFile(file.uri, file.type === 'video' ? 'video' : 'image', 'incident', roundId);
-            
-            setMedia(prev => prev.map(item => {
-                if (item.id === tempId) {
-                    if (res.success && res.url) {
-                         return { ...item, url: res.url, uploading: false };
-                    } else {
-                         return { ...item, uploading: false, error: true };
-                    }
-                }
-                return item;
-            }));
+      if (catRes.success && catRes.data) {
+        setCategories(
+          catRes.data.filter((c: CatalogItem) => c.type === 'INCIDENT'),
+        );
+      }
+      if (typeRes.success && typeRes.data) {
+        setAllTypes(typeRes.data);
+      }
+      if (clientsRes.success && clientsRes.data) {
+        setClients(
+          clientsRes.data.map((c: any) => ({
+            label: c.name || c.value,
+            value: c.id,
+          })),
+        );
+      }
+    } catch (e) {
+      console.error('Error fetching catalogs:', e);
+    }
+  };
 
-            if (res.success) {
-                dispatch(showToast({ message: 'Evidencia subida correctamente', type: 'success' }));
-            } else {
-                dispatch(showToast({ message: 'Error al subir archivo', type: 'error' }));
-            }
+  useFocusEffect(
+    useCallback(() => {
+      Geolocation.requestAuthorization();
+      fetchCatalogs();
+    }, []),
+  );
 
-        } catch (e) {
-            setMedia(prev => prev.map(item => {
-                if (item.id === tempId) return { ...item, uploading: false, error: true };
-                return item;
-            }));
-        }
+  const handleCapture = async (file: {
+    uri: string;
+    type: 'video' | 'photo';
+  }) => {
+    const tempId = Date.now().toString();
+    const newItem: MediaItem = {
+      id: tempId,
+      uri: file.uri,
+      type: file.type,
+      uploading: true,
+      error: false,
     };
 
-    const retryUpload = async (index: number) => {
-        const item = media[index];
-        if (!item.error || item.uploading) return;
+    setMedia(prev => [...prev, newItem]);
 
-        setMedia(prev => {
-            const newMedia = [...prev];
-            newMedia[index] = { ...newMedia[index], error: false, uploading: true };
-            return newMedia;
+    try {
+      const res = await uploadFile(
+        file.uri,
+        file.type === 'video' ? 'video' : 'image',
+        'incident',
+        roundId,
+      );
+      setMedia(prev =>
+        prev.map(item => {
+          if (item.id === tempId) {
+            return res.success && res.url
+              ? { ...item, url: res.url, uploading: false }
+              : { ...item, uploading: false, error: true };
+          }
+          return item;
+        }),
+      );
+      if (!res.success)
+        dispatch(
+          showToast({ message: 'Error al subir archivo', type: 'error' }),
+        );
+    } catch (e) {
+      setMedia(prev =>
+        prev.map(item =>
+          item.id === tempId
+            ? { ...item, uploading: false, error: true }
+            : item,
+        ),
+      );
+    }
+  };
+
+  const retryUpload = async (index: number) => {
+    const item = media[index];
+    if (!item.error || item.uploading) return;
+
+    setMedia(prev => {
+      const newMedia = [...prev];
+      newMedia[index] = { ...newMedia[index], error: false, uploading: true };
+      return newMedia;
+    });
+
+    try {
+      const res = await uploadFile(
+        item.uri,
+        item.type === 'video' ? 'video' : 'image',
+        'incident',
+        roundId,
+      );
+      setMedia(prev => {
+        const newMedia = [...prev];
+        newMedia[index] =
+          res.success && res.url
+            ? { ...newMedia[index], url: res.url, uploading: false }
+            : { ...newMedia[index], uploading: false, error: true };
+        return newMedia;
+      });
+    } catch (e) {
+      setMedia(prev => {
+        const newMedia = [...prev];
+        newMedia[index] = { ...newMedia[index], uploading: false, error: true };
+        return newMedia;
+      });
+    }
+  };
+
+  const removeMedia = (index: number) => {
+    setMedia(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const isUploading = media.some(m => m.uploading);
+
+  const onFormSubmit = async (values: any) => {
+    if (isUploading) {
+      dispatch(
+        showToast({
+          message: 'Espera a que termine la subida',
+          type: 'warning',
+        }),
+      );
+      return;
+    }
+
+    if (media.some(m => m.error)) {
+      dispatch(
+        showToast({ message: 'Reintenta o elimina fallidos', type: 'error' }),
+      );
+      return;
+    }
+
+    const validMedia = media
+      .filter(m => m.url)
+      .map(m => ({
+        type: m.type === 'video' ? 'VIDEO' : 'IMAGE',
+        url: m.url,
+      }));
+
+    dispatch(showLoader(true));
+
+    const selectedType = allTypes.find(t => t.id === values.typeId);
+
+    const sendReport = async (position?: any) => {
+      try {
+        const res = await createIncident({
+          title: selectedType?.value || 'Incidencia',
+          categoryId: values.categoryId,
+          typeId: values.typeId,
+          description: values.description,
+          media: validMedia,
+          latitude: position?.coords?.latitude,
+          longitude: position?.coords?.longitude,
+          clientId: values.clientId || undefined,
+          guardId: user.id,
+          roundId: roundId || undefined,
         });
 
-        try {
-            const res = await uploadFile(item.uri, item.type === 'video' ? 'video' : 'image', 'incident', roundId);
-            
-            setMedia(prev => {
-                const newMedia = [...prev];
-                if (res.success && res.url) {
-                    newMedia[index] = { ...newMedia[index], url: res.url, uploading: false };
-                } else {
-                    newMedia[index] = { ...newMedia[index], uploading: false, error: true };
-                }
-                return newMedia;
-            });
-
-            if (res.success) {
-                dispatch(showToast({ message: 'Evidencia subida correctamente', type: 'success' }));
-            } else {
-                dispatch(showToast({ message: 'Error al reintentar', type: 'error' }));
-            }
-
-        } catch (e) {
-            setMedia(prev => {
-                const newMedia = [...prev];
-                newMedia[index] = { ...newMedia[index], uploading: false, error: true };
-                return newMedia;
-            });
+        if (res.success) {
+          dispatch(
+            showToast({
+              message: 'Reporte enviado con éxito',
+              type: 'success',
+            }),
+          );
+          navigation.goBack();
+        } else {
+          dispatch(
+            showToast({ message: 'Error al enviar reporte', type: 'error' }),
+          );
         }
+      } catch (e) {
+        dispatch(showToast({ message: 'Error de conexión', type: 'error' }));
+      } finally {
+        dispatch(showLoader(false));
+      }
     };
 
-    const handleSubmit = async () => {
-        if (!typeId) {
-            Alert.alert('Falta información', 'Selecciona el tipo de problema primero.');
-            return;
-        }
-
-        if (!clientId && user.role === UserRole.ADMIN) {
-            Alert.alert('Falta información', 'Selecciona un cliente para este reporte.');
-            return;
-        }
-
-        const pending = media.some(m => m.uploading);
-        if (pending) {
-            Alert.alert('Espera', 'Hay archivos subiéndose, por favor espera.');
-            return;
-        }
-
-        const failed = media.some(m => m.error);
-        if (failed) {
-            Alert.alert('Error', 'Algunos archivos fallaron al subir. Elimínalos o intenta de nuevo.');
-            return;
-        }
-        
-        // Filter only valid uploaded media
-        const validMedia = media.filter(m => m.url).map(m => ({
-            type: m.type === 'video' ? 'VIDEO' : 'IMAGE',
-            url: m.url
-        }));
-
-        setLoading(true);
-
-        const selectedType = allTypes.find(t => t.id === typeId);
-
-        Geolocation.getCurrentPosition(
-            async (position) => {
-                const res = await createIncident({
-                    title: selectedType?.value || 'Incidencia',
-                    categoryId: categoryId as number,
-                    typeId: typeId as number,
-                    media: validMedia,
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    clientId: clientId || undefined,
-                    guardId: user.id
-                });
-                
-                setLoading(false);
-
-                if (res.success) {
-                    dispatch(showToast({ message: 'Reporte enviado con éxito', type: 'success' }));
-                    navigation.goBack();
-                } else {
-                    Alert.alert('Error', 'No se pudo enviar el reporte.');
-                }
-            },
-            async (error) => {
-                // Si falla la ubicación, enviar de todos modos
-                const res = await createIncident({
-                    title: selectedType?.value || 'Incidencia',
-                    categoryId: categoryId as number,
-                    typeId: typeId as number,
-                    description: description,
-                    media: validMedia,
-                    clientId: clientId || undefined,
-                    guardId: user.id
-                });
-                
-                setLoading(false);
-
-                if (res.success) {
-                    dispatch(showToast({ message: 'Reporte enviado con éxito', type: 'success' }));
-                    navigation.goBack();
-                } else {
-                    Alert.alert('Error', 'No se pudo enviar el reporte.');
-                }
-            },
-            { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
-        );
-    };
-
-    const removeMedia = (index: number) => {
-        const newMedia = [...media];
-        newMedia.splice(index, 1);
-        setMedia(newMedia);
-    };
-
-    const currentCat = categories.find(c => c.id === categoryId);
-    const filteredTypes = allTypes.filter(t => t.categoryId === categoryId);
-    const isUploading = media.some(m => m.uploading);
-
-    return (
-        <View style={styles.container}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-            <StatusBar barStyle="dark-content" />
-            <Surface style={styles.header} elevation={1}>
-                <IconButton icon="chevron-left" size={30} onPress={() => navigation.goBack()} />
-                <Text style={styles.headerTitle}>Nuevo Reporte</Text>
-                <View style={{ width: 48 }} /> 
-            </Surface>
-
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                
-                {user.role === UserRole.ADMIN && (
-                    <>
-                        <Text style={styles.label}>SELECCIONAR CLIENTE</Text>
-                        <SearchComponent
-                            label="Cliente"
-                            placeholder="Selecciona un cliente..."
-                            options={clients}
-                            value={clientId || ''}
-                            onSelect={(val) => setClientId(val as string)}
-                        />
-                        <View style={{ height: 20 }} />
-                    </>
-                )}
-
-                <Text style={styles.label}>1. CATEGORÍA</Text>
-                <View style={styles.categoryGrid}>
-                    {categories.map((item) => {
-                        const isSelected = categoryId === item.id;
-                        return (
-                            <Surface 
-                                key={item.id} 
-                                elevation={isSelected ? 4 : 0} 
-                                style={[styles.catCardWrapper, isSelected && { backgroundColor: item.color || '#E0E0E0' }]}
-                            >
-                                <TouchableRipple
-                                    onPress={() => { setCategoryId(item.id); setTypeId(null); }}
-                                    style={styles.catRipple}
-                                >
-                                    <View style={styles.catCardContent}>
-                                        <Icon source={item.icon || 'alert-circle'} size={26} color={isSelected ? 'white' : '#757575'} />
-                                        <Text style={[styles.catText, isSelected && { color: 'white' }]}>{item.value}</Text>
-                                    </View>
-                                </TouchableRipple>
-                            </Surface>
-                        );
-                    })}
-                </View>
-
-                {categoryId && (
-                    <>
-                        <Text style={styles.label}>2. TIPO DE INCIDENCIA</Text>
-                        <View style={styles.typeWrapper}>
-                            {filteredTypes.map((type) => (
-                                <Chip
-                                    key={type.id}
-                                    selected={typeId === type.id}
-                                    onPress={() => setTypeId(type.id)}
-                                    style={[styles.typeChip, typeId === type.id && { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }]}
-                                    textStyle={[styles.typeChipText, typeId === type.id && { color: theme.colors.primary }]}
-                                    showSelectedCheck={false}
-                                    mode="outlined"
-                                >
-                                    {type.value}
-                                </Chip>
-                            ))}
-                        </View>
-                    </>
-                )}
-
-                <Text style={styles.label}>3. EVIDENCIA</Text>
-                <View style={styles.photoActionRow}>
-                    <TouchableOpacity 
-                        activeOpacity={0.8}
-                        style={[styles.bigCaptureBtn, { backgroundColor: '#FFFFFF', borderColor: theme.colors.primary, borderWidth: 2 }]}
-                        onPress={() => { setCameraMode('photo'); setCameraVisible(true); }}
-                    >
-                        <Icon source="camera" size={32} color={theme.colors.primary} />
-                        <Text style={[styles.bigCaptureText, { color: theme.colors.primary }]}>FOTO</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                        activeOpacity={0.8}
-                        style={[styles.bigCaptureBtn, { backgroundColor: '#455A64' }]}
-                        onPress={() => { setCameraMode('video'); setCameraVisible(true); }}
-                    >
-                        <Icon source="video" size={32} color="white" />
-                        <Text style={styles.bigCaptureText}>VIDEO</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {media.length > 0 && (
-                    <ScrollView horizontal style={styles.mediaList} showsHorizontalScrollIndicator={false}>
-                        {media.map((item, index) => (
-                            <View key={index} style={styles.mediaItem}>
-                                <Image source={{ uri: item.uri }} style={styles.mediaImg} />
-                                {item.type === 'video' && (
-                                    <View style={styles.videoIconOverlay}><Icon source="play-circle" color="white" size={30} /></View>
-                                )}
-                                {item.uploading && (
-                                    <View style={styles.loaderOverlay}>
-                                        <ActivityIndicator size="small" color="white" />
-                                    </View>
-                                )}
-                                {item.error && (
-                                    <View style={styles.errorOverlay}>
-                                        <IconButton 
-                                            icon="refresh" 
-                                            iconColor="white" 
-                                            size={28} 
-                                            onPress={() => retryUpload(index)}
-                                            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-                                        />
-                                    </View>
-                                )}
-                                <IconButton 
-                                    icon="close-circle" 
-                                    size={22} 
-                                    containerColor="white" 
-                                    iconColor="#E53935"
-                                    style={styles.deleteMedia} 
-                                    onPress={() => removeMedia(index)} 
-                                />
-                            </View>
-                        ))}
-                    </ScrollView>
-                )}
-
-                <Text style={styles.label}>4. OBSERVACIONES ADICIONALES</Text>
-                <TextInput
-                    mode="outlined"
-                    multiline
-                    placeholder="Describe lo sucedido brevemente..."
-                    value={description}
-                    onChangeText={setDescription}
-                    style={styles.textInput}
-                    outlineColor="#E0E0E0"
-                    activeOutlineColor={theme.colors.primary}
-                />
-
-                    <Button 
-                        mode="contained" 
-                        onPress={handleSubmit} 
-                        style={[styles.mainSubmitBtn, (!typeId || isUploading) && { backgroundColor: '#BDBDBD' }]}
-                        contentStyle={{ height: 60 }}
-                        loading={loading}
-                        disabled={loading || !typeId || isUploading}
-                    >
-                        <Text style={styles.submitBtnText}>{isUploading ? 'SUBIENDO...' : 'ENVIAR REPORTE'}</Text>
-                    </Button>
-                </ScrollView>
-            </KeyboardAvoidingView>
-
-            <CameraModal
-                visible={cameraVisible}
-                mode={cameraMode}
-                onDismiss={() => setCameraVisible(false)}
-                onCapture={handleCapture}
-                maxDuration={APP_SETTINGS.INCIDENT_VIDEO_DURATION_LIMIT}
-            />
-            
-            <Portal>
-                <Dialog visible={isUploading || loading} dismissable={false} style={{ backgroundColor: 'white', borderRadius: 20 }}>
-                    <Dialog.Content style={{ alignItems: 'center', paddingVertical: 30 }}>
-                        <ActivityIndicator size="large" color={theme.colors.primary} />
-                        <Text style={{ marginTop: 20, fontWeight: 'bold', fontSize: 16, color: '#333', textAlign: 'center' }}>
-                            {isUploading ? 'Subiendo evidencia...' : 'Enviando reporte...'}
-                        </Text>
-                        <Text style={{ marginTop: 8, color: '#999', fontSize: 12 }}>Por favor espera un momento</Text>
-                    </Dialog.Content>
-                </Dialog>
-            </Portal>
-        </View>
+    Geolocation.getCurrentPosition(
+      pos => sendReport(pos),
+      () => sendReport(),
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 },
     );
+  };
+
+  return (
+    <ITScreenWrapper padding={false}>
+      <Formik
+        initialValues={{
+          categoryId: null,
+          typeId: null,
+          clientId: user.clientId || '',
+          description: '',
+          isAdmin: user.role === UserRole.ADMIN,
+        }}
+        validationSchema={validationSchema}
+        onSubmit={onFormSubmit}
+      >
+        {({ setFieldValue, handleSubmit, values, errors, touched }) => (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.paddingContainer}>
+              <ITText variant="headlineSmall" weight="bold">
+                Nuevo Reporte
+              </ITText>
+              <ITText
+                variant="bodyMedium"
+                style={{ opacity: 0.6, marginBottom: 20 }}
+              >
+                Completa los detalles de la incidencia
+              </ITText>
+
+              {user.role === UserRole.ADMIN && (
+                <View style={styles.section}>
+                  <ITText
+                    variant="labelLarge"
+                    weight="bold"
+                    style={styles.label}
+                  >
+                    SELECCIONAR CLIENTE
+                  </ITText>
+                  <SearchComponent
+                    label="Cliente"
+                    placeholder="Selecciona un cliente..."
+                    options={clients}
+                    value={values.clientId}
+                    onSelect={val => setFieldValue('clientId', val)}
+                  />
+                  {errors.clientId && touched.clientId && (
+                    <ITText
+                      variant="bodySmall"
+                      color={theme.colors.error}
+                      style={{ marginTop: 4 }}
+                    >
+                      {errors.clientId as string}
+                    </ITText>
+                  )}
+                </View>
+              )}
+
+              <ITCategorySelector
+                categories={categories}
+                selectedId={values.categoryId}
+                onSelect={id => {
+                  setFieldValue('categoryId', id);
+                  setFieldValue('typeId', null);
+                }}
+              />
+              {errors.categoryId && touched.categoryId && (
+                <ITText
+                  variant="bodySmall"
+                  color={theme.colors.error}
+                  style={{ marginTop: -16, marginBottom: 16 }}
+                >
+                  {errors.categoryId as string}
+                </ITText>
+              )}
+
+              {values.categoryId && (
+                <ITTypeSelector
+                  types={allTypes.filter(
+                    t => t.categoryId === values.categoryId,
+                  )}
+                  selectedId={values.typeId}
+                  onSelect={id => setFieldValue('typeId', id)}
+                  label="2. TIPO DE INCIDENCIA"
+                />
+              )}
+              {errors.typeId && touched.typeId && (
+                <ITText
+                  variant="bodySmall"
+                  color={theme.colors.error}
+                  style={{ marginTop: -16, marginBottom: 16 }}
+                >
+                  {errors.typeId as string}
+                </ITText>
+              )}
+
+              <ITMediaPicker
+                media={media}
+                onMediaChange={setMedia}
+                uploadPath="incident"
+                roundId={roundId}
+              />
+
+              <View style={styles.section}>
+                <ITText variant="labelLarge" weight="bold" style={styles.label}>
+                  4. OBSERVACIONES
+                </ITText>
+                <ITInput
+                  placeholder="Describe lo sucedido brevemente..."
+                  multiline
+                  numberOfLines={4}
+                  value={values.description}
+                  onChangeText={val => setFieldValue('description', val)}
+                />
+              </View>
+
+              <ITButton
+                label={isUploading ? 'SUBIENDO...' : 'ENVIAR REPORTE'}
+                onPress={() => handleSubmit()}
+                loading={loading}
+                disabled={
+                  loading ||
+                  isUploading ||
+                  !values.categoryId ||
+                  !values.typeId ||
+                  (user.role === UserRole.ADMIN && !values.clientId)
+                }
+                style={{ marginTop: 20 }}
+              />
+            </View>
+          </ScrollView>
+        )}
+      </Formik>
+
+      <CameraModal
+        visible={cameraVisible}
+        mode={cameraMode}
+        onDismiss={() => setCameraVisible(false)}
+        onCapture={handleCapture}
+        maxDuration={APP_SETTINGS.INCIDENT_VIDEO_DURATION_LIMIT}
+      />
+    </ITScreenWrapper>
+  );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.surface },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4, backgroundColor: COLORS.surface },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
-    content: { padding: 16, paddingBottom: 60 },
-    label: { fontSize: 11, fontWeight: '900', color: COLORS.textSecondary, marginBottom: 12, marginTop: 15, letterSpacing: 1.2 },
-    
-    categoryGrid: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    catCardWrapper: { flex: 1, height: 90, borderRadius: 16, backgroundColor: COLORS.surfaceVariant, overflow: 'hidden' },
-    catRipple: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    catCardContent: { alignItems: 'center' },
-    catText: { fontSize: 10, fontWeight: '800', marginTop: 8, textAlign: 'center', color: COLORS.textSecondary },
-
-    typeWrapper: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-    typeChip: { borderRadius: 10, borderColor: COLORS.border },
-    typeChipText: { fontSize: 13, fontWeight: '600' },
-
-    photoActionRow: { flexDirection: 'row', gap: 12, marginBottom: 15 },
-    bigCaptureBtn: { flex: 1, height: 90, borderRadius: 18, justifyContent: 'center', alignItems: 'center', elevation: 2, backgroundColor: COLORS.surface },
-    bigCaptureText: { color: 'white', fontWeight: '900', fontSize: 13, marginTop: 6 },
-
-    mediaList: { marginBottom: 20, paddingVertical: 5 },
-    mediaItem: { marginRight: 15, position: 'relative' },
-    mediaImg: { width: 100, height: 100, borderRadius: 12, backgroundColor: COLORS.surfaceVariant },
-    videoIconOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 12 },
-    deleteMedia: { position: 'absolute', top: -12, right: -12, margin: 0 },
-
-    textInput: { backgroundColor: COLORS.surface, minHeight: 100, fontSize: 15 },
-    mainSubmitBtn: { marginTop: 30, borderRadius: 12, elevation: 4 },
-    submitBtnText: { color: 'white', fontWeight: '900', fontSize: 16, letterSpacing: 1 },
-    
-    loaderOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12 },
-    errorOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,0,0,0.2)', borderRadius: 12 },
-    uploadingOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999 },
-    uploadingCard: { padding: 20, borderRadius: 16, alignItems: 'center', backgroundColor: 'white' },
-    uploadingText: { marginTop: 10, fontWeight: 'bold', color: theme.colors.primary }
+  scrollContent: { paddingBottom: 60 },
+  paddingContainer: { padding: 20 },
+  section: { marginBottom: 24 },
+  label: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: COLORS.textSecondary,
+    marginBottom: 12,
+    marginTop: 15,
+    letterSpacing: 1.2,
+  },
+  categoryScroll: { paddingRight: 20, gap: 10, paddingVertical: 10 },
+  catCard: {
+    width: 100,
+    height: 90,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    overflow: 'hidden',
+    marginRight: 0,
+    marginBottom: 0,
+  },
+  catContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+  },
+  catText: {
+    fontSize: 9,
+    fontWeight: '800',
+    marginTop: 8,
+    textAlign: 'center',
+    color: '#64748B',
+  },
+  typeChip: { borderRadius: 10, borderColor: '#EEEEEE' },
+  typeChipText: { fontSize: 13, fontWeight: '600' },
+  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  mediaButtons: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  mediaList: { paddingVertical: 10 },
+  mediaWrapper: { marginRight: 16, position: 'relative' },
+  mediaPreview: {
+    width: 110,
+    height: 110,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 16,
+  },
+  uploadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 16,
+  },
+  errorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,0,0,0.3)',
+    borderRadius: 16,
+  },
+  removeMedia: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+  },
 });

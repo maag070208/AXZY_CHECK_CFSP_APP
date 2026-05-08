@@ -64,6 +64,8 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
     visible: false, title: '', message: '', type: 'warning' 
   });
 
+  const isAnyMediaUploading = photos.some(p => p.uploading) || videos.some(v => v.uploading);
+
   useEffect(() => {
     initReport();
     if (route.params.recurringTasks) {
@@ -158,6 +160,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
   };
 
   const performVideoUpload = async (uri: string) => {
+    setVideos(curr => curr.map(v => v.uri === uri ? { ...v, uploading: true, error: false } : v));
     try {
       const res: any = await uploadFile(uri, 'video', location?.name, roundId);
       if (res.success) {
@@ -173,6 +176,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
   };
 
   const performPhotoUpload = async (photo: any) => {
+    setPhotos(curr => curr.map(p => p.uri === photo.uri ? { ...p, uploading: true, error: false } : p));
     try {
       const res: any = await uploadFile(photo.uri, 'image', location?.name, roundId);
       if (res.success) {
@@ -233,7 +237,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
         <Surface style={styles.headerCard} elevation={0}>
             <View style={styles.headerTop}>
                 <View style={styles.badgeLabel}>
-                    <Text style={styles.badgeLabelText}>{requirements.label.toUpperCase()}</Text>
+                    <Text style={styles.badgeLabelText}>{(requirements.label || '').toUpperCase()}</Text>
                 </View>
                 <Text style={styles.headerDate}>{new Date().toLocaleDateString()}</Text>
             </View>
@@ -285,7 +289,10 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
                 <View style={styles.photoGrid}>
                     {/* VIDEOS */}
                     {videos.map((v, i) => (
-                        <View key={`v-${i}`} style={styles.photoWrapper}>
+                        <View key={`v-${i}`} style={[
+                            styles.photoWrapper,
+                            v.url && !v.uploading ? styles.borderSuccess : v.error ? styles.borderError : {}
+                        ]}>
                             {v.thumbnail ? (
                                 <Image source={{ uri: v.thumbnail }} style={styles.photoImg} />
                             ) : (
@@ -297,6 +304,19 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
                                 <Icon source="play-circle" size={32} color="#fff" />
                             </View>
                             {v.uploading && <View style={styles.photoOverlay}><ActivityIndicator color="#fff" size="small" /></View>}
+                            
+                            {v.error && !v.uploading && (
+                                <View style={styles.photoOverlayError}>
+                                    <IconButton icon="refresh" size={24} iconColor="#fff" onPress={() => performVideoUpload(v.uri)} />
+                                </View>
+                            )}
+
+                            {v.url && !v.uploading && (
+                                <View style={styles.statusBadgeOk}>
+                                    <Icon source="check-bold" size={12} color="#fff" />
+                                </View>
+                            )}
+
                             <TouchableOpacity style={styles.deleteBtn} onPress={() => {
                                 const updated = videos.filter((_, idx) => idx !== i);
                                 setVideos(updated);
@@ -308,9 +328,25 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
                     ))}
                     {/* FOTOS */}
                     {photos.map((p, i) => (
-                        <View key={`p-${i}`} style={styles.photoWrapper}>
+                        <View key={`p-${i}`} style={[
+                            styles.photoWrapper,
+                            p.url && !p.uploading ? styles.borderSuccess : p.error ? styles.borderError : {}
+                        ]}>
                             <Image source={{ uri: p.uri }} style={styles.photoImg} />
                             {p.uploading && <View style={styles.photoOverlay}><ActivityIndicator color="#fff" size="small" /></View>}
+                            
+                            {p.error && !p.uploading && (
+                                <View style={styles.photoOverlayError}>
+                                    <IconButton icon="refresh" size={24} iconColor="#fff" onPress={() => performPhotoUpload(p)} />
+                                </View>
+                            )}
+
+                            {p.url && !p.uploading && (
+                                <View style={styles.statusBadgeOk}>
+                                    <Icon source="check-bold" size={12} color="#fff" />
+                                </View>
+                            )}
+
                             <TouchableOpacity style={styles.deleteBtn} onPress={() => {
                                 const updated = photos.filter((_, idx) => idx !== i);
                                 setPhotos(updated);
@@ -345,12 +381,16 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
             mode="contained" 
             onPress={handleSubmit}
             loading={loading}
-            disabled={loading || photos.length < requirements.minPhotos}
-            style={styles.submitBtn}
+            disabled={loading || photos.length < requirements.minPhotos || isAnyMediaUploading}
+            style={[styles.submitBtn, isAnyMediaUploading && { backgroundColor: '#94A3B8' }]}
             contentStyle={styles.submitBtnContent}
             labelStyle={styles.submitBtnLabel}
         >
-            {photos.length < requirements.minPhotos ? `Faltan ${requirements.minPhotos - photos.length} fotos` : 'Finalizar Reporte'}
+            {isAnyMediaUploading 
+                ? 'Subiendo evidencia...' 
+                : photos.length < requirements.minPhotos 
+                    ? `Faltan ${requirements.minPhotos - photos.length} fotos` 
+                    : 'Finalizar Reporte'}
         </Button>
 
       </ScrollView>
@@ -403,10 +443,14 @@ const styles = StyleSheet.create({
 
   // Photo Grid
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 15 },
-  photoWrapper: { width: (width - 60) / 3, height: (width - 60) / 3, borderRadius: 15, overflow: 'hidden', position: 'relative' },
+  photoWrapper: { width: (width - 60) / 3, height: (width - 60) / 3, borderRadius: 15, overflow: 'hidden', position: 'relative', backgroundColor: '#F1F5F9' },
   photoImg: { width: '100%', height: '100%' },
   photoOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-  deleteBtn: { position: 'absolute', top: 5, right: 5, width: 22, height: 22, borderRadius: 11, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
+  photoOverlayError: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(239, 68, 68, 0.4)', justifyContent: 'center', alignItems: 'center' },
+  borderSuccess: { borderWidth: 2, borderColor: '#22C55E' },
+  borderError: { borderWidth: 2, borderColor: '#EF4444' },
+  statusBadgeOk: { position: 'absolute', bottom: 5, right: 5, width: 18, height: 18, borderRadius: 9, backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'center' },
+  deleteBtn: { position: 'absolute', top: 5, right: 5, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
 
   // Input
   textArea: { backgroundColor: '#fff', fontSize: 15 },

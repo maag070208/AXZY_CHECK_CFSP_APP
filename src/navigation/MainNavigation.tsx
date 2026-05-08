@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from '../core/store/hooks';
 import { logout } from '../core/store/slices/user.slice';
 import { IAuthToken } from '../core/types/IUser';
 import LoginScreen from '../screens/auth/screens/LoginScreen';
-import LoaderComponent from '../shared/components/LoaderComponent';
+import { LoaderComponent } from '../shared/components/LoaderComponent';
 import DrawerNavigator from './drawer/DrawerNavigator';
 
 const MainNavigation = () => {

@@ -4,10 +4,10 @@ import { Image, Video } from 'react-native-compressor';
 import { Platform } from 'react-native';
 
 export const uploadFile = async (
-  uri: string, 
-  type: 'video' | 'image', 
+  uri: string,
+  type: 'video' | 'image',
   locationName: string = 'unknown',
-  roundId?: string
+  roundId?: string,
 ): Promise<{ success: boolean; url?: string; error?: string }> => {
   let uploadUri = uri;
 
@@ -21,7 +21,9 @@ export const uploadFile = async (
       });
       if (compressedUri) uploadUri = compressedUri;
     } else if (type === 'video') {
-      const compressedUri = await Video.compress(uri, { compressionMethod: 'auto' });
+      const compressedUri = await Video.compress(uri, {
+        compressionMethod: 'auto',
+      });
       if (compressedUri) uploadUri = compressedUri;
     }
   } catch (error) {
@@ -29,11 +31,17 @@ export const uploadFile = async (
   }
 
   // Formateo de URI para Android
-  if (Platform.OS === 'android' && !uploadUri.startsWith('file://') && !uploadUri.startsWith('http')) {
+  if (
+    Platform.OS === 'android' &&
+    !uploadUri.startsWith('file://') &&
+    !uploadUri.startsWith('http')
+  ) {
     uploadUri = `file://${uploadUri}`;
   }
 
-  const filename = uploadUri.split('/').pop() || (type === 'video' ? 'video.mp4' : 'image.jpg');
+  const filename =
+    uploadUri.split('/').pop() ||
+    (type === 'video' ? 'video.mp4' : 'image.jpg');
   let mimeType = type === 'video' ? 'video/mp4' : 'image/jpeg';
   if (filename.toLowerCase().endsWith('.mov')) mimeType = 'video/quicktime';
   if (filename.toLowerCase().endsWith('.3gp')) mimeType = 'video/3gpp';
@@ -58,14 +66,18 @@ export const uploadFile = async (
   let attempts = 0;
   const maxRetries = 2; // Total 3 intentos
 
-  const performUpload = async (): Promise<{ success: boolean; url?: string; error?: string }> => {
+  const performUpload = async (): Promise<{
+    success: boolean;
+    url?: string;
+    error?: string;
+  }> => {
     try {
       const response = await fetch(`${API_CONSTANTS.BASE_URL}/uploads`, {
         method: 'POST',
         body: formData,
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Accept': 'application/json',
+          Authorization: token ? `Bearer ${token}` : '',
+          Accept: 'application/json',
         },
       });
 
@@ -73,11 +85,17 @@ export const uploadFile = async (
       if (response.ok && (result.success || result.url || result.data?.url)) {
         return { success: true, url: result.url || result.data?.url };
       }
-      return { success: false, error: result.message || 'Error en respuesta del servidor' };
+      return {
+        success: false,
+        error: result.message || 'Error en respuesta del servidor',
+      };
     } catch (error: any) {
       if (attempts < maxRetries) {
         attempts++;
-        console.warn(`[Upload] Intento ${attempts} fallido, reintentando...`, error.message);
+        console.warn(
+          `[Upload] Intento ${attempts} fallido, reintentando...`,
+          error.message,
+        );
         return performUpload();
       }
       console.warn('[Upload] Error de red persistente:', error.message);

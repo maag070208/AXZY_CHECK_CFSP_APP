@@ -1,6 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Modal, Portal, Text, TextInput, Button, IconButton, Surface, Divider, HelperText } from 'react-native-paper';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import {
+  Modal,
+  Portal,
+  Text,
+  TextInput,
+  Button,
+  IconButton,
+  Surface,
+  Divider,
+  HelperText,
+} from 'react-native-paper';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { getClients } from '../../clients/service/client.service';
@@ -9,7 +25,7 @@ import { SearchComponent } from '../../../shared/components/SearchComponent';
 
 const ZoneSchema = Yup.object().shape({
   name: Yup.string().required('El nombre de la zona es requerido'),
-  clientId: Yup.number().required('Debes seleccionar un cliente'),
+  clientId: Yup.string().required('Debes seleccionar un cliente'),
 });
 
 interface Props {
@@ -20,7 +36,13 @@ interface Props {
   initialData?: any;
 }
 
-export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading, initialData }: Props) => {
+export const ZoneFormModal = ({
+  visible,
+  onDismiss,
+  onSubmit,
+  loading,
+  initialData,
+}: Props) => {
   const [clients, setClients] = useState<IClient[]>([]);
   const [fetchingClients, setFetchingClients] = useState(false);
 
@@ -38,7 +60,7 @@ export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading, initialDa
         setClients(res.data || []);
       }
     } catch (error) {
-      console.error("Error loading clients for zone modal:", error);
+      console.error('Error loading clients for zone modal:', error);
     } finally {
       setFetchingClients(false);
     }
@@ -46,18 +68,24 @@ export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading, initialDa
 
   return (
     <Portal>
-      <Modal 
-        visible={visible} 
-        onDismiss={onDismiss} 
+      <Modal
+        visible={visible}
+        onDismiss={onDismiss}
         contentContainerStyle={styles.modalContainer}
       >
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <Surface style={styles.surface} elevation={5}>
             <View style={styles.header}>
               <View>
-                <Text style={styles.title}>{initialData ? 'Editar Zona' : 'Nueva Zona'}</Text>
+                <Text style={styles.title}>
+                  {initialData ? 'Editar Zona' : 'Nueva Zona'}
+                </Text>
                 <Text style={styles.subtitle}>
-                    {initialData ? `Actualizando ${initialData.name}` : 'Agrega un nuevo sector para inspecciones'}
+                  {initialData
+                    ? `Actualizando ${initialData.name}`
+                    : 'Agrega un nuevo sector para inspecciones'}
                 </Text>
               </View>
               <IconButton icon="close" onPress={onDismiss} size={20} />
@@ -66,15 +94,23 @@ export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading, initialDa
             <Divider />
 
             <Formik
-              initialValues={{ 
-                name: initialData?.name || '', 
-                clientId: initialData?.clientId || '' 
+              initialValues={{
+                name: initialData?.name || '',
+                clientId: initialData?.clientId || '',
               }}
               enableReinitialize
               validationSchema={ZoneSchema}
               onSubmit={onSubmit}
             >
-              {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue }) => (
+              {({
+                handleChange,
+                handleBlur,
+                handleSubmit,
+                values,
+                errors,
+                touched,
+                setFieldValue,
+              }) => (
                 <View style={styles.form}>
                   <ScrollView showsVerticalScrollIndicator={false}>
                     <View style={styles.inputGroup}>
@@ -89,46 +125,56 @@ export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading, initialDa
                         outlineStyle={styles.inputOutline}
                         left={<TextInput.Icon icon="map-marker-outline" />}
                       />
-                      {touched.name && errors.name && <HelperText type="error">{errors.name}</HelperText>}
+                      {touched.name && errors.name && (
+                        <HelperText type="error">{errors.name}</HelperText>
+                      )}
                     </View>
 
                     <View style={styles.inputGroup}>
                       <SearchComponent
                         label="Asignar a Cliente"
                         placeholder="Selecciona un cliente..."
-                        options={clients.map(c => ({ label: c.name, value: c.id }))}
+                        options={clients.map(c => ({
+                          label: c.name,
+                          value: c.id,
+                        }))}
                         value={values.clientId}
-                        onSelect={(val) => setFieldValue('clientId', val)}
+                        onSelect={val => setFieldValue('clientId', val)}
                         error={touched.clientId && errors.clientId}
                       />
                     </View>
 
                     <View style={styles.infoBox}>
-                        <IconButton icon="information-outline" size={20} iconColor="#065911" />
-                        <Text style={styles.infoText}>
-                            Las zonas permiten organizar los puntos de escaneo por secciones dentro de una propiedad.
-                        </Text>
+                      <IconButton
+                        icon="information-outline"
+                        size={20}
+                        iconColor="#065911"
+                      />
+                      <Text style={styles.infoText}>
+                        Las zonas permiten organizar los puntos de escaneo por
+                        secciones dentro de una propiedad.
+                      </Text>
                     </View>
                   </ScrollView>
 
                   <View style={styles.footer}>
-                    <Button 
-                        mode="outlined" 
-                        onPress={onDismiss} 
-                        style={styles.button}
-                        disabled={loading}
+                    <Button
+                      mode="outlined"
+                      onPress={onDismiss}
+                      style={styles.button}
+                      disabled={loading}
                     >
-                        Cancelar
+                      Cancelar
                     </Button>
-                    <Button 
-                        mode="contained" 
-                        onPress={() => handleSubmit()} 
-                        style={[styles.button, styles.submitButton]}
-                        loading={loading}
-                        disabled={loading}
-                        buttonColor="#065911"
+                    <Button
+                      mode="contained"
+                      onPress={() => handleSubmit()}
+                      style={[styles.button, styles.submitButton]}
+                      loading={loading}
+                      disabled={loading}
+                      buttonColor="#065911"
                     >
-                        {initialData ? 'Guardar Cambios' : 'Crear Zona'}
+                      {initialData ? 'Guardar' : 'Crear'}
                     </Button>
                   </View>
                 </View>
@@ -220,5 +266,5 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     elevation: 2,
-  }
+  },
 });

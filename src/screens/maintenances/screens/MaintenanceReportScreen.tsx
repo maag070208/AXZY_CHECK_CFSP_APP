@@ -43,6 +43,16 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { UserRole } from '../../../core/types/IUser';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
+import {
+  ITScreenWrapper,
+  ITText,
+  ITButton,
+  ITCategorySelector,
+  ITTypeSelector,
+  ITMediaPicker,
+  MediaItem,
+  ITInput,
+} from '../../../shared/components';
 
 const { width } = Dimensions.get('window');
 export const MaintenanceReportScreen = () => {
@@ -57,12 +67,14 @@ export const MaintenanceReportScreen = () => {
   const [allTypes, setAllTypes] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
 
-  const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [typeId, setTypeId] = useState<number | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [typeId, setTypeId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
-  const [media, setMedia] = useState<any[]>([]);
-  const [clientId, setClientId] = useState<string | null>(user.clientId || null);
+  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [clientId, setClientId] = useState<string | null>(
+    user.clientId || null,
+  );
 
   const [cameraVisible, setCameraVisible] = useState(false);
   const [cameraMode, setCameraMode] = useState<'photo' | 'video'>('photo');
@@ -74,7 +86,7 @@ export const MaintenanceReportScreen = () => {
           const [catRes, typeRes, clientsRes] = await Promise.all([
             getCatalog('incident_category'),
             getCatalog('incident_type'),
-            getCatalog('client')
+            getCatalog('client'),
           ]);
 
           if (catRes.success) {
@@ -91,7 +103,12 @@ export const MaintenanceReportScreen = () => {
             setAllTypes(typeRes.data);
           }
           if (clientsRes.success) {
-            setClients(clientsRes.data.map((c: any) => ({ label: c.name || c.value, value: c.id })));
+            setClients(
+              clientsRes.data.map((c: any) => ({
+                label: c.name || c.value,
+                value: c.id,
+              })),
+            );
           }
         } catch (error) {
           console.error('Error fetching maintenance catalogs:', error);
@@ -110,53 +127,6 @@ export const MaintenanceReportScreen = () => {
     }, []),
   );
 
-  const handleCapture = async (file: {
-    uri: string;
-    type: 'video' | 'photo';
-  }) => {
-    const tempId = Date.now().toString();
-    const newItem = {
-      id: tempId,
-      uri: file.uri,
-      type: file.type,
-      uploading: true,
-      error: false,
-    };
-    setMedia(prev => [...prev, newItem]);
-
-    try {
-      const res = await uploadFile(
-        file.uri,
-        file.type === 'video' ? 'video' : 'image',
-        'maintenance',
-        roundId
-      );
-      setMedia(prev =>
-        prev.map(item => {
-          if (item.id === tempId) {
-            if (res.success && res.url)
-              return { ...item, url: res.url, uploading: false };
-            else return { ...item, uploading: false, error: true };
-          }
-          return item;
-        }),
-      );
-
-      if (!res.success)
-        dispatch(
-          showToast({ message: 'Error al subir archivo', type: 'error' }),
-        );
-    } catch (e) {
-      setMedia(prev =>
-        prev.map(item => {
-          if (item.id === tempId)
-            return { ...item, uploading: false, error: true };
-          return item;
-        }),
-      );
-    }
-  };
-
   const handleSubmit = async () => {
     if (!typeId) {
       Alert.alert(
@@ -167,7 +137,10 @@ export const MaintenanceReportScreen = () => {
     }
 
     if (!clientId && user.role === UserRole.ADMIN) {
-      Alert.alert('Falta información', 'Selecciona un cliente para este reporte.');
+      Alert.alert(
+        'Falta información',
+        'Selecciona un cliente para este reporte.',
+      );
       return;
     }
 
@@ -200,13 +173,13 @@ export const MaintenanceReportScreen = () => {
       async position => {
         const res = await createMaintenance({
           title: selectedType?.value || 'Mantenimiento',
-          categoryId: categoryId as number,
-          typeId: typeId as number,
+          categoryId: categoryId as string,
+          typeId: typeId as string,
           media: validMedia,
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           clientId: clientId || undefined,
-          guardId: user.id
+          guardId: user.id,
         });
         setLoading(false);
         if (res.success) {
@@ -224,12 +197,12 @@ export const MaintenanceReportScreen = () => {
       async error => {
         const res = await createMaintenance({
           title: selectedType?.value || 'Mantenimiento',
-          categoryId: categoryId as number,
-          typeId: typeId as number,
+          categoryId: categoryId as string,
+          typeId: typeId as string,
           description: description,
           media: validMedia,
           clientId: clientId || undefined,
-          guardId: user.id
+          guardId: user.id,
         });
         setLoading(false);
         if (res.success) {
@@ -248,263 +221,84 @@ export const MaintenanceReportScreen = () => {
     );
   };
 
-  const removeMedia = (index: number) => {
-    const newMedia = [...media];
-    newMedia.splice(index, 1);
-    setMedia(newMedia);
-  };
-
   const currentCat = categories.find(c => c.id === categoryId);
   const filteredTypes = allTypes.filter(t => t.categoryId === categoryId);
   const isUploading = media.some(m => m.uploading);
 
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+    <ITScreenWrapper padding={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        <StatusBar barStyle="dark-content" />
-        <Surface style={styles.header} elevation={1}>
-          <IconButton
-            icon="chevron-left"
-            size={30}
-            onPress={() => navigation.goBack()}
+        {user.role === UserRole.ADMIN && (
+          <View style={styles.section}>
+            <ITText variant="labelLarge" weight="bold" style={styles.label}>
+              SELECCIONAR CLIENTE
+            </ITText>
+            <SearchComponent
+              label="Cliente"
+              placeholder="Selecciona un cliente..."
+              options={clients}
+              value={clientId || ''}
+              onSelect={val => setClientId(val as string)}
+            />
+          </View>
+        )}
+
+        <ITCategorySelector
+          categories={categories}
+          selectedId={categoryId}
+          onSelect={id => {
+            setCategoryId(id);
+            setTypeId(null);
+          }}
+        />
+
+        {categoryId && (
+          <ITTypeSelector
+            types={allTypes.filter(t => t.categoryId === categoryId)}
+            selectedId={typeId}
+            onSelect={id => setTypeId(id)}
+            label="2. TIPO DE MANTENIMIENTO"
           />
-          <Text style={styles.headerTitle}>Nuevo Mantenimiento</Text>
-          <View style={{ width: 48 }} />
-        </Surface>
+        )}
 
-        <ScrollView
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
-          {user.role === UserRole.ADMIN && (
-            <>
-              <Text style={styles.label}>SELECCIONAR CLIENTE</Text>
-              <SearchComponent
-                label="Cliente"
-                placeholder="Selecciona un cliente..."
-                options={clients}
-                value={clientId || ''}
-                onSelect={(val) => setClientId(val as string)}
-              />
-              <View style={{ height: 20 }} />
-            </>
-          )}
+        <ITMediaPicker
+          media={media}
+          onMediaChange={setMedia}
+          uploadPath="maintenance"
+          roundId={roundId}
+        />
 
-          <Text style={styles.label}>1. CATEGORÍA</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingRight: 20 }}
-          >
-            <View style={styles.categoryGrid}>
-              {categories.map(cat => {
-                const isSelected = categoryId === cat.id;
-                return (
-                  <Surface
-                    key={cat.id}
-                    elevation={isSelected ? 4 : 0}
-                    style={[
-                      styles.catCardWrapper,
-                      isSelected && { backgroundColor: cat.color || '#F5F5F5' },
-                    ]}
-                  >
-                    <TouchableRipple
-                      onPress={() => {
-                        setCategoryId(cat.id);
-                        setTypeId(null);
-                      }}
-                      style={styles.catRipple}
-                    >
-                      <View style={styles.catCardContent}>
-                        <Icon
-                          source={cat.icon || 'toolbox'}
-                          size={26}
-                          color={isSelected ? 'white' : '#757575'}
-                        />
-                        <Text
-                          style={[
-                            styles.catText,
-                            isSelected && { color: 'white' },
-                          ]}
-                        >
-                          {cat.value}
-                        </Text>
-                      </View>
-                    </TouchableRipple>
-                  </Surface>
-                );
-              })}
-            </View>
-          </ScrollView>
-
-          <Text style={styles.label}>2. TIPO DE MANTENIMIENTO</Text>
-          <View style={styles.typeWrapper}>
-            {filteredTypes.map(type => (
-              <Chip
-                key={type.id}
-                selected={typeId === type.id}
-                onPress={() => setTypeId(type.id)}
-                style={[
-                  styles.typeChip,
-                  typeId === type.id && {
-                    backgroundColor: theme.colors.primaryContainer,
-                    borderColor: theme.colors.primary,
-                  },
-                ]}
-                textStyle={[
-                  styles.typeChipText,
-                  typeId === type.id && { color: theme.colors.primary },
-                ]}
-                showSelectedCheck={false}
-                mode="outlined"
-              >
-                {type.value}
-              </Chip>
-            ))}
-          </View>
-
-          <Text style={styles.label}>3. EVIDENCIA</Text>
-          <View style={styles.photoActionRow}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[
-                styles.bigCaptureBtn,
-                {
-                  backgroundColor: '#FFFFFF',
-                  borderColor: theme.colors.primary,
-                  borderWidth: 2,
-                },
-              ]}
-              onPress={() => {
-                setCameraMode('photo');
-                setCameraVisible(true);
-              }}
-            >
-              <Icon source="camera" size={32} color={theme.colors.primary} />
-              <Text
-                style={[styles.bigCaptureText, { color: theme.colors.primary }]}
-              >
-                FOTO
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.bigCaptureBtn, { backgroundColor: '#455A64' }]}
-              onPress={() => {
-                setCameraMode('video');
-                setCameraVisible(true);
-              }}
-            >
-              <Icon source="video" size={32} color="white" />
-              <Text style={styles.bigCaptureText}>VIDEO</Text>
-            </TouchableOpacity>
-          </View>
-
-          {media.length > 0 && (
-            <ScrollView
-              horizontal
-              style={styles.mediaList}
-              showsHorizontalScrollIndicator={false}
-            >
-              {media.map((item, index) => (
-                <View key={index} style={styles.mediaItem}>
-                  <Image source={{ uri: item.uri }} style={styles.mediaImg} />
-                  {item.type === 'video' && (
-                    <View style={styles.videoIconOverlay}>
-                      <Icon source="play-circle" color="white" size={30} />
-                    </View>
-                  )}
-                  {item.uploading && (
-                    <View style={styles.loaderOverlay}>
-                      <ActivityIndicator size="small" color="white" />
-                    </View>
-                  )}
-                  {item.error && (
-                    <View style={styles.errorOverlay}>
-                      <Icon source="alert-circle" color="red" size={24} />
-                    </View>
-                  )}
-                  <IconButton
-                    icon="close-circle"
-                    size={22}
-                    containerColor="white"
-                    iconColor="#E53935"
-                    style={styles.deleteMedia}
-                    onPress={() => removeMedia(index)}
-                  />
-                </View>
-              ))}
-            </ScrollView>
-          )}
-
-          <Text style={styles.label}>4. OBSERVACIONES ADICIONALES</Text>
-          <TextInput
-            mode="outlined"
-            multiline
+        <View style={styles.section}>
+          <ITText variant="labelLarge" weight="bold" style={styles.label}>
+            4. OBSERVACIONES ADICIONALES
+          </ITText>
+          <ITInput
             placeholder="Describe lo sucedido brevemente..."
+            multiline
+            numberOfLines={4}
             value={description}
             onChangeText={setDescription}
-            style={styles.textInput}
-            outlineColor="#E0E0E0"
-            activeOutlineColor={theme.colors.primary}
           />
+        </View>
 
-          <Button
-            mode="contained"
-            onPress={handleSubmit}
-            style={[
-              styles.mainSubmitBtn,
-              (!typeId || isUploading) && { backgroundColor: '#BDBDBD' },
-            ]}
-            contentStyle={{ height: 60 }}
-            loading={loading}
-            disabled={loading || !typeId || isUploading}
-          >
-            <Text style={styles.submitBtnText}>
-              {isUploading ? 'SUBIENDO...' : 'ENVIAR REPORTE'}
-            </Text>
-          </Button>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      <CameraModal
-        visible={cameraVisible}
-        mode={cameraMode}
-        onDismiss={() => setCameraVisible(false)}
-        onCapture={handleCapture}
-        maxDuration={APP_SETTINGS.INCIDENT_VIDEO_DURATION_LIMIT}
-      />
-
-      <Portal>
-        <Dialog
-          visible={isUploading || loading}
-          dismissable={false}
-          style={{ backgroundColor: 'white', borderRadius: 20 }}
-        >
-          <Dialog.Content style={{ alignItems: 'center', paddingVertical: 30 }}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text
-              style={{
-                marginTop: 20,
-                fontWeight: 'bold',
-                fontSize: 16,
-                color: '#333',
-                textAlign: 'center',
-              }}
-            >
-              {isUploading ? 'Subiendo evidencia...' : 'Enviando reporte...'}
-            </Text>
-            <Text style={{ marginTop: 8, color: '#999', fontSize: 12 }}>
-              Por favor espera un momento
-            </Text>
-          </Dialog.Content>
-        </Dialog>
-      </Portal>
-    </View>
+        <ITButton
+          mode="contained"
+          onPress={handleSubmit}
+          loading={loading}
+          disabled={
+            loading ||
+            !typeId ||
+            isUploading ||
+            (user.role === UserRole.ADMIN && !clientId)
+          }
+          label={isUploading ? 'SUBIENDO...' : 'ENVIAR REPORTE'}
+          style={styles.mainSubmitBtn}
+        />
+      </ScrollView>
+    </ITScreenWrapper>
   );
 };
 

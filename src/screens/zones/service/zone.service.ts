@@ -23,3 +23,7 @@ export const updateZone = async (id: number, data: any) => {
 export const deleteZone = async (id: number) => {
   return remove(`/zones/${id}`);
 };
+
+export const getZonesByClient = async (clientId: string | number) => {
+  return get(`/zones/client/${clientId}`);
+};

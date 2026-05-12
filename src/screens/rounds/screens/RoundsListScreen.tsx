@@ -1,64 +1,51 @@
 import dayjs from 'dayjs';
-import React, { useCallback, useEffect, useState, useRef } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StatusBar,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-  ScrollView,
-  Modal,
-} from 'react-native';
-import {
-  Avatar,
-  Button,
-  Card,
-  IconButton,
-  Text,
-  Searchbar,
-  Portal,
-  Icon,
-} from 'react-native-paper';
-import {
-  useFocusEffect,
-  useIsFocused,
-  useNavigation,
-} from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Linking, StyleSheet, View } from 'react-native';
+import { Icon, Searchbar } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
-
+import { useDispatch, useSelector } from 'react-redux';
+import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
+import { showToast } from '../../../core/store/slices/toast.slice';
+import {
+  ITAlert,
+  ITBadge,
+  ITScreenDatatableLayout,
+  ITText,
+  ITTouchableOpacity,
+} from '../../../shared/components';
+import { ITScreensFiltersModal } from '../../../shared/components/ITScreensFiltersModal';
+import { SearchComponent } from '../../../shared/components/SearchComponent';
+import { endRound } from '../../home/service/round.service';
 import {
   getPaginatedRounds,
-  IRound,
   getRoundsUsers,
+  IRound,
 } from '../service/rounds.service';
-import { SearchComponent } from '../../../shared/components/SearchComponent';
-import ModernStyles from '../../../shared/theme/app.styles';
 import { theme } from '../../../shared/theme/theme';
 
-export const RoundsListScreen = ({ navigation }: any) => {
-  const insets = useSafeAreaInsets();
-  const isFocused = useIsFocused();
+export const RoundsListScreen = ({ navigation, route }: any) => {
+  const dispatch = useDispatch();
+  const routeClientId = route.params?.clientId;
+  const token = useSelector((state: any) => state.userState.token);
 
   const [rounds, setRounds] = useState<IRound[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
-  // Search & Filters
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  const [appliedFilters, setAppliedFilters] = useState<{ guardId?: number }>(
-    {},
-  );
+  const [appliedFilters, setAppliedFilters] = useState<{
+    guardId?: number;
+    clientId?: any;
+    status?: string;
+  }>({ clientId: routeClientId, status: 'all' });
   const [appliedDate, setAppliedDate] = useState<Date | undefined>(undefined);
 
   const [tempFilters, setTempFilters] = useState<{ guardId?: number }>({});
@@ -68,29 +55,29 @@ export const RoundsListScreen = ({ navigation }: any) => {
   const [usersCatalog, setUsersCatalog] = useState<
     { label: string; value: number }[]
   >([]);
-  const lastFetchRef = useRef('');
-
-  const fetchCatalogs = async () => {
-    try {
-      const res = await getRoundsUsers();
-      if (res.success && Array.isArray(res.data)) {
-        setUsersCatalog(
-          res.data.map(u => ({
-            label: u.value, // En catálogos el nombre viene en .value
-            value: u.id,
-          })),
-        );
-      }
-    } catch (error) {
-      console.error('Error fetching catalogs:', error);
-    }
-  };
+  const [stoppingId, setStoppingId] = useState<number | null>(null);
+  const [showStopDialog, setShowStopDialog] = useState(false);
+  const [roundToStop, setRoundToStop] = useState<number | null>(null);
 
   useEffect(() => {
+    const fetchCatalogs = async () => {
+      try {
+        const res = await getRoundsUsers();
+        if (res.success && Array.isArray(res.data)) {
+          setUsersCatalog(
+            res.data.map(u => ({
+              label: u.value,
+              value: u.id,
+            })),
+          );
+        }
+      } catch (error) {
+        console.error('Error fetching catalogs:', error);
+      }
+    };
     fetchCatalogs();
   }, []);
 
-  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -107,28 +94,21 @@ export const RoundsListScreen = ({ navigation }: any) => {
           setLoadingMore(true);
         }
 
-        const finalFilters: any = { ...appliedFilters };
-        if (debouncedSearch) finalFilters.search = debouncedSearch;
-        if (appliedDate)
-          finalFilters.date = dayjs(appliedDate).format('YYYY-MM-DD');
+        const filters: any = { ...appliedFilters };
+        if (debouncedSearch) filters.search = debouncedSearch;
+        if (appliedDate) filters.date = dayjs(appliedDate).format('YYYY-MM-DD');
+        if (filters.status === 'all') delete filters.status;
 
         const res = await getPaginatedRounds({
           page: pageNum,
           limit: 15,
-          filters: finalFilters,
+          filters,
         });
 
         if (res.success && res.data) {
           const data = res.data;
-          const newRows = Array.isArray(data.rows)
-            ? data.rows
-            : Array.isArray(data.data)
-            ? data.data
-            : Array.isArray(data)
-            ? data
-            : [];
-          const totalRows =
-            typeof data.total === 'number' ? data.total : newRows.length;
+          const newRows = data.rows || data.data || [];
+          const totalRows = data.total || newRows.length;
 
           setRounds(prev => {
             const combined = pageNum === 1 ? newRows : [...prev, ...newRows];
@@ -144,7 +124,6 @@ export const RoundsListScreen = ({ navigation }: any) => {
       } finally {
         setLoading(false);
         setRefreshing(false);
-        setLoadingMore(true); // Wait, loadingMore should be false
         setLoadingMore(false);
       }
     },
@@ -152,16 +131,8 @@ export const RoundsListScreen = ({ navigation }: any) => {
   );
 
   useEffect(() => {
-    if (!isFocused) return;
-    const currentParams = JSON.stringify({
-      debouncedSearch,
-      appliedFilters,
-      appliedDate,
-    });
-    if (currentParams === lastFetchRef.current) return;
-    lastFetchRef.current = currentParams;
     fetchRounds(1);
-  }, [debouncedSearch, appliedFilters, appliedDate, isFocused]);
+  }, [fetchRounds]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -175,7 +146,7 @@ export const RoundsListScreen = ({ navigation }: any) => {
   };
 
   const handleApplyFilters = () => {
-    setAppliedFilters(tempFilters);
+    setAppliedFilters(prev => ({ ...prev, ...tempFilters }));
     setAppliedDate(tempDate);
     setShowFilters(false);
   };
@@ -185,266 +156,259 @@ export const RoundsListScreen = ({ navigation }: any) => {
     setTempDate(undefined);
   };
 
-  const activeFiltersCount = [
-    appliedDate ? 1 : 0,
-    appliedFilters.guardId ? 1 : 0,
-  ].reduce((a, b) => a + b, 0);
-
-  const getStatusInfo = (status: string) => {
-    if (status === 'COMPLETED') {
-      return { label: 'Finalizada', color: '#10B981', icon: 'check-circle' };
-    }
-    return { label: 'En curso', color: '#F59E0B', icon: 'clock-outline' };
+  const handleSharePDF = (roundId: number) => {
+    const url = `${API_CONSTANTS.BASE_URL}/rounds/${roundId}/report?token=${token}`;
+    Linking.openURL(url).catch(err => {
+      dispatch(showToast({ message: 'Error al abrir reporte', type: 'error' }));
+    });
   };
 
-  const renderItem = ({ item }: { item: any }) => {
-    const statusInfo = getStatusInfo(item.status);
-    const config = item.recurringConfiguration || item.recurringConfig;
-    const routeTitle = config?.title || 'Recorrido General';
-    const clientName = 
-      item.client?.name || 
-      config?.client?.name || 
-      item.guard?.client?.name || 
-      'SIN CLIENTE';
-    const guardName = `${item.guard?.name || 'N/A'} ${item.guard?.lastName || ''}`;
+  const confirmStopRound = async () => {
+    if (!roundToStop) return;
+    setStoppingId(roundToStop);
+    setShowStopDialog(false);
+    try {
+      const res = await endRound(roundToStop.toString());
+      if (res.success) {
+        dispatch(showToast({ message: 'Ronda finalizada', type: 'success' }));
+        fetchRounds(1);
+      } else {
+        dispatch(showToast({ message: 'Error al finalizar', type: 'error' }));
+      }
+    } catch (error) {
+      dispatch(showToast({ message: 'Error inesperado', type: 'error' }));
+    } finally {
+      setStoppingId(null);
+      setRoundToStop(null);
+    }
+  };
+
+  const renderItem = ({ item }: { item: IRound }) => {
+    const isInProgress = item.status === 'IN_PROGRESS';
+    const config =
+      (item as any).recurringConfiguration || (item as any).recurringConfig;
+    const title = config?.title || 'Recorrido General';
+    const guardName = `${item.guard?.name || ''} ${item.guard?.lastName || ''}`;
 
     return (
-      <Card
-        style={styles.card}
+      <ITTouchableOpacity
         onPress={() => navigation.navigate('ROUND_DETAIL', { id: item.id })}
-        elevation={1}
+        style={styles.cardContainer}
       >
-        <View style={styles.cardLayout}>
-          <View style={styles.avatarSection}>
-            <Avatar.Text
-              size={56}
-              label={item.guard.name.substring(0, 2).toUpperCase()}
-              style={styles.avatar}
-              labelStyle={{ color: '#64748B', fontWeight: 'bold' }}
-            />
-            <View
-              style={[
-                styles.statusIndicator,
-                { backgroundColor: statusInfo.color },
-              ]}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.headerInfo}>
+              <ITText variant="titleMedium" weight="bold" color="#0F172A">
+                {title}
+              </ITText>
+              <ITText
+                variant="labelSmall"
+                color="#64748B"
+                style={styles.idText}
+              >
+                ID: {item.id.toString().split('-')[0]}
+              </ITText>
+            </View>
+            <ITBadge
+              label={isInProgress ? 'En curso' : 'Completado'}
+              variant={isInProgress ? 'warning' : 'success'}
+              size="small"
+              dot={isInProgress}
             />
           </View>
 
-          <View style={styles.infoSection}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.locationName} numberOfLines={1}>
-                {routeTitle}
-              </Text>
-              <View style={styles.badgeContainer}>
+          <View style={styles.cardBody}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
                 <Icon
-                  source={statusInfo.icon}
+                  source="shield-account"
                   size={14}
-                  color={statusInfo.color}
+                  color={theme.colors.primary}
                 />
+                <ITText variant="bodySmall" color="#475569" weight="medium">
+                  {guardName}
+                </ITText>
+              </View>
+              <View style={styles.infoItem}>
+                <Icon
+                  source="office-building"
+                  size={14}
+                  color={theme.colors.primary}
+                />
+                <ITText
+                  variant="bodySmall"
+                  color="#475569"
+                  numberOfLines={1}
+                  style={{ flex: 1 }}
+                >
+                  {item.client?.name || 'S/C'}
+                </ITText>
               </View>
             </View>
 
-            <Text style={styles.clientName}>{clientName}</Text>
-            <Text style={styles.guardName}>#{item.id.split('-')[0]}... • {guardName}</Text>
-
-            <View style={styles.detailsRow}>
-              <View style={styles.detailItem}>
-                <Icon source="clock-start" size={16} color="#94A3B8" />
-                <Text style={styles.detailText}>
-                  {dayjs(item.startTime).format('HH:mm')}
-                </Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Icon source="calendar" size={16} color="#94A3B8" />
-                <Text style={styles.detailText}>
-                  {dayjs(item.startTime).format('DD/MM/YY')}
-                </Text>
+            <View style={styles.timeContainer}>
+              <View style={styles.timeBox}>
+                <Icon source="clock-start" size={14} color="#64748B" />
+                <ITText variant="labelSmall" color="#64748B">
+                  {dayjs(item.startTime).format('HH:mm')} •{' '}
+                  {dayjs(item.startTime).format('DD/MM')}
+                </ITText>
               </View>
               {item.endTime && (
-                <View style={styles.detailItem}>
-                  <Icon source="clock-end" size={16} color="#94A3B8" />
-                  <Text style={styles.detailText}>
+                <View style={styles.timeBox}>
+                  <Icon source="clock-end" size={14} color="#64748B" />
+                  <ITText variant="labelSmall" color="#64748B">
                     {dayjs(item.endTime).format('HH:mm')}
-                  </Text>
+                  </ITText>
                 </View>
               )}
             </View>
           </View>
+
+          <View style={styles.cardFooter}>
+            {isInProgress ? (
+              <ITTouchableOpacity
+                style={[styles.footerAction, styles.stopBtn]}
+                onPress={() => {
+                  setRoundToStop(item.id);
+                  setShowStopDialog(true);
+                }}
+                disabled={stoppingId === item.id}
+              >
+                <Icon source="stop-circle-outline" size={16} color="#EF4444" />
+                <ITText variant="labelSmall" weight="bold" color="#EF4444">
+                  DETENER
+                </ITText>
+              </ITTouchableOpacity>
+            ) : (
+              <ITTouchableOpacity
+                style={[styles.footerAction, styles.pdfBtn]}
+                onPress={() => handleSharePDF(item.id)}
+              >
+                <Icon source="file-pdf-box" size={16} color="#3B82F6" />
+                <ITText variant="labelSmall" weight="bold" color="#3B82F6">
+                  VER REPORTE
+                </ITText>
+              </ITTouchableOpacity>
+            )}
+            <View style={styles.detailsBtn}>
+              <ITText
+                variant="labelSmall"
+                color={theme.colors.primary}
+                weight="bold"
+              >
+                DETALLES
+              </ITText>
+              <Icon
+                source="chevron-right"
+                size={16}
+                color={theme.colors.primary}
+              />
+            </View>
+          </View>
         </View>
-      </Card>
+      </ITTouchableOpacity>
     );
   };
 
   return (
-    <View style={ModernStyles.screenContainer}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-
-      {/* Header Plano Estilo Kardex Premium */}
-      <View style={[styles.header]}>
-        {/* Top Context Row */}
-
-        {/* Main Title Row */}
-        <View style={styles.headerMainRow}>
-          <View>
-            <Text style={styles.headerTitleLarge}>Recorridos</Text>
-            <Text style={styles.headerSubtitleText}>
-              {total} registros encontrados
-            </Text>
+    <View style={styles.container}>
+      <ITScreenDatatableLayout
+        title="Control de Recorridos"
+        totalItems={total}
+        loading={loading}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        onLoadMore={handleLoadMore}
+        loadingMore={loadingMore}
+        showSearchBar={true}
+        onFilterPress={() => setShowFilters(true)}
+        searchBar={
+          <Searchbar
+            placeholder="Buscar recorrido..."
+            onChangeText={setSearch}
+            value={search}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={theme.colors.primary}
+            placeholderTextColor="#94A3B8"
+            elevation={0}
+          />
+        }
+        filterBadges={
+          <View style={styles.badgesRow}>
+            {[
+              { label: 'Todos', value: 'all' },
+              { label: 'En curso', value: 'IN_PROGRESS' },
+              { label: 'Completados', value: 'COMPLETED' },
+            ].map(f => (
+              <ITTouchableOpacity
+                key={f.value}
+                onPress={() =>
+                  setAppliedFilters(prev => ({ ...prev, status: f.value }))
+                }
+              >
+                <ITBadge
+                  label={f.label}
+                  variant={
+                    appliedFilters.status === f.value ? 'primary' : 'surface'
+                  }
+                  outline={appliedFilters.status !== f.value}
+                />
+              </ITTouchableOpacity>
+            ))}
           </View>
-          <TouchableOpacity
-            onPress={() => setShowFilters(true)}
-            style={styles.filterButtonCircle}
-          >
-            <Icon
-              source={activeFiltersCount > 0 ? 'filter' : 'filter-variant'}
-              size={22}
-              color="#1E293B"
-            />
-            {activeFiltersCount > 0 && (
-              <View style={styles.filterBadgeSmall}>
-                <Text style={styles.filterBadgeTextSmall}>
-                  {activeFiltersCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <Searchbar
-          placeholder="Buscar recorrido..."
-          onChangeText={setSearch}
-          value={search}
-          style={styles.searchBarModern}
-          inputStyle={styles.searchInputModern}
-          iconColor={theme.colors.primary}
-          placeholderTextColor="#94A3B8"
-          elevation={0}
-        />
-      </View>
-
-      <FlatList
+        }
         data={rounds}
         renderItem={renderItem}
         keyExtractor={item => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.colors.primary]}
-          />
-        }
-        ListFooterComponent={() =>
-          loadingMore ? (
-            <ActivityIndicator
-              style={{ marginVertical: 20 }}
-              color={theme.colors.primary}
-            />
-          ) : null
-        }
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <Icon source="clipboard-text-clock" size={80} color="#E2E8F0" />
-              <Text style={styles.emptyTitle}>No hay recorridos</Text>
-              <Text style={styles.emptySubtitle}>
-                No se encontraron resultados para tu búsqueda.
-              </Text>
-            </View>
-          ) : null
-        }
       />
 
-      {/* Modal de Filtros Nativo Full Screen */}
-      <Modal
+      <ITScreensFiltersModal
         visible={showFilters}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => setShowFilters(false)}
+        onDismiss={() => setShowFilters(false)}
+        onApply={handleApplyFilters}
+        onClear={handleClearFilters}
       >
-        <View style={styles.modalFullScreen}>
-          <View style={[styles.modalHeader, { paddingTop: insets.top + 20 }]}>
-            <View style={styles.modalHeaderTitle}>
-              <Icon
-                source="filter-variant"
-                size={24}
-                color={theme.colors.primary}
-              />
-              <Text style={styles.modalTitle}>Filtros de Recorridos</Text>
-            </View>
-            <IconButton
-              icon="close"
-              size={24}
-              onPress={() => setShowFilters(false)}
-              iconColor="#94A3B8"
+        <View style={styles.filterGroup}>
+          <ITText
+            variant="labelLarge"
+            weight="bold"
+            color="#94A3B8"
+            style={styles.filterLabel}
+          >
+            FECHA DE INICIO
+          </ITText>
+          <ITTouchableOpacity
+            onPress={() => setOpenDatePicker(true)}
+            style={styles.dateSelector}
+          >
+            <Icon
+              source="calendar-range"
+              size={20}
+              color={theme.colors.primary}
             />
-          </View>
-
-          <ScrollView
-            style={styles.modalScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR FECHA</Text>
-              <TouchableOpacity
-                onPress={() => setOpenDatePicker(true)}
-                style={styles.dateSelector}
-              >
-                <Icon
-                  source="calendar-range"
-                  size={20}
-                  color={theme.colors.primary}
-                />
-                <Text style={styles.dateValue}>
-                  {tempDate ? tempDate.toLocaleDateString() : 'Cualquier fecha'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR GUARDIA</Text>
-              <SearchComponent
-                label="Guardia"
-                placeholder="Seleccionar guardia"
-                options={usersCatalog}
-                value={tempFilters.guardId}
-                onSelect={val =>
-                  setTempFilters({
-                    ...tempFilters,
-                    guardId: val ? Number(val) : undefined,
-                  })
-                }
-              />
-            </View>
-          </ScrollView>
-
-          <View
-            style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
-          >
-            <Button
-              mode="outlined"
-              onPress={handleClearFilters}
-              style={styles.footerButton}
-              textColor="#64748B"
-            >
-              Limpiar
-            </Button>
-            <Button
-              mode="contained"
-              onPress={handleApplyFilters}
-              style={[
-                styles.footerButton,
-                { backgroundColor: theme.colors.primary },
-              ]}
-            >
-              Aplicar Filtros
-            </Button>
-          </View>
+            <ITText variant="bodyMedium" color="#334155">
+              {tempDate ? tempDate.toLocaleDateString() : 'Cualquier fecha'}
+            </ITText>
+          </ITTouchableOpacity>
         </View>
-      </Modal>
+
+        <View style={styles.filterGroup}>
+          <SearchComponent
+            label="Guardia"
+            placeholder="Todos los guardias"
+            options={usersCatalog}
+            value={tempFilters.guardId}
+            onSelect={val =>
+              setTempFilters(prev => ({
+                ...prev,
+                guardId: val ? Number(val) : undefined,
+              }))
+            }
+          />
+        </View>
+      </ITScreensFiltersModal>
 
       <DatePickerModal
         locale="es"
@@ -457,259 +421,138 @@ export const RoundsListScreen = ({ navigation }: any) => {
           setTempDate(params.date);
         }}
       />
+
+      <ITAlert
+        visible={showStopDialog}
+        onDismiss={() => setShowStopDialog(false)}
+        onConfirm={confirmStopRound}
+        title="Finalizar Ronda"
+        description="¿Estás seguro de que deseas finalizar esta ronda? Se guardará el progreso actual."
+        confirmLabel="Finalizar"
+        type="alert"
+        loading={stoppingId !== null}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  backButtonCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  searchBar: {
     backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+    borderRadius: 14,
+    height: 48,
   },
-  headerContextTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  headerMainRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  headerTitleLarge: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    letterSpacing: -0.5,
-  },
-  headerSubtitleText: {
-    fontSize: 15,
-    color: '#94A3B8',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  filterButtonCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  filterBadgeSmall: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  filterBadgeTextSmall: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  searchBarModern: {
-    backgroundColor: '#F1F5F9',
-    borderRadius: 16,
-    height: 50,
-  },
-  searchInputModern: {
+  searchInput: {
     minHeight: 0,
-    fontSize: 16,
-    color: '#1E293B',
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
-    gap: 12,
-  },
-  emptyTitle: {
-    color: '#1E293B',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
-  },
-  emptySubtitle: {
-    color: '#94A3B8',
     fontSize: 14,
-    textAlign: 'center',
-    paddingHorizontal: 40,
+    color: '#0F172A',
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cardContainer: {
+    marginBottom: 12,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    marginBottom: 16,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#F1F5F9',
-  },
-  cardLayout: {
-    flexDirection: 'row',
-    padding: 16,
-    alignItems: 'center',
-  },
-  avatarSection: {
-    position: 'relative',
-    marginRight: 16,
-  },
-  avatar: {
-    backgroundColor: '#F1F5F9',
-  },
-  statusIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  infoSection: {
-    flex: 1,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
-  locationName: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#1E293B',
+  headerInfo: {
     flex: 1,
+    marginRight: 8,
   },
-  badgeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
+  idText: {
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
-  statusLabel: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  clientName: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  guardName: {
-    fontSize: 13,
-    color: '#64748B',
-    marginBottom: 10,
-  },
-  detailsRow: {
-    flexDirection: 'row',
+  cardBody: {
     gap: 12,
+    marginBottom: 16,
   },
-  detailItem: {
+  infoRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  detailText: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  // Modal Styles
-  modalFullScreen: {
-    backgroundColor: 'white',
+    gap: 6,
     flex: 1,
   },
-  modalHeader: {
+  timeContainer: {
     flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 12,
+    gap: 16,
+  },
+  timeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
-  modalHeaderTitle: {
+  footerAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
   },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1E293B',
+  stopBtn: {
+    backgroundColor: '#FEF2F2',
   },
-  modalScroll: {
-    padding: 24,
+  pdfBtn: {
+    backgroundColor: '#EFF6FF',
+  },
+  detailsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   filterGroup: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   filterLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#94A3B8',
-    marginBottom: 12,
-    letterSpacing: 1,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
   dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 16,
     backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  dateValue: {
-    fontSize: 14,
-    color: '#475569',
-    fontWeight: '500',
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  footerButton: {
-    flex: 1,
+    padding: 14,
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    gap: 12,
   },
 });

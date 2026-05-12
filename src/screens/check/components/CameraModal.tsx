@@ -1,17 +1,21 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { 
-  Alert, 
-  Linking, 
-  StyleSheet, 
-  TouchableOpacity, 
-  View, 
-  Modal, 
-  StatusBar, 
+import {
+  Alert,
+  Linking,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  Modal,
+  StatusBar,
   Dimensions,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
-import { Camera, useCameraDevice, useCameraFormat } from 'react-native-vision-camera';
+import {
+  Camera,
+  useCameraDevice,
+  useCameraFormat,
+} from 'react-native-vision-camera';
 import { APP_SETTINGS } from '../../../core/constants/APP_SETTINGS';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -24,16 +28,16 @@ interface Props {
   maxDuration?: number;
 }
 
-export const CameraModal = ({ 
-  visible, 
-  onDismiss, 
-  onCapture, 
-  mode, 
-  maxDuration = APP_SETTINGS.VIDEO_DURATION_LIMIT 
+export const CameraModal = ({
+  visible,
+  onDismiss,
+  onCapture,
+  mode,
+  maxDuration = APP_SETTINGS.VIDEO_DURATION_LIMIT,
 }: Props) => {
   const device = useCameraDevice('back');
   const camera = useRef<Camera>(null);
-  
+
   const [recording, setRecording] = useState(false);
   const [duration, setDuration] = useState(0);
   const [hasMicrophonePermission, setHasMicrophonePermission] = useState(false);
@@ -43,7 +47,7 @@ export const CameraModal = ({
   const format = useCameraFormat(device, [
     { videoResolution: { width: 1280, height: 720 } },
     { photoResolution: { width: 1920, height: 1080 } },
-    { fps: 30 }
+    { fps: 30 },
   ]);
 
   useEffect(() => {
@@ -62,8 +66,8 @@ export const CameraModal = ({
         'Se necesita acceso a la cámara para continuar.',
         [
           { text: 'Cancelar', style: 'cancel', onPress: onDismiss },
-          { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() }
-        ]
+          { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() },
+        ],
       );
       return;
     }
@@ -79,7 +83,7 @@ export const CameraModal = ({
     let interval: any;
     if (recording) {
       interval = setInterval(() => {
-        setDuration((prev) => {
+        setDuration(prev => {
           if (prev >= maxDuration) {
             stopRecording();
             return prev;
@@ -116,15 +120,15 @@ export const CameraModal = ({
     setRecording(true);
     try {
       camera.current.startRecording({
-        onRecordingFinished: (video) => {
+        onRecordingFinished: video => {
           onCapture({ uri: `file://${video.path}`, type: 'video' });
           onDismiss();
         },
-        onRecordingError: (error) => {
+        onRecordingError: error => {
           console.error(error);
           Alert.alert('Error', 'Error al grabar video');
           setRecording(false);
-        }
+        },
       });
     } catch (e) {
       setRecording(false);
@@ -147,8 +151,12 @@ export const CameraModal = ({
       onRequestClose={onDismiss}
     >
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-        
+        <StatusBar
+          barStyle="light-content"
+          translucent
+          backgroundColor="transparent"
+        />
+
         <Camera
           ref={camera}
           style={StyleSheet.absoluteFill}
@@ -163,11 +171,11 @@ export const CameraModal = ({
         {/* Technical Overlays */}
         <View style={styles.topOverlay}>
           <View style={styles.headerRow}>
-            <IconButton 
-              icon="close" 
-              iconColor="white" 
+            <IconButton
+              icon="close"
+              iconColor="white"
               containerColor="rgba(0,0,0,0.3)"
-              onPress={onDismiss} 
+              onPress={onDismiss}
             />
             <View style={styles.statusBadge}>
               <View style={styles.pulseDot} />
@@ -175,11 +183,11 @@ export const CameraModal = ({
                 {mode === 'photo' ? 'CAMARA LISTA' : 'GRABANDO'}
               </Text>
             </View>
-            <IconButton 
-              icon={flash === 'on' ? 'flash' : 'flash-off'} 
-              iconColor="white" 
+            <IconButton
+              icon={flash === 'on' ? 'flash' : 'flash-off'}
+              iconColor="white"
               containerColor="rgba(0,0,0,0.3)"
-              onPress={() => setFlash(f => f === 'off' ? 'on' : 'off')} 
+              onPress={() => setFlash(f => (f === 'off' ? 'on' : 'off'))}
             />
           </View>
         </View>
@@ -199,23 +207,26 @@ export const CameraModal = ({
             <View style={styles.timerContainer}>
               <View style={styles.recordingDot} />
               <Text style={styles.timerText}>
-                {Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, '0')} / {Math.floor(maxDuration / 60)}:00
+                {Math.floor(duration / 60)}:
+                {(duration % 60).toString().padStart(2, '0')} /{' '}
+                {Math.floor(maxDuration / 60)}:00
               </Text>
             </View>
           )}
 
           <View style={styles.controlsRow}>
             <View style={styles.sideControl} />
-            
-            <TouchableOpacity 
-              activeOpacity={0.8} 
+
+            <TouchableOpacity
               onPress={handleCapture}
               style={styles.captureOuter}
             >
-              <View style={[
-                styles.captureInner,
-                recording && styles.recordingInner
-              ]}>
+              <View
+                style={[
+                  styles.captureInner,
+                  recording && styles.recordingInner,
+                ]}
+              >
                 {recording ? (
                   <View style={styles.stopSquare} />
                 ) : (
@@ -373,5 +384,5 @@ const styles = StyleSheet.create({
     height: 25,
     borderRadius: 4,
     backgroundColor: '#EF4444',
-  }
+  },
 });

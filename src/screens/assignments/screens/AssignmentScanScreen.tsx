@@ -39,13 +39,15 @@ export const AssignmentScanScreen = () => {
         try {
             const parsed = JSON.parse(code);
             if (parsed && typeof parsed === 'object') {
-                if (parsed.type === 'LOCATION' && parsed.id === targetLocation?.id) {
+                if (parsed.type === 'LOCATION' && 
+                    (parsed.name?.toUpperCase() === targetLocation?.name?.toUpperCase() || 
+                     parsed.id === targetLocation?.id)) {
                     isMatch = true;
                 }
             }
         } catch (e) {
             // Fallback to plain text comparison if JSON parsing fails
-            if (code === targetLocation?.name) {
+            if (code.toUpperCase() === targetLocation?.name?.toUpperCase()) {
                 isMatch = true;
             }
         }

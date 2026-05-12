@@ -1,0 +1,4395 @@
+=== AXZY CHECK API REFERENCE FOR REACT LLM ===\nThis document contains all API paths, their methods, request bodies, and exact response schemas.\nUse this to generate strictly typed API calls, custom hooks, and Zod schemas in the React frontend.\n\n--- ENDPOINTS ---\n\nGET /home/stats\nSummary: Obtener métricas para el dashboard\nResponses:\n  200 (OK) -> Schema: Inline Object\n\nPOST /users/login\nSummary: Iniciar sesión\nRequest Body Schema: UserLogin\nResponses:\n  200 (OK) -> Schema: TResultLogin\n  401 (No autorizado (Credenciales inválidas)) -> Schema: TResultError\n  403 (Prohibido (Cuenta inactiva o fuera de horario)) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /users\nSummary: Listar usuarios\nResponses:\n  200 (OK) -> Schema: TResultListUser\n  401 (No autorizado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /users\nSummary: Crear usuario\nRequest Body Schema: UserCreate\nResponses:\n  201 (Creado) -> Schema: TResult\n  400 (Error de validación o usuario duplicado) -> Schema: TResultError\n  401 (No autorizado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /users/datatable\nSummary: Tabla paginada de usuarios\nRequest Body Schema: DataTableFetchParams\nResponses:\n  200 (OK) -> Schema: TResultDatatableUser\n  400 (Error en filtros o paginación) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /users/{id}\nSummary: Detalle de usuario\nResponses:\n  200 (OK) -> Schema: TResultDatatable\n  400 (Petición inválida) -> Schema: TResultError\n  401 (No autorizado) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPUT /users/{id}\nSummary: Actualizar usuario\nRequest Body Schema: UserUpdate\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Error de validación o usuario duplicado) -> Schema: TResultError\n  401 (No autorizado) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nDELETE /users/{id}\nSummary: Eliminar usuario\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  401 (No autorizado) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPUT /users/{id}/password\nSummary: Cambiar contraseña (Usuario propio)\nRequest Body: {"type": "object", "required": ["oldPassword", "newPassword"], "properties": {"oldPassword": {"type": "string"}, "newPassword": {"type": "string"}}}\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Error de validación o contraseña incorrecta) -> Schema: TResultError\n  401 (No autorizado) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPUT /users/{id}/reset-password\nSummary: Resetear contraseña (Administrador)\nRequest Body: {"type": "object", "required": ["newPassword"], "properties": {"newPassword": {"type": "string"}}}\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Error de validación) -> Schema: TResultError\n  401 (No autorizado) -> Schema: TResultError\n  403 (Prohibido (No es administrador)) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /users/logout\nSummary: Cerrar sesión\nResponses:\n  200 (OK) -> Schema: TResult\n  401 (No autorizado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /clients\nSummary: Listar clientes\nResponses:\n  200 (OK) -> Schema: TResultListClient\n\nPOST /clients\nSummary: Crear cliente\nRequest Body Schema: ClientCreate\nResponses:\n  201 (Creado) -> Schema: TResultListClient\n  400 (Datos inválidos o cliente duplicado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /clients/datatable\nSummary: Tabla paginada de clientes\nRequest Body Schema: DataTableFetchParams\nResponses:\n  200 (OK) -> Schema: TResultDatatableClient\n  400 (Error en filtros) -> Schema: TResultError\n\nGET /clients/{id}\nSummary: Detalle de cliente\nResponses:\n  200 (OK) -> Schema: TResultDatatableClient\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPUT /clients/{id}\nRequest Body Schema: ClientUpdate\nResponses:\n  200 (OK) -> Schema: TResultListClient\n\nDELETE /clients/{id}\nSummary: Eliminar cliente (Cascading)\nResponses:\n  200 (OK) -> Schema: TResultListClient\n\nPOST /zones\nSummary: Crear zona\nRequest Body Schema: ZoneCreate\nResponses:\n  201 (Creado) -> Schema: TResultDatatableClient\n  400 (Datos inválidos) -> Schema: TResultError\n\nGET /zones/client/{clientId}\nSummary: Listar zonas de un cliente\nResponses:\n  200 (OK) -> Schema: TResultDatatableClient\n\nPOST /zones/datatable\nSummary: Tabla paginada de zonas\nRequest Body Schema: DataTableFetchParams\nResponses:\n  200 (OK) -> Schema: TResultDatatableZone\n  400 (Error en filtros) -> Schema: TResultError\n\nPUT /zones/{id}\nRequest Body Schema: ZoneUpdate\nResponses:\n  200 (OK) -> Schema: TResultDatatableZone\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nDELETE /zones/{id}\nSummary: Eliminar zona\nResponses:\n  200 (OK) -> Schema: TResultDatatableZone\n  400 (Petición inválida o restricción de llave foránea) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /locations\nSummary: Listar ubicaciones\nResponses:\n  200 (OK) -> Schema: TResultDatatableZone\n\nPOST /locations\nSummary: Crear ubicación\nRequest Body Schema: LocationCreate\nResponses:\n  201 (Creado) -> Schema: TResultListClient\n  400 (Datos inválidos) -> Schema: TResultError\n\nPOST /locations/datatable\nSummary: Tabla paginada de ubicaciones\nRequest Body Schema: DataTableFetchParams\nResponses:\n  200 (OK) -> Schema: TResultDatatableLocation\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /locations/{id}\nSummary: Detalle de ubicación\nResponses:\n  200 (OK) -> Schema: TResultListLocation\n\nPUT /locations/{id}\nRequest Body Schema: LocationUpdate\nResponses:\n  200 (OK) -> Schema: TResultListLocation\n\nDELETE /locations/{id}\nSummary: Eliminar ubicación (Cascading)\nResponses:\n  200 (OK) -> Schema: TResultDatatableLocation\n  400 (Petición inválida o restricción de llave foránea) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /locations/print-bulk-qr\nSummary: Generar PDF masivo con códigos QR\nRequest Body: {"type": "object", "required": ["ids"], "properties": {"ids": {"type": "array", "items": {"type": "string", "format": "uuid"}}}}\nResponses:\n  200 (Archivo PDF) -> No specific schema\n\nGET /assignments\nSummary: Listar todas las asignaciones\nResponses:\n  200 (OK) -> Schema: TResultListAssignment\n\nPOST /assignments\nSummary: Crear asignación\nRequest Body Schema: AssignmentCreate\nResponses:\n  201 (Creado) -> No specific schema\n\nGET /assignments/me\nSummary: Mis asignaciones activas (Guardia)\nResponses:\n  200 (OK) -> Schema: TResultListAssignment\n\nPOST /assignments/datatable\nSummary: Tabla paginada de asignaciones\nRequest Body Schema: DataTableFetchParams\nResponses:\n  200 (OK) -> Schema: TResultDatatableAssignment\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPATCH /assignments/{id}/status\nSummary: Actualizar estado de asignación\nRequest Body: {"type": "object", "properties": {"status": {"type": "string", "enum": ["PENDING", "CHECKING", "COMPLETED", "ANOMALY"]}}}\nResponses:\n  200 (OK) -> Schema: TResultDatatableAssignment\n  400 (Petición inválida) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPATCH /assignments/tasks/{taskId}/toggle\nSummary: Alternar check de tarea específica\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /rounds/start\nSummary: Iniciar un nuevo recorrido (Ronda)\nRequest Body: {"type": "object", "properties": {"guardId": {"type": "string", "format": "uuid", "description": "ID del guardia que inicia la ronda (opcional si se usa token de guardia)"}, "clientId": {"type": "string", "format": "uuid", "description": "ID del cliente al que pertenece la ronda"}, "recurringConfigurationId": {"type": "string", "format": "uuid", "description": "ID de la configuraci\u00f3n recurrente (opcional para rondas libres)"}}}\nResponses:\n  201 (Ronda iniciada exitosamente) -> Schema: TResultDatatableLocation\n  400 (Error en la solicitud (ej. ya existe una ronda activa)) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPUT /rounds/{id}/end\nSummary: Finalizar rondín\nResponses:\n  200 (OK) -> Schema: TResultDatatableLocation\n\nGET /rounds/current\nSummary: Rondín actual en curso\nResponses:\n  200 (OK) -> Schema: TResultDatatableAssignment\n\nPOST /rounds/datatable\nSummary: Tabla paginada de rondines\nRequest Body Schema: DataTableFetchParams\nResponses:\n  200 (OK) -> Schema: TResultDatatableRound\n  400 (Error en filtros) -> Schema: TResultError\n\nGET /rounds\nSummary: Listar rondines (con filtros)\nResponses:\n  200 (OK) -> Schema: TResultDatatableRound\n\nGET /rounds/{id}\nSummary: Detalle de rondín\nResponses:\n  200 (OK) -> Schema: TResultDatatableRound\n\nGET /rounds/{id}/report\nSummary: Generar reporte de rondín\nResponses:\n  200 (OK) -> Schema: TResultDatatableAssignment\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /incidents\nSummary: Listar incidencias\nResponses:\n  200 (OK) -> Schema: TResult\n\nPOST /incidents\nSummary: Crear reporte de incidencia\nRequest Body Schema: IncidentCreate\nResponses:\n  201 (Creado) -> Schema: TResult\n  400 (Datos inválidos) -> Schema: TResultError\n\nGET /incidents/pending-count\nSummary: Contador de pendientes\nResponses:\n  200 (OK) -> Schema: TResultListRound\n\nPUT /incidents/{id}/resolve\nSummary: Marcar resuelta\nResponses:\n  200 (OK) -> Schema: TResultListIncident\n\nPOST /incidents/datatable\nSummary: Tabla paginada de incidencias\nResponses:\n  200 (OK) -> Schema: TResultDatatableIncident\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nDELETE /incidents/{id}\nSummary: Eliminar incidencia\nResponses:\n  200 (OK) -> Schema: TResultListRound\n\nGET /maintenance\nSummary: Listar solicitudes\nResponses:\n  200 (OK) -> Schema: TResultListMaintenance\n\nPOST /maintenance\nSummary: Crear solicitud\nRequest Body Schema: MaintenanceCreate\nResponses:\n  201 (Creado) -> Schema: TResultDatatableRound\n  400 (Datos inválidos) -> Schema: TResultError\n\nGET /maintenance/pending-count\nSummary: Contador de pendientes\nResponses:\n  200 (OK) -> Schema: TResultListIncident\n\nPUT /maintenance/{id}/resolve\nSummary: Marcar finalizada\nResponses:\n  200 (OK) -> Schema: TResultListMaintenance\n\nPOST /maintenance/datatable\nSummary: Tabla paginada de mantenimiento\nResponses:\n  200 (OK) -> Schema: TResultDatatableMaintenance\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nDELETE /maintenance/{id}\nSummary: Eliminar mantenimiento\nResponses:\n  200 (OK) -> Schema: TResultDatatableIncident\n  400 (Petición inválida o restricción de llave foránea) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /schedules\nSummary: Listar horarios\nResponses:\n  200 (OK) -> Schema: TResultListSchedule\n\nPOST /schedules\nSummary: Crear horario\nRequest Body Schema: ScheduleCreate\nResponses:\n  201 (Creado) -> Schema: TResultDatatableIncident\n  400 (Datos inválidos) -> Schema: TResultError\n\nPOST /schedules/datatable\nSummary: Tabla paginada de horarios\nResponses:\n  200 (OK) -> Schema: TResultDatatableSchedule\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPUT /schedules/{id}\nRequest Body Schema: ScheduleUpdate\nResponses:\n  200 (OK) -> Schema: TResultListSchedule\n\nDELETE /schedules/{id}\nSummary: Eliminar horario\nResponses:\n  200 (OK) -> Schema: TResultDatatableMaintenance\n  400 (Petición inválida o restricción de llave foránea) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /kardex\nSummary: Listar bitácora\nResponses:\n  200 (OK) -> Schema: TResultDatatableSchedule\n  400 (Petición inválida) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /kardex\nSummary: Crear registro\nResponses:\n  201 (Creado) -> No specific schema\n\nGET /recurring\nSummary: Listar todas las configuraciones recurrentes\nResponses:\n  200 (OK) -> Schema: Inline Object\n\nPOST /recurring\nSummary: Crear una nueva configuración de ronda recurrente\nRequest Body Schema: RecurringConfigurationCreate\nResponses:\n  201 (Creado) -> Schema: TResultDatatableMaintenance\n  400 (Datos inválidos) -> Schema: TResultError\n\nPOST /recurring/datatable\nSummary: Tabla paginada de recurrentes\nResponses:\n  200 (OK) -> Schema: TResultDatatableRecurringConfiguration\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /recurring/guard/{guardId}\nSummary: Listar por guardia\nResponses:\n  200 (OK) -> Schema: TResultListRecurringConfiguration\n\nGET /recurring/{id}\nSummary: Detalle de recurrente\nResponses:\n  200 (OK) -> Schema: TResultListRecurringConfiguration\n\nPUT /recurring/{id}\nSummary: Actualizar configuración recurrente\nRequest Body Schema: RecurringConfigurationUpdate\nResponses:\n  200 (OK) -> Schema: RecurringConfiguration\n\nDELETE /recurring/{id}\nSummary: Eliminar recurrente\nResponses:\n  200 (OK) -> Schema: TResultDatatableRecurringConfiguration\n  400 (Petición inválida o restricción de llave foránea) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /reports/guards/stats\nSummary: Estadísticas generales de guardias\nResponses:\n  200 (OK) -> Schema: TResultListKardex\n  400 (Petición inválida) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /reports/guards/top-performance\nSummary: Guardias con mejor desempeño\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /reports/guards/distribution\nSummary: Distribución de actividad\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /reports/guards/detail\nSummary: Reporte detallado de guardias\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /reports/guards/detail-breakdown/{id}\nSummary: Desglose detallado por guardia\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /reports/guards/workload\nSummary: Comparación de carga de trabajo\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /settings/categories/datatable\nSummary: Tabla paginada de categorías (Incidentes)\nResponses:\n  200 (OK) -> Schema: TResultDatatableCategory\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /settings/categories\nSummary: Crear categoría\nResponses:\n  201 (Creado) -> No specific schema\n\nPUT /settings/categories/{id}\nSummary: Actualizar categoría\nResponses:\n  200 (OK) -> Schema: TResultDatatableCategory\n  400 (Petición inválida) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nDELETE /settings/categories/{id}\nSummary: Eliminar categoría\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida o restricción de llave foránea) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /settings/types/datatable\nSummary: Tabla paginada de tipos (Incidentes)\nResponses:\n  200 (OK) -> Schema: TResultDatatableType\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /settings/types\nSummary: Crear tipo de incidente\nResponses:\n  201 (Creado) -> No specific schema\n\nPUT /settings/types/{id}\nSummary: Actualizar tipo\nResponses:\n  200 (OK) -> Schema: TResultDatatableType\n  400 (Petición inválida) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nDELETE /settings/types/{id}\nSummary: Eliminar tipo\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida o restricción de llave foránea) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /settings/sysconfig/datatable\nSummary: Tabla paginada de configuración de sistema\nResponses:\n  200 (OK) -> Schema: TResultDatatableSysConfig\n  400 (Error de paginación o filtros) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /settings/sysconfig\nSummary: Actualizar configuración de sistema\nResponses:\n  200 (OK) -> Schema: TResultDatatableSysConfig\n  400 (Petición inválida) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nDELETE /settings/sysconfig/{key}\nSummary: Eliminar configuración específica\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida o restricción de llave foránea) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /sync\nSummary: Pull data (Offline)\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /sync\nSummary: Push data (Offline)\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nGET /catalog/{key}\nSummary: Obtener catálogo genérico\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\nPOST /uploads\nSummary: Subir archivo multimedia\nResponses:\n  200 (OK) -> Schema: TResult\n  400 (Petición inválida) -> Schema: TResultError\n  404 (No encontrado) -> Schema: TResultError\n  500 (Error interno del servidor) -> Schema: TResultError\n\n==================================================\n\n--- SCHEMAS (MODELS & DTOs) ---\n\nSCHEMA: UserLogin\n{
+  "type": "object",
+  "required": [
+    "username",
+    "password"
+  ],
+  "properties": {
+    "username": {
+      "type": "string"
+    },
+    "password": {
+      "type": "string"
+    }
+  }
+}\n\nSCHEMA: TResultLogin\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean"
+    },
+    "data": {
+      "type": "string",
+      "description": "JWT Token"
+    }
+  }
+}\n\nSCHEMA: DataTableFetchParams\n{
+  "type": "object",
+  "properties": {
+    "page": {
+      "type": "integer",
+      "default": 1
+    },
+    "limit": {
+      "type": "integer",
+      "default": 10
+    },
+    "filters": {
+      "type": "object"
+    },
+    "sort": {
+      "type": "object"
+    }
+  }
+}\n\nSCHEMA: UserCreate\n{
+  "type": "object",
+  "required": [
+    "name",
+    "username",
+    "password",
+    "roleId"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "username": {
+      "type": "string"
+    },
+    "password": {
+      "type": "string"
+    },
+    "roleId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid"
+    }
+  }
+}\n\nSCHEMA: UserUpdate\n{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "lastName": {
+      "type": "string"
+    },
+    "username": {
+      "type": "string"
+    },
+    "roleId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "scheduleId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "active": {
+      "type": "boolean"
+    }
+  }
+}\n\nSCHEMA: RoleBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: ClientBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string",
+      "nullable": true
+    },
+    "rfc": {
+      "type": "string",
+      "nullable": true
+    },
+    "contactName": {
+      "type": "string",
+      "nullable": true
+    },
+    "contactPhone": {
+      "type": "string",
+      "nullable": true
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "softDelete": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: User\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "lastName": {
+      "type": "string",
+      "nullable": true
+    },
+    "username": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "softDelete": {
+      "type": "boolean"
+    },
+    "shiftStart": {
+      "type": "string",
+      "nullable": true
+    },
+    "shiftEnd": {
+      "type": "string",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "isLoggedIn": {
+      "type": "boolean"
+    },
+    "scheduleId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "roleId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "assignments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/AssignmentBasic"
+      }
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/IncidentBasic"
+      }
+    },
+    "resolvedIncidents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/IncidentBasic"
+      }
+    },
+    "kardexEntries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/KardexBasic"
+      }
+    },
+    "maintenances": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/MaintenanceBasic"
+      }
+    },
+    "resolvedMaintenances": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/MaintenanceBasic"
+      }
+    },
+    "rounds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RoundBasic"
+      }
+    },
+    "client": {
+      "$ref": "#/components/schemas/ClientBasic"
+    },
+    "role": {
+      "$ref": "#/components/schemas/RoleBasic"
+    },
+    "schedule": {
+      "$ref": "#/components/schemas/ScheduleBasic"
+    },
+    "recurringConfigurations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RecurringConfigurationBasic"
+      }
+    },
+    "createdAssignments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/AssignmentBasic"
+      }
+    },
+    "assignmentLogs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/AssignmentLogBasic"
+      }
+    },
+    "auditLogs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/AuditLogBasic"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableUser\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListUser\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/User"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: ClientCreate\n{
+  "type": "object",
+  "required": [
+    "name"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "rfc": {
+      "type": "string"
+    },
+    "contactName": {
+      "type": "string"
+    },
+    "contactPhone": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "appUsername": {
+      "type": "string"
+    },
+    "appPassword": {
+      "type": "string"
+    }
+  }
+}\n\nSCHEMA: ClientUpdate\n{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "rfc": {
+      "type": "string"
+    },
+    "contactName": {
+      "type": "string"
+    },
+    "contactPhone": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "appUsername": {
+      "type": "string"
+    },
+    "appPassword": {
+      "type": "string"
+    },
+    "softDelete": {
+      "type": "boolean"
+    }
+  }
+}\n\nSCHEMA: ZoneCreate\n{
+  "type": "object",
+  "required": [
+    "name",
+    "clientId"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid"
+    }
+  }
+}\n\nSCHEMA: ZoneUpdate\n{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    }
+  }
+}\n\nSCHEMA: LocationCreate\n{
+  "type": "object",
+  "required": [
+    "name",
+    "clientId"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre simple. El API lo convertir\u00e1 a formato compuesto Cliente-Zona-Nombre"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "zoneId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "reference": {
+      "type": "string"
+    },
+    "aisle": {
+      "type": "string"
+    },
+    "spot": {
+      "type": "string"
+    },
+    "number": {
+      "type": "string"
+    }
+  }
+}\n\nSCHEMA: LocationUpdate\n{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "zoneId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "reference": {
+      "type": "string"
+    },
+    "aisle": {
+      "type": "string"
+    },
+    "spot": {
+      "type": "string"
+    },
+    "number": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    }
+  }
+}\n\nSCHEMA: AssignmentCreate\n{
+  "type": "object",
+  "required": [
+    "guardId",
+    "locationId",
+    "assignedBy"
+  ],
+  "properties": {
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "locationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "assignedBy": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "reqPhoto": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}\n\nSCHEMA: IncidentCreate\n{
+  "type": "object",
+  "required": [
+    "title",
+    "locationId"
+  ],
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "locationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "media": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: MaintenanceCreate\n{
+  "type": "object",
+  "required": [
+    "title"
+  ],
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "media": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: ScheduleCreate\n{
+  "type": "object",
+  "required": [
+    "name",
+    "startTime",
+    "endTime"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "startTime": {
+      "type": "string",
+      "example": "08:00"
+    },
+    "endTime": {
+      "type": "string",
+      "example": "17:00"
+    }
+  }
+}\n\nSCHEMA: ScheduleUpdate\n{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "startTime": {
+      "type": "string",
+      "example": "08:00"
+    },
+    "endTime": {
+      "type": "string",
+      "example": "17:00"
+    },
+    "active": {
+      "type": "boolean"
+    }
+  }
+}\n\nSCHEMA: Round\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "startTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "endTime": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "status": {
+      "$ref": "#/components/schemas/RoundStatus"
+    },
+    "recurringConfigurationId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "guard": {
+      "$ref": "#/components/schemas/UserBasic"
+    },
+    "client": {
+      "$ref": "#/components/schemas/ClientBasic"
+    },
+    "recurringConfiguration": {
+      "$ref": "#/components/schemas/RecurringConfigurationBasic"
+    }
+  }
+}\n\nSCHEMA: RecurringConfiguration\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "softDelete": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "client": {
+      "$ref": "#/components/schemas/ClientBasic"
+    },
+    "recurringLocations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RecurringLocationBasic"
+      }
+    },
+    "guards": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/UserBasic"
+      }
+    },
+    "rounds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RoundBasic"
+      }
+    }
+  }
+}\n\nSCHEMA: RecurringLocation\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "recurringConfigurationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "locationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "order": {
+      "type": "integer"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "recurringConfiguration": {
+      "$ref": "#/components/schemas/RecurringConfigurationBasic"
+    },
+    "location": {
+      "$ref": "#/components/schemas/LocationBasic"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RecurringTaskBasic"
+      }
+    }
+  }
+}\n\nSCHEMA: RecurringTask\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "recurringLocationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "description": {
+      "type": "string"
+    },
+    "reqPhoto": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "recurringLocation": {
+      "$ref": "#/components/schemas/RecurringLocationBasic"
+    }
+  }
+}\n\nSCHEMA: RecurringConfigurationCreate\n{
+  "type": "object",
+  "required": [
+    "title"
+  ],
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "order": {
+            "type": "integer"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "reqPhoto": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}\n\nSCHEMA: RecurringConfigurationUpdate\n{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "guardIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "order": {
+            "type": "integer"
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "reqPhoto": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}\n\nSCHEMA: Incident\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string"
+    },
+    "categoryId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "typeId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "description": {
+      "type": "string",
+      "nullable": true
+    },
+    "media": {
+      "type": "object",
+      "nullable": true
+    },
+    "latitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "longitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "resolvedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "resolvedById": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "status": {
+      "$ref": "#/components/schemas/IncidentStatus"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "client": {
+      "$ref": "#/components/schemas/ClientBasic"
+    },
+    "category": {
+      "$ref": "#/components/schemas/IncidentCategoryBasic"
+    },
+    "type": {
+      "$ref": "#/components/schemas/IncidentTypeBasic"
+    },
+    "guard": {
+      "$ref": "#/components/schemas/UserBasic"
+    },
+    "resolvedBy": {
+      "$ref": "#/components/schemas/UserBasic"
+    }
+  }
+}\n\nSCHEMA: Maintenance\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string"
+    },
+    "categoryId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "typeId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "category": {
+      "type": "string",
+      "nullable": true
+    },
+    "description": {
+      "type": "string",
+      "nullable": true
+    },
+    "media": {
+      "type": "object",
+      "nullable": true
+    },
+    "latitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "longitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "status": {
+      "$ref": "#/components/schemas/MaintenanceStatus"
+    },
+    "resolvedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "resolvedById": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "guard": {
+      "$ref": "#/components/schemas/UserBasic"
+    },
+    "resolvedBy": {
+      "$ref": "#/components/schemas/UserBasic"
+    },
+    "categoryRel": {
+      "$ref": "#/components/schemas/IncidentCategoryBasic"
+    },
+    "type": {
+      "$ref": "#/components/schemas/IncidentTypeBasic"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "client": {
+      "$ref": "#/components/schemas/ClientBasic"
+    }
+  }
+}\n\nSCHEMA: Kardex\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "userId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "locationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string",
+      "nullable": true
+    },
+    "media": {
+      "type": "object",
+      "nullable": true
+    },
+    "latitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "longitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "assignmentId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "scanType": {
+      "$ref": "#/components/schemas/ScanType"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "assignment": {
+      "$ref": "#/components/schemas/AssignmentBasic"
+    },
+    "location": {
+      "$ref": "#/components/schemas/LocationBasic"
+    },
+    "user": {
+      "$ref": "#/components/schemas/UserBasic"
+    }
+  }
+}\n\nSCHEMA: TResult\n{
+  "type": "object",
+  "description": "Estructura de respuesta est\u00e1ndar AXZY",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "Indica si la operaci\u00f3n fue exitosa",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "description": "Datos de la respuesta",
+      "example": {
+        "id": "uuid",
+        "name": "Ejemplo"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "description": "Lista de mensajes informativos o de \u00e9xito",
+      "items": {
+        "type": "string"
+      },
+      "example": [
+        "Operaci\u00f3n realizada con \u00e9xito"
+      ]
+    }
+  }
+}\n\nSCHEMA: TResultList\n{
+  "type": "object",
+  "description": "Estructura de respuesta para listas sin paginar",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "description": "Arreglo de elementos",
+      "items": {
+        "type": "object"
+      },
+      "example": [
+        {
+          "id": "uuid",
+          "name": "Ejemplo 1"
+        },
+        {
+          "id": "uuid",
+          "name": "Ejemplo 2"
+        }
+      ]
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "example": [
+        "Success"
+      ]
+    }
+  }
+}\n\nSCHEMA: TResultDatatable\n{
+  "type": "object",
+  "description": "Estructura de respuesta para datatables paginados",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "example": [
+            {
+              "id": "uuid",
+              "name": "Ejemplo 1"
+            }
+          ]
+        },
+        "total": {
+          "type": "integer",
+          "example": 55
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "example": [
+        "Success"
+      ]
+    }
+  }
+}\n\nSCHEMA: TResultError\n{
+  "type": "object",
+  "description": "Estructura de respuesta de error est\u00e1ndar",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": false
+    },
+    "data": {
+      "type": "object",
+      "nullable": true,
+      "example": null
+    },
+    "messages": {
+      "type": "array",
+      "description": "Detalles del error o validaci\u00f3n",
+      "items": {
+        "type": "string"
+      },
+      "example": [
+        "Credenciales inv\u00e1lidas",
+        "El campo nombre es obligatorio"
+      ]
+    },
+    "stack": {
+      "type": "string",
+      "description": "Traza del error (solo en desarrollo)",
+      "example": "Error: Stack trace sample..."
+    }
+  }
+}\n\nSCHEMA: AppError\n{
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string",
+      "example": "Usuario no encontrado"
+    },
+    "statusCode": {
+      "type": "integer",
+      "example": 404
+    },
+    "isOperational": {
+      "type": "boolean",
+      "example": true
+    }
+  }
+}\n\nSCHEMA: Client\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string",
+      "nullable": true
+    },
+    "rfc": {
+      "type": "string",
+      "nullable": true
+    },
+    "contactName": {
+      "type": "string",
+      "nullable": true
+    },
+    "contactPhone": {
+      "type": "string",
+      "nullable": true
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "softDelete": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/LocationBasic"
+      }
+    },
+    "rounds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RoundBasic"
+      }
+    },
+    "users": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/UserBasic"
+      }
+    },
+    "zones": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/ZoneBasic"
+      }
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/IncidentBasic"
+      }
+    },
+    "maintenances": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/MaintenanceBasic"
+      }
+    },
+    "recurringConfigurations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RecurringConfigurationBasic"
+      }
+    },
+    "assignmentLogs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/AssignmentLogBasic"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableClient\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Client"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListClient\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Client"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: Zone\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "softDelete": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "client": {
+      "$ref": "#/components/schemas/ClientBasic"
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/LocationBasic"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableZone\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Zone"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListZone\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Zone"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: Location\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "zoneId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "aisle": {
+      "type": "string",
+      "nullable": true
+    },
+    "spot": {
+      "type": "string",
+      "nullable": true
+    },
+    "number": {
+      "type": "string",
+      "nullable": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "reference": {
+      "type": "string",
+      "nullable": true
+    },
+    "isOccupied": {
+      "type": "boolean"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "softDelete": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "client": {
+      "$ref": "#/components/schemas/ClientBasic"
+    },
+    "zone": {
+      "$ref": "#/components/schemas/ZoneBasic"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/LocationTaskBasic"
+      }
+    },
+    "assignments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/AssignmentBasic"
+      }
+    },
+    "kardexEntries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/KardexBasic"
+      }
+    },
+    "recurringLocations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RecurringLocationBasic"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableLocation\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Location"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListLocation\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Location"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: Assignment\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "locationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "$ref": "#/components/schemas/AssignmentStatus"
+    },
+    "assignedBy": {
+      "type": "string"
+    },
+    "assignedByUser": {
+      "$ref": "#/components/schemas/UserBasic"
+    },
+    "notes": {
+      "type": "string",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "guard": {
+      "$ref": "#/components/schemas/UserBasic"
+    },
+    "location": {
+      "$ref": "#/components/schemas/LocationBasic"
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/AssignmentTaskBasic"
+      }
+    },
+    "kardex": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/KardexBasic"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableAssignment\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Assignment"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListAssignment\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Assignment"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableRound\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Round"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListRound\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Round"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableIncident\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Incident"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListIncident\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Incident"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableMaintenance\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Maintenance"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListMaintenance\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Maintenance"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: Schedule\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "startTime": {
+      "type": "string"
+    },
+    "endTime": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "users": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/UserBasic"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableSchedule\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Schedule"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListSchedule\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Schedule"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableRecurringConfiguration\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/RecurringConfiguration"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListRecurringConfiguration\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RecurringConfiguration"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: Category\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string",
+      "nullable": true
+    },
+    "icon": {
+      "type": "string",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}\n\nSCHEMA: TResultDatatableCategory\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Category"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 55
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListCategory\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Category"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: Type\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "categoryId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "category": {
+      "$ref": "#/components/schemas/Category",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}\n\nSCHEMA: TResultDatatableType\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Type"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 55
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListType\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Type"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: SysConfig\n{
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "value": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}\n\nSCHEMA: TResultDatatableSysConfig\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/SysConfig"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListSysConfig\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/SysConfig"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListKardex\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Kardex"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: Role\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "users": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/UserBasic"
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultDatatableRole\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListRole\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/Role"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: AssignmentLog\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "type": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "guard": {
+      "$ref": "#/components/schemas/UserBasic"
+    },
+    "client": {
+      "$ref": "#/components/schemas/ClientBasic"
+    }
+  }
+}\n\nSCHEMA: TResultDatatableAssignmentLog\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/AssignmentLog"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListAssignmentLog\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/AssignmentLog"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: AuditLog\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "userId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "module": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string"
+    },
+    "resourceId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "details": {
+      "type": "object",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "user": {
+      "$ref": "#/components/schemas/UserBasic"
+    }
+  }
+}\n\nSCHEMA: TResultDatatableAuditLog\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/AuditLog"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListAuditLog\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/AuditLog"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: LocationTask\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "locationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "description": {
+      "type": "string"
+    },
+    "reqPhoto": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "location": {
+      "$ref": "#/components/schemas/LocationBasic"
+    }
+  }
+}\n\nSCHEMA: TResultDatatableLocationTask\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/LocationTask"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListLocationTask\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/LocationTask"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableKardex\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/Kardex"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: AssignmentTask\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "assignmentId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "description": {
+      "type": "string"
+    },
+    "reqPhoto": {
+      "type": "boolean"
+    },
+    "completed": {
+      "type": "boolean"
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "assignment": {
+      "$ref": "#/components/schemas/AssignmentBasic"
+    }
+  }
+}\n\nSCHEMA: TResultDatatableAssignmentTask\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/AssignmentTask"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListAssignmentTask\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/AssignmentTask"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: IncidentCategory\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string",
+      "nullable": true
+    },
+    "icon": {
+      "type": "string",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "types": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/IncidentTypeBasic"
+      }
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/IncidentBasic"
+      }
+    },
+    "maintenances": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/MaintenanceBasic"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableIncidentCategory\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/IncidentCategory"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListIncidentCategory\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/IncidentCategory"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: IncidentType\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "categoryId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "category": {
+      "$ref": "#/components/schemas/IncidentCategoryBasic"
+    },
+    "incidents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/IncidentBasic"
+      }
+    },
+    "maintenances": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/MaintenanceBasic"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableIncidentType\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/IncidentType"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListIncidentType\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/IncidentType"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableRecurringLocation\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/RecurringLocation"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListRecurringLocation\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RecurringLocation"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultDatatableRecurringTask\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/RecurringTask"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "page": {
+          "type": "integer",
+          "example": 1
+        },
+        "limit": {
+          "type": "integer",
+          "example": 10
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultListRecurringTask\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/components/schemas/RecurringTask"
+      }
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: AssignmentStatus\n{
+  "type": "string",
+  "enum": [
+    "PENDING",
+    "CHECKING",
+    "UNDER_REVIEW",
+    "REVIEWED",
+    "ANOMALY"
+  ]
+}\n\nSCHEMA: ScanType\n{
+  "type": "string",
+  "enum": [
+    "ASSIGNMENT",
+    "RECURRING",
+    "FREE"
+  ]
+}\n\nSCHEMA: IncidentStatus\n{
+  "type": "string",
+  "enum": [
+    "PENDING",
+    "ATTENDED"
+  ]
+}\n\nSCHEMA: RoundStatus\n{
+  "type": "string",
+  "enum": [
+    "IN_PROGRESS",
+    "COMPLETED"
+  ]
+}\n\nSCHEMA: MaintenanceStatus\n{
+  "type": "string",
+  "enum": [
+    "PENDING",
+    "ATTENDED"
+  ]
+}\n\nSCHEMA: TResultRole\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/Role"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: TResultClient\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/Client"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: ZoneBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "softDelete": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultZone\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/Zone"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: UserBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "lastName": {
+      "type": "string",
+      "nullable": true
+    },
+    "username": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "softDelete": {
+      "type": "boolean"
+    },
+    "shiftStart": {
+      "type": "string",
+      "nullable": true
+    },
+    "shiftEnd": {
+      "type": "string",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "isLoggedIn": {
+      "type": "boolean"
+    },
+    "scheduleId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "roleId": {
+      "type": "string",
+      "format": "uuid"
+    }
+  }
+}\n\nSCHEMA: TResultUser\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/User"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: AssignmentLogBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "type": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}\n\nSCHEMA: TResultAssignmentLog\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/AssignmentLog"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: AuditLogBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "userId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "module": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string"
+    },
+    "resourceId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "details": {
+      "type": "object",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}\n\nSCHEMA: TResultAuditLog\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/AuditLog"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: ScheduleBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "startTime": {
+      "type": "string"
+    },
+    "endTime": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultSchedule\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/Schedule"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: LocationBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "zoneId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "aisle": {
+      "type": "string",
+      "nullable": true
+    },
+    "spot": {
+      "type": "string",
+      "nullable": true
+    },
+    "number": {
+      "type": "string",
+      "nullable": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "reference": {
+      "type": "string",
+      "nullable": true
+    },
+    "isOccupied": {
+      "type": "boolean"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "softDelete": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultLocation\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/Location"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: LocationTaskBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "locationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "description": {
+      "type": "string"
+    },
+    "reqPhoto": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultLocationTask\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/LocationTask"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: KardexBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "userId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "locationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string",
+      "nullable": true
+    },
+    "media": {
+      "type": "object",
+      "nullable": true
+    },
+    "latitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "longitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "assignmentId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultKardex\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/Kardex"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: AssignmentBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "locationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "assignedBy": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultAssignment\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/Assignment"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: AssignmentTaskBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "assignmentId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "description": {
+      "type": "string"
+    },
+    "reqPhoto": {
+      "type": "boolean"
+    },
+    "completed": {
+      "type": "boolean"
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultAssignmentTask\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/AssignmentTask"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: IncidentCategoryBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string",
+      "nullable": true
+    },
+    "icon": {
+      "type": "string",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultIncidentCategory\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/IncidentCategory"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: IncidentTypeBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "categoryId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultIncidentType\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/IncidentType"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: IncidentBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string"
+    },
+    "categoryId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "typeId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "description": {
+      "type": "string",
+      "nullable": true
+    },
+    "media": {
+      "type": "object",
+      "nullable": true
+    },
+    "latitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "longitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "resolvedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "resolvedById": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultIncident\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/Incident"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: RoundBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "startTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "endTime": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "recurringConfigurationId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultRound\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/Round"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: SysConfigBasic\n{
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "value": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}\n\nSCHEMA: TResultSysConfig\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/SysConfig"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: RecurringConfigurationBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string"
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "softDelete": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultRecurringConfiguration\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/RecurringConfiguration"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: RecurringLocationBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "recurringConfigurationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "locationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "order": {
+      "type": "integer"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultRecurringLocation\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/RecurringLocation"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: RecurringTaskBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "recurringLocationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "description": {
+      "type": "string"
+    },
+    "reqPhoto": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultRecurringTask\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/RecurringTask"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}\n\nSCHEMA: MaintenanceBasic\n{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "guardId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string"
+    },
+    "categoryId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "typeId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "category": {
+      "type": "string",
+      "nullable": true
+    },
+    "description": {
+      "type": "string",
+      "nullable": true
+    },
+    "media": {
+      "type": "object",
+      "nullable": true
+    },
+    "latitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "longitude": {
+      "type": "number",
+      "nullable": true
+    },
+    "resolvedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "resolvedById": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "type": "string",
+      "format": "date-time",
+      "nullable": true
+    },
+    "clientId": {
+      "type": "string",
+      "format": "uuid",
+      "nullable": true
+    }
+  }
+}\n\nSCHEMA: TResultMaintenance\n{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "example": true
+    },
+    "data": {
+      "$ref": "#/components/schemas/Maintenance"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

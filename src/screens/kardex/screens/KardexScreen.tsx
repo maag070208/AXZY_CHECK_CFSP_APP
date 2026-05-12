@@ -1,44 +1,36 @@
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import dayjs from 'dayjs';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Avatar,
-  Button,
-  Card,
-  IconButton,
-  Text,
-  Searchbar,
-  Portal,
-  Icon,
-} from 'react-native-paper';
-import {
-  ActivityIndicator,
   FlatList,
+  Modal,
   RefreshControl,
+  ScrollView,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
   View,
-  ScrollView,
-  Modal,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  useFocusEffect,
-  useIsFocused,
-  useNavigation,
-} from '@react-navigation/native';
+import { Icon, IconButton, Searchbar } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  ITButton,
+  ITCard,
+  ITScreenWrapper,
+  ITText,
+} from '../../../shared/components';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
 import { getCatalog } from '../../../shared/service/catalog.service';
+import { theme } from '../../../shared/theme/theme';
+import { COLORS } from '../../../shared/utils/constants';
 import { getLocations } from '../../locations/service/location.service';
 import {
   getPaginatedKardex,
   IKardexEntry,
   IKardexFilter,
 } from '../service/kardex.service';
-import ModernStyles from '../../../shared/theme/app.styles';
-import { theme } from '../../../shared/theme/theme';
 
 export const KardexScreen = () => {
   const navigation = useNavigation<any>();
@@ -60,6 +52,9 @@ export const KardexScreen = () => {
     { label: string; value: number }[]
   >([]);
   const [locationsCatalog, setLocationsCatalog] = useState<
+    { label: string; value: number }[]
+  >([]);
+  const [clientsCatalog, setClientsCatalog] = useState<
     { label: string; value: number }[]
   >([]);
 
@@ -85,15 +80,16 @@ export const KardexScreen = () => {
 
   const fetchCatalogs = async () => {
     try {
-      const [uRes, lRes] = await Promise.all([
+      const [uRes, lRes, cRes] = await Promise.all([
         getCatalog('guard'),
         getLocations(),
+        getCatalog('client'),
       ]);
 
       if (uRes.success && Array.isArray(uRes.data)) {
         setUsersCatalog(
           uRes.data.map((u: any) => ({
-            label: u.value, // En catálogos el nombre viene en .value
+            label: u.value,
             value: u.id,
           })),
         );
@@ -104,6 +100,15 @@ export const KardexScreen = () => {
           lRes.data.map((l: any) => ({
             label: l.name,
             value: l.id,
+          })),
+        );
+      }
+
+      if (cRes.success && Array.isArray(cRes.data)) {
+        setClientsCatalog(
+          cRes.data.map((c: any) => ({
+            label: c.value,
+            value: c.id,
           })),
         );
       }
@@ -149,29 +154,41 @@ export const KardexScreen = () => {
           search: debouncedSearch,
           filters: finalFilters,
         });
-        console.log('res', res);
+
         if (res.success && res.data) {
           const data = res.data;
-          // Soporta tanto .rows como .data (visto en logs)
-          const newRows = Array.isArray(data.rows)
+          const newRows: IKardexEntry[] = Array.isArray(data.rows)
             ? data.rows
             : Array.isArray(data.data)
             ? data.data
             : Array.isArray(data)
             ? data
             : [];
+
           const totalRows =
             typeof data.total === 'number' ? data.total : newRows.length;
 
           setEntries(prev => {
-            const combined = pageNum === 1 ? newRows : [...prev, ...newRows];
-            // Actualizar hasMore basado en el nuevo combinado
-            setHasMore(combined.length < totalRows);
-            return combined;
+            if (pageNum === 1) {
+              // Si es la página 1, simplemente limpiamos duplicados de la nueva carga
+              return newRows.filter(
+                (item, index, self) =>
+                  self.findIndex(t => t.id === item.id) === index,
+              );
+            } else {
+              // Si es carga de más páginas, evitamos duplicar los que ya están en el estado anterior
+              const existingIds = new Set(prev.map(p => p.id));
+              const uniqueNewRows = newRows.filter(
+                nr => !existingIds.has(nr.id),
+              );
+              return [...prev, ...uniqueNewRows];
+            }
           });
 
           setTotal(totalRows);
           setPage(pageNum);
+          // La lógica de hasMore debe basarse en el total reportado por el servidor
+          setHasMore(pageNum * 15 < totalRows);
         }
       } catch (error) {
         console.error('Error fetching kardex:', error);
@@ -184,9 +201,8 @@ export const KardexScreen = () => {
     [appliedFilters, appliedRange, debouncedSearch],
   );
 
-  const lastFetchRef = React.useRef('');
+  const lastFetchRef = useRef('');
 
-  // Re-fetch when filters change OR screen is focused
   useEffect(() => {
     if (!isFocused) return;
 
@@ -207,7 +223,8 @@ export const KardexScreen = () => {
   };
 
   const handleLoadMore = () => {
-    if (!loadingMore && hasMore) {
+    // Evitamos disparar múltiples veces si ya está cargando o no hay más
+    if (!loading && !loadingMore && hasMore) {
       fetchKardex(page + 1);
     }
   };
@@ -233,6 +250,7 @@ export const KardexScreen = () => {
     appliedRange.startDate ? 1 : 0,
     appliedFilters.userId ? 1 : 0,
     appliedFilters.locationId ? 1 : 0,
+    appliedFilters.clientId ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const getScanTypeInfo = (type: string) => {
@@ -242,7 +260,7 @@ export const KardexScreen = () => {
       case 'ASSIGNMENT':
         return {
           label: 'Asignación',
-          color: '#8B5CF6',
+          color: theme.colors.primary,
           icon: 'clipboard-check',
         };
       case 'FREE':
@@ -258,23 +276,25 @@ export const KardexScreen = () => {
     const isValidated = item.assignment?.status === 'REVIEWED';
 
     return (
-      <Card
+      <ITCard
         style={styles.card}
         onPress={() => navigation.navigate('KARDEX_DETAIL', { item })}
-        elevation={1}
       >
         <View style={styles.cardLayout}>
           <View style={styles.avatarSection}>
-            <Avatar.Text
-              size={56}
-              label={item.user?.username?.substring(0, 2).toUpperCase() || 'U'}
-              style={styles.avatar}
-              labelStyle={{ color: '#64748B', fontWeight: 'bold' }}
-            />
+            <View style={styles.avatarCircle}>
+              <ITText
+                variant="bodyLarge"
+                weight="bold"
+                color={theme.colors.outline}
+              >
+                {item.user?.username?.substring(0, 2).toUpperCase() || 'U'}
+              </ITText>
+            </View>
             <View
               style={[
                 styles.statusIndicator,
-                { backgroundColor: isValidated ? '#10B981' : '#F59E0B' },
+                { backgroundColor: isValidated ? COLORS.emerald : '#F59E0B' },
               ]}
             >
               <Icon
@@ -294,123 +314,203 @@ export const KardexScreen = () => {
                 ]}
               >
                 <Icon source={scanInfo.icon} size={12} color={scanInfo.color} />
-                <Text style={[styles.scanBadgeText, { color: scanInfo.color }]}>
+                <ITText
+                  variant="labelSmall"
+                  weight="bold"
+                  color={scanInfo.color}
+                  style={styles.scanBadgeText}
+                >
                   {scanInfo.label}
-                </Text>
+                </ITText>
               </View>
             </View>
 
-            <Text style={styles.locationTitle} numberOfLines={1}>
-              {item.location.name}
-            </Text>
+            <ITText
+              variant="titleMedium"
+              weight="bold"
+              numberOfLines={1}
+              style={styles.locationTitle}
+            >
+              {item.location?.name || 'Ubicación desconocida'}
+            </ITText>
 
             <View style={styles.detailsRow}>
               <View style={styles.detailItem}>
-                <Icon source="account-outline" size={14} color="#64748B" />
-                <Text style={styles.detailText} numberOfLines={1}>
-                  {item.user.name}
-                </Text>
+                <Icon
+                  source="account-outline"
+                  size={14}
+                  color={theme.colors.outline}
+                />
+                <ITText
+                  variant="bodySmall"
+                  color={theme.colors.onSurfaceVariant}
+                  numberOfLines={1}
+                  style={styles.detailText}
+                >
+                  {item.user?.name}
+                </ITText>
               </View>
               <View style={[styles.detailItem, styles.ml12]}>
-                <Icon source="calendar-outline" size={14} color="#64748B" />
-                <Text style={styles.detailText}>
+                <Icon
+                  source="calendar-outline"
+                  size={14}
+                  color={theme.colors.outline}
+                />
+                <ITText
+                  variant="bodySmall"
+                  color={theme.colors.onSurfaceVariant}
+                  style={styles.detailText}
+                >
                   {dayjs(item.timestamp).format('HH:mm')}
-                </Text>
+                </ITText>
               </View>
               {mediaCount > 0 && (
                 <View style={[styles.detailItem, styles.ml12]}>
                   <Icon source="camera-outline" size={14} color="#3B82F6" />
-                  <Text style={[styles.detailText, { color: '#3B82F6' }]}>
+                  <ITText
+                    variant="bodySmall"
+                    weight="bold"
+                    color="#3B82F6"
+                    style={styles.detailText}
+                  >
                     {mediaCount}
-                  </Text>
+                  </ITText>
                 </View>
               )}
             </View>
           </View>
 
-          <IconButton icon="chevron-right" iconColor="#CBD5E1" size={24} />
+          <Icon
+            source="chevron-right"
+            color={theme.colors.outlineVariant}
+            size={24}
+          />
         </View>
-      </Card>
+      </ITCard>
     );
   };
 
-  const normalizeString = (str: string) => {
-    return str
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-  };
-
-  const filteredEntries = entries.filter(entry => {
-    if (!search) return true;
-    const searchNorm = normalizeString(search);
-
-    const locationMatch = entry.location?.name
-      ? normalizeString(entry.location.name).includes(searchNorm)
-      : false;
-    const userMatch = normalizeString(
-      `${entry.user?.name} ${entry.user?.lastName}`,
-    ).includes(searchNorm);
-    const idMatch = entry.id.toString().includes(searchNorm);
-
-    return locationMatch || userMatch || idMatch;
-  });
+  // Borrar filteredEntries redundante y lógica de normalización
 
   return (
-    <View style={ModernStyles.screenContainer}>
+    <ITScreenWrapper padding={false} style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.headerTitle}>Kardex</Text>
-            <Text style={styles.headerSubtitle}>
+            <ITText
+              variant="headlineSmall"
+              weight="bold"
+              style={styles.headerTitle}
+            >
+              Kardex
+            </ITText>
+            <ITText
+              variant="bodySmall"
+              color={theme.colors.onSurfaceVariant}
+              style={styles.headerSubtitle}
+            >
               {total} reportes registrados
-            </Text>
+            </ITText>
           </View>
-          <IconButton
-            icon="filter-variant"
-            mode="contained"
-            containerColor={
-              activeFiltersCount > 0 ? theme.colors.primary : '#F1F5F9'
-            }
-            iconColor={activeFiltersCount > 0 ? '#FFFFFF' : '#64748B'}
-            onPress={handleOpenFilters}
+          <View style={styles.headerActions}>
+            <IconButton
+              icon="filter-variant"
+              mode="contained"
+              containerColor={
+                activeFiltersCount > 0
+                  ? COLORS.emerald
+                  : theme.colors.surfaceVariant
+              }
+              iconColor={
+                activeFiltersCount > 0 ? '#FFFFFF' : theme.colors.outline
+              }
+              onPress={handleOpenFilters}
+            />
+          </View>
+        </View>
+
+        <View style={styles.headerSearch}>
+          <Searchbar
+            placeholder="Buscar por folio, guardia o ubicación..."
+            onChangeText={setSearch}
+            value={search}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={theme.colors.outline}
           />
         </View>
-        <Searchbar
-          placeholder="Buscar ubicaciones..."
-          onChangeText={setSearch}
-          value={search}
-          style={styles.searchBar}
-          inputStyle={styles.searchInput}
-          iconColor={theme.colors.primary}
-          placeholderTextColor="#94A3B8"
-          elevation={0}
-        />
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.clientsScroll}
+        >
+          <TouchableOpacity
+            style={[
+              styles.clientBadge,
+              !appliedFilters.clientId && styles.clientBadgeActive,
+            ]}
+            onPress={() => {
+              setAppliedFilters(prev => ({ ...prev, clientId: undefined }));
+              setPage(1);
+            }}
+          >
+            <ITText
+              variant="labelMedium"
+              weight="bold"
+              color={
+                !appliedFilters.clientId ? '#FFFFFF' : theme.colors.outline
+              }
+            >
+              Todos
+            </ITText>
+          </TouchableOpacity>
+          {clientsCatalog.map(client => {
+            const isActive = appliedFilters.clientId === String(client.value);
+            return (
+              <TouchableOpacity
+                key={client.value}
+                style={[
+                  styles.clientBadge,
+                  isActive && styles.clientBadgeActive,
+                ]}
+                onPress={() => {
+                  setAppliedFilters(prev => ({
+                    ...prev,
+                    clientId: String(client.value),
+                  }));
+                  setPage(1);
+                }}
+              >
+                <ITText
+                  variant="labelMedium"
+                  weight="bold"
+                  color={isActive ? '#FFFFFF' : theme.colors.outline}
+                >
+                  {client.label}
+                </ITText>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <FlatList
-        data={filteredEntries}
+        data={entries}
         renderItem={renderItem}
-        keyExtractor={item => item.id.toString()}
+        // Usamos una combinación de ID y timestamp por si acaso hay duplicados de ID reales (no recomendado)
+        keyExtractor={item => `kardex-${item.id}-${item.timestamp}`}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[theme.colors.primary]}
+            colors={[COLORS.emerald]}
           />
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={() =>
-          loadingMore ? (
-            <ActivityIndicator
-              style={{ margin: 16 }}
-              color={theme.colors.primary}
-            />
-          ) : null
-        }
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: insets.bottom + 20 },
@@ -418,15 +518,24 @@ export const KardexScreen = () => {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
-              <Icon source="file-document-outline" size={64} color="#E2E8F0" />
-              <Text style={styles.emptyText}>No se encontraron reportes</Text>
-              <Button
+              <Icon
+                source="file-document-outline"
+                size={64}
+                color={theme.colors.outlineVariant}
+              />
+              <ITText
+                variant="titleMedium"
+                color={theme.colors.outline}
+                style={styles.emptyText}
+              >
+                No se encontraron reportes
+              </ITText>
+              <ITButton
+                label="Actualizar lista"
                 mode="text"
                 onPress={() => fetchKardex(1)}
-                textColor={theme.colors.primary}
-              >
-                Actualizar lista
-              </Button>
+                textColor={COLORS.emerald}
+              />
             </View>
           ) : null
         }
@@ -439,20 +548,22 @@ export const KardexScreen = () => {
         onRequestClose={() => setShowFilters(false)}
       >
         <View style={styles.modalFullScreen}>
-          <View style={[styles.modalHeader, { paddingTop: insets.top + 20 }]}>
+          <View style={[styles.modalHeader, { paddingTop: insets.top + 10 }]}>
             <View style={styles.modalHeaderTitle}>
-              <Icon
-                source="filter-variant"
-                size={24}
-                color={theme.colors.primary}
-              />
-              <Text style={styles.modalTitle}>Filtros de Kardex</Text>
+              <Icon source="filter-variant" size={24} color={COLORS.emerald} />
+              <ITText
+                variant="titleLarge"
+                weight="bold"
+                style={styles.modalTitle}
+              >
+                Filtros de Kardex
+              </ITText>
             </View>
             <IconButton
               icon="close"
               size={24}
               onPress={() => setShowFilters(false)}
-              iconColor="#94A3B8"
+              iconColor={theme.colors.outline}
             />
           </View>
 
@@ -461,7 +572,14 @@ export const KardexScreen = () => {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR FECHA</Text>
+              <ITText
+                variant="labelSmall"
+                weight="bold"
+                color={theme.colors.outline}
+                style={styles.filterLabel}
+              >
+                POR FECHA
+              </ITText>
               <TouchableOpacity
                 onPress={() => setOpenDate(true)}
                 style={styles.dateSelector}
@@ -469,20 +587,34 @@ export const KardexScreen = () => {
                 <Icon
                   source="calendar-range"
                   size={20}
-                  color={theme.colors.primary}
+                  color={COLORS.emerald}
                 />
-                <Text style={styles.dateValue}>
+                <ITText
+                  variant="bodyMedium"
+                  weight="bold"
+                  color={theme.colors.onSurface}
+                  style={styles.dateValue}
+                >
                   {tempRange.startDate
-                    ? `${tempRange.startDate.toLocaleDateString()} - ${
-                        tempRange.endDate?.toLocaleDateString() || ''
+                    ? `${dayjs(tempRange.startDate).format('DD/MM/YYYY')} - ${
+                        tempRange.endDate
+                          ? dayjs(tempRange.endDate).format('DD/MM/YYYY')
+                          : ''
                       }`
                     : 'Todos los reportes'}
-                </Text>
+                </ITText>
               </TouchableOpacity>
             </View>
 
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR GUARDIA</Text>
+              <ITText
+                variant="labelSmall"
+                weight="bold"
+                color={theme.colors.outline}
+                style={styles.filterLabel}
+              >
+                POR GUARDIA
+              </ITText>
               <SearchComponent
                 label="Guardia"
                 placeholder="Seleccionar guardia"
@@ -498,7 +630,14 @@ export const KardexScreen = () => {
             </View>
 
             <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR UBICACIÓN</Text>
+              <ITText
+                variant="labelSmall"
+                weight="bold"
+                color={theme.colors.outline}
+                style={styles.filterLabel}
+              >
+                POR UBICACIÓN
+              </ITText>
               <SearchComponent
                 label="Ubicación"
                 placeholder="Seleccionar ubicación"
@@ -512,29 +651,47 @@ export const KardexScreen = () => {
                 }
               />
             </View>
+
+            <View style={styles.filterGroup}>
+              <ITText
+                variant="labelSmall"
+                weight="bold"
+                color={theme.colors.outline}
+                style={styles.filterLabel}
+              >
+                POR CLIENTE
+              </ITText>
+              <SearchComponent
+                label="Cliente"
+                placeholder="Seleccionar cliente"
+                options={clientsCatalog}
+                value={tempFilters.clientId}
+                onSelect={val =>
+                  setTempFilters({
+                    ...tempFilters,
+                    clientId: val ? String(val) : undefined,
+                  })
+                }
+              />
+            </View>
           </ScrollView>
 
           <View
             style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
           >
-            <Button
+            <ITButton
+              label="Limpiar"
               mode="outlined"
               onPress={handleClearFilters}
               style={styles.footerButton}
-              textColor="#64748B"
-            >
-              Limpiar
-            </Button>
-            <Button
-              mode="contained"
+              textColor={theme.colors.outline}
+            />
+            <ITButton
+              label="Aplicar Filtros"
               onPress={handleApplyFilters}
-              style={[
-                styles.footerButton,
-                { backgroundColor: theme.colors.primary },
-              ]}
-            >
-              Aplicar Filtros
-            </Button>
+              style={styles.footerButton}
+              backgroundColor={COLORS.emerald}
+            />
           </View>
         </View>
       </Modal>
@@ -551,11 +708,15 @@ export const KardexScreen = () => {
           setTempRange({ startDate, endDate });
         }}
       />
-    </View>
+    </ITScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   header: {
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -568,26 +729,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 12,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerSearch: {
+    paddingHorizontal: 20,
     marginBottom: 16,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 2,
-  },
   searchBar: {
+    elevation: 0,
     backgroundColor: '#F1F5F9',
     borderRadius: 12,
     height: 44,
   },
   searchInput: {
     minHeight: 0,
-    fontSize: 15,
+    fontSize: 14,
+  },
+  clientsScroll: {
+    paddingHorizontal: 20,
+    gap: 8,
+    paddingBottom: 4,
+  },
+  clientBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  clientBadgeActive: {
+    backgroundColor: COLORS.emerald,
+    borderColor: COLORS.emerald,
+  },
+  headerTitle: {
+    color: theme.colors.onSurface,
+  },
+  headerSubtitle: {
+    marginTop: 2,
   },
   listContent: {
     padding: 16,
@@ -595,9 +778,8 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
+    padding: 0,
+    marginBottom: 8,
   },
   cardLayout: {
     flexDirection: 'row',
@@ -608,8 +790,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginRight: 12,
   },
-  avatar: {
+  avatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statusIndicator: {
     position: 'absolute',
@@ -642,24 +829,10 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   scanBadgeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
+    textTransform: 'uppercase',
   },
   locationTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  idBadge: {
-    backgroundColor: '#E2E8F0',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  idText: {
-    color: '#475569',
-    fontSize: 10,
-    fontWeight: '900',
+    color: theme.colors.onSurface,
   },
   detailsRow: {
     flexDirection: 'row',
@@ -671,10 +844,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  detailText: {
-    fontSize: 12,
-    color: '#64748B',
-  },
+  detailText: {},
   ml12: {
     marginLeft: 12,
   },
@@ -684,14 +854,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    color: '#94A3B8',
-    fontSize: 16,
     fontWeight: '500',
   },
   modalFullScreen: {
     backgroundColor: 'white',
     flex: 1,
-    margin: 0,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -708,9 +875,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1E293B',
+    color: theme.colors.onSurface,
   },
   modalScroll: {
     padding: 24,
@@ -719,11 +884,9 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   filterLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#94A3B8',
     marginBottom: 12,
     letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   dateSelector: {
     flexDirection: 'row',
@@ -735,11 +898,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  dateValue: {
-    fontSize: 14,
-    color: '#475569',
-    fontWeight: '500',
-  },
+  dateValue: {},
   modalFooter: {
     flexDirection: 'row',
     gap: 12,
@@ -750,6 +909,5 @@ const styles = StyleSheet.create({
   },
   footerButton: {
     flex: 1,
-    borderRadius: 14,
   },
 });

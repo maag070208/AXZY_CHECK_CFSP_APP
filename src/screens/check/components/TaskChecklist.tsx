@@ -42,9 +42,9 @@ export const TaskChecklist = ({ tasks, onTaskToggle, isLocalOnly }: Props) => {
         <View style={styles.container}>
             <Text style={styles.title}>Lista de Tareas</Text>
             <View style={styles.list}>
-                {tasks.map((task) => (
+                {tasks.map((task, index) => (
                     <TouchableOpacity 
-                        key={task.id} 
+                        key={task.id || `task-${index}`} 
                         style={[styles.taskRow, task.completed && styles.taskRowCompleted]}
                         onPress={() => handleToggle(task.id)}
                         disabled={toggling === task.id}

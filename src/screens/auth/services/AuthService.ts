@@ -2,18 +2,17 @@ import { post } from '../../../core/axios';
 import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
 import { TResult } from '../../../core/types/TResult';
 
+export interface UserLogin {
+  username: string;
+  password: string;
+}
+
 export const login = async (
-  username: string,
-  password: string,
+  values: UserLogin,
 ): Promise<TResult<string>> => {
-  return await post(API_CONSTANTS.URLS.AUTH.LOGIN, {
-    username,
-    password,
-  });
+  return await post(API_CONSTANTS.URLS.AUTH.LOGIN, values);
 };
 
-export const logout = async (userId: string): Promise<TResult<boolean>> => {
-  return await post(API_CONSTANTS.URLS.AUTH.LOGIN.replace('login', 'logout'), {
-    userId,
-  });
+export const logout = async (): Promise<TResult<void>> => {
+  return await post(API_CONSTANTS.URLS.AUTH.LOGOUT || '/users/logout', {});
 };

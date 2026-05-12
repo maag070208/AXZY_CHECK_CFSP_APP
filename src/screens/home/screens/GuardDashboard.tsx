@@ -5,16 +5,16 @@ import {
 } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   Dimensions,
   FlatList,
+  Modal,
   RefreshControl,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Button, Icon, Modal, Portal, Surface, Text } from 'react-native-paper';
+import { Icon, Portal, Surface, useTheme } from 'react-native-paper';
 import {
   Camera,
   useCameraDevice,
@@ -24,9 +24,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
-import { theme } from '../../../shared/theme/theme';
 import { COLORS } from '../../../shared/utils/constants';
-import { getMyAssignments } from '../../assignments/service/assignment.service';
 import {
   endRound,
   getActiveRounds,
@@ -34,6 +32,14 @@ import {
   startRound,
 } from '../../home/service/round.service';
 import { getRecurringByGuard } from '../service/recurring.service';
+import {
+  ITText,
+  ITButton,
+  ITCard,
+  ITScreenWrapper,
+  ITAlert,
+  LoaderComponent,
+} from '../../../shared/components';
 
 const { width } = Dimensions.get('window');
 
@@ -42,11 +48,10 @@ export const GuardDashboard = () => {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.userState);
   const isFocused = useIsFocused();
+  const theme = useTheme();
 
   const device = useCameraDevice('back');
-  const [hasPermission, setHasPermission] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
-
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
   const [roundLoading, setRoundLoading] = useState(false);
@@ -59,7 +64,7 @@ export const GuardDashboard = () => {
     visible: boolean;
     title: string;
     message: string;
-    type: 'error' | 'success' | 'warning' | 'info';
+    type: 'alert' | 'check' | 'warning' | 'info';
     onConfirm?: () => void;
   }>({
     visible: false,
@@ -97,11 +102,7 @@ export const GuardDashboard = () => {
       });
 
       setClients(filteredRecurring);
-      if (roundRes?.success && roundRes.data) {
-        setActiveRound(roundRes.data);
-      } else {
-        setActiveRound(null);
-      }
+      setActiveRound(roundRes?.success && roundRes.data ? roundRes.data : null);
     } catch (e) {
       dispatch(showToast({ message: 'Error de conexión', type: 'error' }));
     } finally {
@@ -115,7 +116,7 @@ export const GuardDashboard = () => {
         setAlertConfig({
           visible: true,
           title: 'Sin Rutas',
-          message: 'No tienes rutas asignadas.',
+          message: 'No tienes rutas asignadas para hoy.',
           type: 'warning',
         });
         return;
@@ -136,10 +137,12 @@ export const GuardDashboard = () => {
       if (res.success) {
         setActiveRound(res.data);
         loadData();
-        dispatch(showToast({ message: 'Ronda iniciada', type: 'success' }));
+        dispatch(
+          showToast({ message: 'Ronda iniciada con éxito', type: 'success' }),
+        );
       }
     } catch (e) {
-      dispatch(showToast({ message: 'Error al iniciar', type: 'error' }));
+      dispatch(showToast({ message: 'Error al iniciar ronda', type: 'error' }));
     } finally {
       setRoundLoading(false);
     }
@@ -156,7 +159,7 @@ export const GuardDashboard = () => {
         dispatch(showToast({ message: 'Ronda finalizada', type: 'success' }));
       }
     } catch (error) {
-      dispatch(showToast({ message: 'Error de red', type: 'error' }));
+      dispatch(showToast({ message: 'Error al finalizar', type: 'error' }));
     } finally {
       setRoundLoading(false);
     }
@@ -180,12 +183,14 @@ export const GuardDashboard = () => {
   const handleCodeScanned = (code: string) => {
     setScanned(true);
     setCameraActive(false);
+    let scannedName: string | null = null;
     let scannedId: string | null = null;
     try {
       const parsed = JSON.parse(code);
+      if (parsed?.name) scannedName = String(parsed.name);
       if (parsed?.id) scannedId = String(parsed.id);
     } catch (e) {
-      scannedId = code;
+      scannedName = code;
     }
 
     const locations =
@@ -193,7 +198,9 @@ export const GuardDashboard = () => {
         (rl: any) => ({ ...rl.location, tasks: rl.tasks }),
       );
     const foundLocation = locations?.find(
-      (l: any) => String(l.id) === String(scannedId) || l.name === code,
+      (l: any) =>
+        (scannedName && l.name.toUpperCase() === scannedName.toUpperCase()) ||
+        (scannedId && String(l.id) === String(scannedId)),
     );
 
     if (foundLocation) {
@@ -208,8 +215,8 @@ export const GuardDashboard = () => {
       if (isCompleted) {
         setAlertConfig({
           visible: true,
-          title: 'Completado',
-          message: 'Este punto ya fue verificado.',
+          title: 'Ya Verificado',
+          message: 'Este punto de control ya fue completado.',
           type: 'info',
           onConfirm: () => setScanned(false),
         });
@@ -227,8 +234,8 @@ export const GuardDashboard = () => {
     } else {
       setAlertConfig({
         visible: true,
-        title: 'No encontrado',
-        message: 'El código no pertenece a esta ruta.',
+        title: 'Código Inválido',
+        message: 'Este código no pertenece a la ruta actual.',
         type: 'error',
         onConfirm: () => setScanned(false),
       });
@@ -258,10 +265,14 @@ export const GuardDashboard = () => {
           ]}
         />
         <View style={styles.locMainInfo}>
-          <Text style={styles.locName}>{item.name}</Text>
-          <Text style={styles.locSub}>
-            {isCompleted ? 'Verificado' : `${item.tasks?.length || 0} tareas`}
-          </Text>
+          <ITText variant="bodyMedium" weight="bold">
+            {item.name}
+          </ITText>
+          <ITText variant="bodySmall" style={{ opacity: 0.6 }}>
+            {isCompleted
+              ? 'Verificado'
+              : `${item.tasks?.length || 0} tareas pendientes`}
+          </ITText>
         </View>
         <Icon
           source={isCompleted ? 'check-circle' : 'chevron-right'}
@@ -273,197 +284,215 @@ export const GuardDashboard = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <ITScreenWrapper
+      scrollable={false}
+      padding={false}
+      style={[styles.container, { paddingTop: 10 }]}
+      edges={['left', 'right']}
+    >
+      <LoaderComponent visible={loading} />
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+      <View
+        style={[
+          styles.headerContainer,
+          isMyRound && cameraActive ? { height: '45%' } : { height: '25%' },
+        ]}
+      >
+        {/* Decorative Background QR */}
+        <View style={styles.bgIconWrapper}>
+          <Icon source="qrcode" size={280} color="rgba(255,255,255,0.04)" />
         </View>
-      ) : (
-        <>
-          {/* Header Compacto y Dinámico */}
-          <View
-            style={[
-              styles.headerContainer,
-              isMyRound && cameraActive ? { height: '40%' } : { height: '25%' },
-            ]}
+
+        {!isMyRound ? (
+          <View style={styles.lockedCamera}>
+            <Surface style={styles.lockCircle} elevation={0}>
+              <Icon source="shield-lock" size={30} color="#555" />
+            </Surface>
+            <ITText variant="bodySmall" center color="#888">
+              Inicia una ruta para habilitar escáner
+            </ITText>
+          </View>
+        ) : !cameraActive ? (
+          <TouchableOpacity
+            style={styles.activateCameraBtn}
+            onPress={() => {
+              setScanned(false);
+              setCameraActive(true);
+            }}
           >
-            {!isMyRound ? (
-              <View style={styles.lockedCamera}>
-                <Surface style={styles.lockCircle} elevation={0}>
-                  <Icon source="shield-lock" size={30} color="#555" />
-                </Surface>
-                <Text style={styles.lockedText}>
-                  Inicia una ruta para escanear
-                </Text>
-              </View>
-            ) : !cameraActive ? (
-              <TouchableOpacity
-                style={styles.activateCameraBtn}
-                onPress={() => {
-                  setScanned(false);
-                  setCameraActive(true);
-                }}
-              >
-                <Surface style={styles.cameraIconCircle} elevation={2}>
-                  <Icon
-                    source="qrcode-scan"
-                    size={28}
-                    color={theme.colors.primary}
-                  />
-                </Surface>
-                <Text style={styles.activateText}>
-                  PRESIONA AQUI PARA ESCANEAR CÓDIGO
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={StyleSheet.absoluteFill}>
-                {isFocused && device && (
-                  <Camera
-                    style={StyleSheet.absoluteFill}
-                    device={device}
-                    isActive={!scanned}
-                    codeScanner={codeScanner}
-                  />
-                )}
-                <View style={styles.scanOverlay}>
-                  <View style={styles.targetFrame} />
-                  <Button
-                    mode="text"
-                    textColor="#fff"
-                    onPress={() => setCameraActive(false)}
-                    style={styles.closeCamBtn}
-                  >
-                    Cancelar
-                  </Button>
-                </View>
-              </View>
+            <Surface style={styles.cameraIconCircle} elevation={4}>
+              <Icon
+                source="qrcode-scan"
+                size={32}
+                color={theme.colors.primary}
+              />
+            </Surface>
+            <ITText
+              variant="labelLarge"
+              weight="bold"
+              color="#FFF"
+              style={{ letterSpacing: 1 }}
+            >
+              TOCA PARA ESCANEAR CÓDIGO
+            </ITText>
+          </TouchableOpacity>
+        ) : (
+          <View style={[StyleSheet.absoluteFill]}>
+            {isFocused && device && (
+              <Camera
+                style={StyleSheet.absoluteFill}
+                device={device}
+                isActive={!scanned}
+                codeScanner={codeScanner}
+              />
+            )}
+            <View style={styles.scanOverlay}>
+              <View style={styles.targetFrame} />
+              <ITButton
+                mode="text"
+                label="Cancelar"
+                onPress={() => setCameraActive(false)}
+                style={styles.closeCamBtn}
+              />
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Panel de Contenido */}
+      <View style={styles.contentSheet}>
+        <View style={styles.dragIndicator} />
+
+        <View style={styles.actionSection}>
+          <ITButton
+            label={
+              isRoundActive
+                ? isMyRound
+                  ? 'FINALIZAR RUTA'
+                  : 'RONDA EN CURSO'
+                : 'INICIAR RUTA'
+            }
+            onPress={handleToggleRound}
+            loading={roundLoading}
+            icon={isRoundActive ? 'stop-circle' : 'play'}
+            color={
+              isRoundActive
+                ? isMyRound
+                  ? COLORS.red
+                  : '#94A3B8'
+                : theme.colors.primary
+            }
+            style={styles.mainActionBtn}
+          />
+
+          <View style={styles.secondaryActions}>
+            <QuickAction
+              icon="alert-octagon"
+              label="Incidencia"
+              color={COLORS.red}
+              bg="#FEF2F2"
+              onPress={() =>
+                navigation.navigate('INCIDENT_REPORT', {
+                  initialCategory: 'FALTAS',
+                  roundId: activeRound?.id,
+                })
+              }
+            />
+            {(user.role === UserRole.MAINT || user.role === UserRole.ADMIN) && (
+              <QuickAction
+                icon="wrench"
+                label="Mantenimiento"
+                color={COLORS.orange}
+                bg="#FFFBEB"
+                onPress={() =>
+                  navigation.navigate('MAINTENANCE_REPORT', {
+                    roundId: activeRound?.id,
+                  })
+                }
+              />
             )}
           </View>
+        </View>
 
-          {/* Panel Principal */}
-          <View style={styles.contentSheet}>
-            <View style={styles.dragIndicator} />
-
-            <View style={styles.actionSection}>
-              <Button
-                mode="contained"
-                onPress={handleToggleRound}
-                loading={roundLoading}
-                style={[
-                  styles.mainActionBtn,
-                  isRoundActive
-                    ? isMyRound
-                      ? styles.btnDanger
-                      : styles.btnDisabled
-                    : styles.btnSuccess,
-                ]}
-                contentStyle={styles.mainActionBtnContent}
-                labelStyle={styles.mainActionLabel}
-                icon={isRoundActive ? 'stop-circle' : 'play'}
-              >
-                {isRoundActive
-                  ? isMyRound
-                    ? 'FINALIZAR RUTA'
-                    : 'RONDA EN CURSO'
-                  : 'INICIAR RUTA'}
-              </Button>
-
-              <View style={styles.secondaryActions}>
-                <QuickAction
-                  icon="alert-octagon"
-                  label="Incidencia"
-                  color={COLORS.red}
-                  bg="#FEF2F2"
-                  onPress={() =>
-                    navigation.navigate('INCIDENT_REPORT', {
-                      initialCategory: 'FALTAS',
-                      roundId: activeRound?.id,
-                    })
-                  }
+        <FlatList
+          data={
+            isMyRound
+              ? clients.filter(
+                  c => c.id === activeRound.recurringConfigurationId,
+                )
+              : clients
+          }
+          keyExtractor={item => String(item.id)}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <ITText
+              variant="labelSmall"
+              weight="bold"
+              style={styles.sectionTitle}
+            >
+              {isMyRound ? 'RUTA ACTUAL EN PROCESO' : 'RUTAS ASIGNADAS'}
+            </ITText>
+          }
+          renderItem={({ item, index }) => (
+            <ITCard style={styles.routeCard} mode="contained" key={index}>
+              <View style={styles.routeHeader}>
+                <Icon
+                  source="map-marker-distance"
+                  size={20}
+                  color={theme.colors.primary}
                 />
-                {(user.role === UserRole.MAINT ||
-                  user.role === UserRole.ADMIN) && (
-                  <QuickAction
-                    icon="wrench"
-                    label="Mantenimiento"
-                    color={COLORS.orange}
-                    bg="#FFFBEB"
-                    onPress={() => navigation.navigate('MAINTENANCE_REPORT', { roundId: activeRound?.id })}
-                  />
-                )}
+                <ITText variant="titleMedium" weight="bold" style={{ flex: 1 }}>
+                  {item.title}
+                </ITText>
+                <View style={styles.ptsBadge}>
+                  <ITText variant="labelSmall" weight="bold" color="#475569">
+                    {item.recurringLocations?.length || 0} pts
+                  </ITText>
+                </View>
               </View>
-            </View>
 
-            <FlatList
-              data={
-                isMyRound
-                  ? clients.filter(
-                      c => c.id === activeRound.recurringConfigurationId,
-                    )
-                  : clients
-              }
-              keyExtractor={item => String(item.id)}
-              showsVerticalScrollIndicator={false}
-              ListHeaderComponent={
-                <Text style={styles.sectionTitle}>
-                  {isMyRound ? 'RUTA EN CURSO' : 'RUTAS ASIGNADAS'}
-                </Text>
-              }
-              renderItem={({ item }) => (
-                <View style={styles.routeCard}>
-                  <View style={styles.routeHeader}>
-                    <Icon
-                      source="map-marker-distance"
-                      size={20}
-                      color={theme.colors.primary}
-                    />
-                    <Text style={styles.routeName}>{item.title}</Text>
-                    <View style={styles.ptsBadge}>
-                      <Text style={styles.ptsText}>
-                        {item.recurringLocations?.length || 0} pts
-                      </Text>
-                    </View>
-                  </View>
-
-                  {isMyRound && (
-                    <View style={styles.locationList}>
-                      {(item.recurringLocations || []).map((rl: any) =>
-                        renderLocationItem({
-                          item: { ...rl.location, tasks: rl.tasks },
-                        }),
-                      )}
-                    </View>
+              {isMyRound && (
+                <View style={styles.locationList}>
+                  {(item.recurringLocations || []).map((rl: any) =>
+                    renderLocationItem({
+                      item: { ...rl.location, tasks: rl.tasks },
+                    }),
                   )}
                 </View>
               )}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Icon
-                    source="clipboard-text-outline"
-                    size={40}
-                    color="#E2E8F0"
-                  />
-                  <Text style={styles.emptyText}>Sin rutas para hoy</Text>
-                </View>
-              }
-              contentContainerStyle={{ paddingBottom: 30 }}
-              refreshControl={
-                <RefreshControl refreshing={loading} onRefresh={loadData} />
-              }
-            />
-          </View>
-        </>
-      )}
+            </ITCard>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Icon source="clipboard-text-outline" size={48} color="#E2E8F0" />
+              <ITText variant="bodyMedium" color="#94A3B8">
+                No hay rutas programadas
+              </ITText>
+            </View>
+          }
+          contentContainerStyle={{ paddingBottom: 40 }}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={loadData} />
+          }
+        />
+      </View>
 
-      {/* Modales Optimizados */}
+      {/* Diálogos / Modales */}
       <Portal>
-        <CustomModal
+        <Modal
           visible={routeSelectionVisible}
           onDismiss={() => setRouteSelectionVisible(false)}
-          title="Seleccionar Ruta"
+          contentContainerStyle={styles.modalBase}
         >
+          <ITText
+            variant="headlineSmall"
+            weight="bold"
+            center
+            style={{ marginBottom: 16 }}
+          >
+            Seleccionar Ruta
+          </ITText>
           {clients.map(item => (
             <TouchableOpacity
               key={item.id}
@@ -475,134 +504,104 @@ export const GuardDashboard = () => {
                 size={24}
                 color={theme.colors.primary}
               />
-              <Text style={styles.modalOptionText}>{item.title}</Text>
+              <ITText variant="bodyLarge" weight="bold">
+                {item.title}
+              </ITText>
             </TouchableOpacity>
           ))}
-        </CustomModal>
+        </Modal>
 
-        <CustomModal
+        <ITAlert
           visible={endRoundVisible}
           onDismiss={() => setEndRoundVisible(false)}
+          onConfirm={onEndRoundConfirmed}
           title="¿Finalizar Ruta?"
-        >
-          <Text style={styles.modalSubText}>
-            Asegúrate de haber completado todos los puntos de control.
-          </Text>
-          <View style={styles.modalActions}>
-            <Button
-              mode="outlined"
-              onPress={() => setEndRoundVisible(false)}
-              style={styles.modalBtn}
-            >
-              No, volver
-            </Button>
-            <Button
-              mode="contained"
-              onPress={onEndRoundConfirmed}
-              style={[styles.modalBtn, { backgroundColor: COLORS.red }]}
-            >
-              Sí, terminar
-            </Button>
-          </View>
-        </CustomModal>
-
-        <CustomModal
+          description="Asegúrate de haber verificado todos los puntos antes de concluir."
+          confirmLabel="Sí, terminar"
+          cancelLabel="Cancelar"
+          type="warning"
+        />
+        <ITAlert
           visible={alertConfig.visible}
           onDismiss={() => setAlertConfig({ ...alertConfig, visible: false })}
+          onConfirm={() => {
+            setAlertConfig({ ...alertConfig, visible: false });
+            alertConfig.onConfirm?.();
+          }}
           title={alertConfig.title}
-        >
-          <Text style={styles.modalSubText}>{alertConfig.message}</Text>
-          <Button
-            mode="contained"
-            onPress={() => {
-              setAlertConfig({ ...alertConfig, visible: false });
-              alertConfig.onConfirm?.();
-            }}
-          >
-            Entendido
-          </Button>
-        </CustomModal>
+          description={alertConfig.message}
+          type={alertConfig.type}
+          confirmLabel="Entendido"
+        />
       </Portal>
-    </View>
+    </ITScreenWrapper>
   );
 };
 
-// Componentes Pequeños para Limpieza de Código
 const QuickAction = ({ icon, label, color, bg, onPress }: any) => (
   <TouchableOpacity
     style={[styles.quickBtn, { backgroundColor: bg }]}
     onPress={onPress}
   >
     <Icon source={icon} size={22} color={color} />
-    <Text style={[styles.quickLabel, { color }]}>{label}</Text>
+    <ITText variant="labelMedium" weight="bold" style={{ color }}>
+      {label}
+    </ITText>
   </TouchableOpacity>
 );
 
-const CustomModal = ({ visible, onDismiss, title, children }: any) => (
-  <Modal
-    visible={visible}
-    onDismiss={onDismiss}
-    contentContainerStyle={styles.modalBase}
-  >
-    <Text style={styles.modalTitle}>{title}</Text>
-    {children}
-  </Modal>
-);
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  // Header
   headerContainer: {
     backgroundColor: '#000',
+    borderRadius: 32,
+    marginHorizontal: 12,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    position: 'relative',
   },
-  lockedCamera: { alignItems: 'center', opacity: 0.6 },
+  bgIconWrapper: {
+    position: 'absolute',
+    opacity: 0.4,
+    transform: [{ rotate: '-15deg' }],
+    right: -40,
+    bottom: -40,
+  },
+  lockedCamera: { alignItems: 'center', opacity: 0.6, padding: 20 },
   lockCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#1A1A1A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  lockedText: { color: '#888', fontSize: 13, fontWeight: '500' },
-  activateCameraBtn: { alignItems: 'center' },
-  cameraIconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  activateCameraBtn: { alignItems: 'center' },
+  cameraIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
-  },
-  activateText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 12,
-    letterSpacing: 1,
+    marginBottom: 16,
   },
   scanOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   targetFrame: {
-    width: 220,
-    height: 220,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-    borderRadius: 24,
+    width: 200,
+    height: 200,
+    borderWidth: 2,
+    borderColor: '#FFF',
+    borderRadius: 40,
+    backgroundColor: 'transparent',
   },
-  closeCamBtn: { position: 'absolute', bottom: 20 },
-
-  // Content Sheet
+  closeCamBtn: { position: 'absolute', bottom: 30 },
   contentSheet: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -611,111 +610,71 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   dragIndicator: {
-    width: 36,
-    height: 4,
+    width: 40,
+    height: 5,
     backgroundColor: '#E2E8F0',
-    borderRadius: 2,
+    borderRadius: 3,
     alignSelf: 'center',
-    marginVertical: 12,
+    marginVertical: 14,
   },
-
-  // Actions
   actionSection: { marginBottom: 20 },
-  mainActionBtn: { borderRadius: 16, elevation: 0 },
-  mainActionBtnContent: { height: 56 },
-  mainActionLabel: { fontSize: 15, fontWeight: 'bold' },
-  btnSuccess: { backgroundColor: theme.colors.primary }, // Dark Blue / Black
-  btnDanger: { backgroundColor: COLORS.red },
-  btnDisabled: { backgroundColor: '#E2E8F0' },
-
-  secondaryActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  mainActionBtn: { borderRadius: 16, height: 56, justifyContent: 'center' },
+  secondaryActions: { flexDirection: 'row', gap: 12, marginTop: 14 },
   quickBtn: {
     flex: 1,
-    height: 50,
-    borderRadius: 12,
+    height: 54,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
-  quickLabel: { fontSize: 13, fontWeight: '600' },
-
-  // List & Cards
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
     color: '#94A3B8',
-    marginBottom: 12,
+    marginBottom: 14,
     letterSpacing: 1,
+    textTransform: 'uppercase',
   },
-  routeCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
-  },
-  routeHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  routeName: { flex: 1, fontSize: 15, fontWeight: '700', color: '#1E293B' },
+  routeCard: { borderRadius: 24, padding: 16, marginBottom: 16 },
+  routeHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   ptsBadge: {
     backgroundColor: '#E2E8F0',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  ptsText: { fontSize: 10, fontWeight: '700', color: '#475569' },
-
-  locationList: { marginTop: 15, gap: 8 },
+  locationList: { marginTop: 18, gap: 10 },
   locCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 12,
-    gap: 12,
+    padding: 14,
+    borderRadius: 16,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  completedCard: { opacity: 0.6 },
-  statusIndicator: { width: 4, height: 24, borderRadius: 2 },
+  completedCard: { opacity: 0.5, backgroundColor: '#F8FAFC' },
+  statusIndicator: { width: 4, height: 28, borderRadius: 2 },
   bgPending: { backgroundColor: '#CBD5E1' },
   bgIncomplete: { backgroundColor: COLORS.orange },
   bgSuccess: { backgroundColor: COLORS.emerald },
   locMainInfo: { flex: 1 },
-  locName: { fontSize: 14, fontWeight: '600', color: '#334155' },
-  locSub: { fontSize: 11, color: '#94A3B8' },
-
-  emptyContainer: { alignItems: 'center', padding: 40 },
-  emptyText: { color: '#94A3B8', marginTop: 10, fontSize: 14 },
-
-  // Modals
+  emptyContainer: { alignItems: 'center', padding: 50 },
   modalBase: {
     backgroundColor: '#fff',
     margin: 24,
-    borderRadius: 24,
-    padding: 24,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1E293B',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  modalSubText: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
+    borderRadius: 28,
+    padding: 28,
   },
   modalOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 18,
     backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 12,
+    borderRadius: 16,
+    marginBottom: 10,
+    gap: 14,
   },
-  modalOptionText: { fontSize: 15, fontWeight: '600', color: '#1E293B' },
-  modalActions: { flexDirection: 'row', gap: 10 },
-  modalBtn: { flex: 1, borderRadius: 12 },
+  modalActions: { flexDirection: 'row', gap: 12 },
 });

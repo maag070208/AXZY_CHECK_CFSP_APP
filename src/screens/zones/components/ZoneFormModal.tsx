@@ -1,15 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Modal, Portal, Text, TextInput, Button, IconButton, Surface, Divider, HelperText } from 'react-native-paper';
 import { Formik } from 'formik';
+import React, { useEffect, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Modal as RNModal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { Icon, IconButton } from 'react-native-paper';
 import * as Yup from 'yup';
+import { ITButton, ITInput, ITText } from '../../../shared/components';
+import { SearchComponent } from '../../../shared/components/SearchComponent';
+import { theme } from '../../../shared/theme/theme';
 import { getClients } from '../../clients/service/client.service';
 import { IClient } from '../../clients/type/client.types';
-import { SearchComponent } from '../../../shared/components/SearchComponent';
 
 const ZoneSchema = Yup.object().shape({
   name: Yup.string().required('El nombre de la zona es requerido'),
-  clientId: Yup.number().required('Debes seleccionar un cliente'),
+  clientId: Yup.string().required('Debes seleccionar un cliente'),
 });
 
 interface Props {
@@ -20,7 +30,13 @@ interface Props {
   initialData?: any;
 }
 
-export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading, initialData }: Props) => {
+export const ZoneFormModal = ({
+  visible,
+  onDismiss,
+  onSubmit,
+  loading,
+  initialData,
+}: Props) => {
   const [clients, setClients] = useState<IClient[]>([]);
   const [fetchingClients, setFetchingClients] = useState(false);
 
@@ -38,187 +54,229 @@ export const ZoneFormModal = ({ visible, onDismiss, onSubmit, loading, initialDa
         setClients(res.data || []);
       }
     } catch (error) {
-      console.error("Error loading clients for zone modal:", error);
+      console.error('Error loading clients for zone modal:', error);
     } finally {
       setFetchingClients(false);
     }
   };
 
   return (
-    <Portal>
-      <Modal 
-        visible={visible} 
-        onDismiss={onDismiss} 
-        contentContainerStyle={styles.modalContainer}
-      >
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Surface style={styles.surface} elevation={5}>
-            <View style={styles.header}>
-              <View>
-                <Text style={styles.title}>{initialData ? 'Editar Zona' : 'Nueva Zona'}</Text>
-                <Text style={styles.subtitle}>
-                    {initialData ? `Actualizando ${initialData.name}` : 'Agrega un nuevo sector para inspecciones'}
-                </Text>
-              </View>
-              <IconButton icon="close" onPress={onDismiss} size={20} />
-            </View>
+    <RNModal
+      visible={visible}
+      onRequestClose={onDismiss}
+      animationType="slide"
+      presentationStyle="fullScreen"
+    >
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <View>
+            <ITText variant="headlineSmall" weight="800" style={styles.title}>
+              {initialData ? 'Editar Zona' : 'Nueva Zona'}
+            </ITText>
+            <ITText variant="bodySmall" color={theme.colors.slate500}>
+              {initialData
+                ? `Actualizando ${initialData.name}`
+                : 'Configuración de nuevo sector'}
+            </ITText>
+          </View>
+          <IconButton
+            icon="close"
+            onPress={onDismiss}
+            disabled={loading}
+            containerColor="#F1F5F9"
+            iconColor={theme.colors.slate500}
+          />
+        </View>
 
-            <Divider />
-
-            <Formik
-              initialValues={{ 
-                name: initialData?.name || '', 
-                clientId: initialData?.clientId || '' 
-              }}
-              enableReinitialize
-              validationSchema={ZoneSchema}
-              onSubmit={onSubmit}
-            >
-              {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue }) => (
-                <View style={styles.form}>
-                  <ScrollView showsVerticalScrollIndicator={false}>
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.label}>Nombre de la Zona</Text>
-                      <TextInput
-                        mode="outlined"
-                        placeholder="Ej. Nivel 1, Estacionamiento, etc."
-                        value={values.name}
-                        onChangeText={handleChange('name')}
-                        onBlur={handleBlur('name')}
-                        error={touched.name && !!errors.name}
-                        outlineStyle={styles.inputOutline}
-                        left={<TextInput.Icon icon="map-marker-outline" />}
-                      />
-                      {touched.name && errors.name && <HelperText type="error">{errors.name}</HelperText>}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <Formik
+            initialValues={{
+              name: initialData?.name || '',
+              clientId: initialData?.clientId || '',
+            }}
+            enableReinitialize
+            validationSchema={ZoneSchema}
+            onSubmit={onSubmit}
+          >
+            {({
+              handleChange,
+              handleBlur,
+              handleSubmit,
+              values,
+              errors,
+              touched,
+              setFieldValue,
+              isValid,
+            }) => (
+              <View style={{ flex: 1 }}>
+                <ScrollView
+                  bounces={false}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.scrollContent}
+                >
+                  <View style={styles.formContent}>
+                    <View style={styles.section}>
+                      <ITText
+                        variant="labelSmall"
+                        weight="bold"
+                        color={theme.colors.slate500}
+                        style={styles.sectionLabel}
+                      >
+                        ASIGNACIÓN DE CLIENTE
+                      </ITText>
+                      <View style={styles.inputGroup}>
+                        <SearchComponent
+                          label="CLIENTE *"
+                          placeholder="Selecciona un cliente"
+                          options={clients.map(c => ({
+                            label: c.name,
+                            value: c.id,
+                          }))}
+                          value={values.clientId}
+                          onSelect={val => setFieldValue('clientId', val)}
+                          error={touched.clientId && errors.clientId}
+                        />
+                      </View>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                      <SearchComponent
-                        label="Asignar a Cliente"
-                        placeholder="Selecciona un cliente..."
-                        options={clients.map(c => ({ label: c.name, value: c.id }))}
-                        value={values.clientId}
-                        onSelect={(val) => setFieldValue('clientId', val)}
-                        error={touched.clientId && errors.clientId}
-                      />
+                    <View style={styles.section}>
+                      <ITText
+                        variant="labelSmall"
+                        weight="bold"
+                        color={theme.colors.slate500}
+                        style={styles.sectionLabel}
+                      >
+                        DETALLES DE LA ZONA
+                      </ITText>
+                      <View style={styles.inputGroup}>
+                        <ITInput
+                          label="NOMBRE DE LA ZONA *"
+                          placeholder="Ej. Nivel 1, Estacionamiento, etc."
+                          value={values.name}
+                          onChangeText={handleChange('name')}
+                          onBlur={handleBlur('name')}
+                          error={touched.name ? errors.name : ''}
+                          leftIcon="map-marker-outline"
+                        />
+                      </View>
                     </View>
 
                     <View style={styles.infoBox}>
-                        <IconButton icon="information-outline" size={20} iconColor="#065911" />
-                        <Text style={styles.infoText}>
-                            Las zonas permiten organizar los puntos de escaneo por secciones dentro de una propiedad.
-                        </Text>
+                      <Icon
+                        source="information-outline"
+                        size={20}
+                        color={theme.colors.primary}
+                      />
+                      <ITText
+                        variant="labelSmall"
+                        color={theme.colors.primary}
+                        style={{ flex: 1 }}
+                      >
+                        Las zonas permiten organizar los puntos de escaneo por
+                        secciones dentro de una propiedad.
+                      </ITText>
                     </View>
-                  </ScrollView>
+                  </View>
+                </ScrollView>
 
-                  <View style={styles.footer}>
-                    <Button 
-                        mode="outlined" 
-                        onPress={onDismiss} 
-                        style={styles.button}
-                        disabled={loading}
-                    >
-                        Cancelar
-                    </Button>
-                    <Button 
-                        mode="contained" 
-                        onPress={() => handleSubmit()} 
-                        style={[styles.button, styles.submitButton]}
-                        loading={loading}
-                        disabled={loading}
-                        buttonColor="#065911"
-                    >
-                        {initialData ? 'Guardar Cambios' : 'Crear Zona'}
-                    </Button>
+                <View style={styles.footer}>
+                  <View style={styles.actionButtonsRow}>
+                    <ITButton
+                      label="Cancelar"
+                      onPress={onDismiss}
+                      mode="outlined"
+                      style={styles.footerBtn}
+                      disabled={loading}
+                      textColor={theme.colors.slate500}
+                    />
+                    <View style={{ width: 12 }} />
+                    <ITButton
+                      label={initialData ? 'Actualizar' : 'Guardar'}
+                      onPress={() => handleSubmit()}
+                      mode="contained"
+                      style={[
+                        styles.footerBtn,
+                        { backgroundColor: theme.colors.primary },
+                      ]}
+                      loading={loading}
+                      disabled={loading || !isValid}
+                    />
                   </View>
                 </View>
-              )}
-            </Formik>
-          </Surface>
+              </View>
+            )}
+          </Formik>
         </KeyboardAvoidingView>
-      </Modal>
-    </Portal>
+      </SafeAreaView>
+    </RNModal>
   );
 };
 
 const styles = StyleSheet.create({
-  modalContainer: {
-    padding: 20,
-  },
-  surface: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 20,
-    overflow: 'hidden',
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#1E293B',
+    fontSize: 22,
   },
-  subtitle: {
-    fontSize: 12,
-    color: '#64748B',
+  scrollContent: {
+    flexGrow: 1,
   },
-  form: {
-    marginTop: 20,
-    gap: 16,
+  formContent: {
+    padding: 20,
+    flex: 1,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionLabel: {
+    marginBottom: 16,
+    letterSpacing: 1.5,
   },
   inputGroup: {
     marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 8,
-  },
-  inputOutline: {
-    borderRadius: 12,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-    overflow: 'hidden',
-  },
-  picker: {
-    height: 50,
   },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F0FDF4',
-    padding: 12,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 20,
     marginTop: 8,
     borderWidth: 1,
     borderColor: '#DCFCE7',
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 11,
-    color: '#065911',
-    lineHeight: 16,
+    gap: 12,
   },
   footer: {
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+  },
+  actionButtonsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 20,
   },
-  button: {
-    borderRadius: 12,
+  footerBtn: {
     flex: 1,
+    borderRadius: 14,
+    height: 50,
+    justifyContent: 'center',
   },
-  submitButton: {
-    elevation: 2,
-  }
 });

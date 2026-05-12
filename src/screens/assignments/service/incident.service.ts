@@ -2,31 +2,46 @@ import { get, post, put, remove } from '../../../core/axios';
 
 export const createIncident = async (data: {
     title: string;
-    categoryId: string;
-    typeId: string;
     description: string;
-    media: any[];
+    locationId: string;
+    media: string[];
+    // Additional fields for backend but not in IncidentCreate schema
+    categoryId?: string;
+    typeId?: string;
     latitude?: number;
     longitude?: number;
     clientId?: string;
+    roundId?: string;
+    guardId?: string;
 }) => {
     try {
-        const payload = {
+        // STRICT IncidentCreate Schema
+        const payload: any = {
             title: data.title,
-            categoryId: data.categoryId,
-            typeId: data.typeId,
             description: data.description,
-            media: data.media,
-            latitude: data.latitude,
-            longitude: data.longitude,
-            clientId: data.clientId
+            locationId: data.locationId,
+            media: data.media
         };
 
+        // Add non-schema fields if API allows them in the same endpoint
+        if (data.categoryId) payload.categoryId = data.categoryId;
+        if (data.typeId) payload.typeId = data.typeId;
+        if (data.latitude) payload.latitude = data.latitude;
+        if (data.longitude) payload.longitude = data.longitude;
+        if (data.clientId) payload.clientId = data.clientId;
+        if (data.roundId) payload.roundId = data.roundId;
+        if (data.guardId) payload.guardId = data.guardId;
+
+        console.log('[IncidentService] POST /incidents payload:', JSON.stringify(payload, null, 2));
+
         const response = await post('/incidents', payload);
+        
+        console.log('[IncidentService] POST /incidents response:', JSON.stringify(response, null, 2));
+        
         return response;
 
     } catch (error: any) {
-        console.error('Create Incident Error', error);
+        console.error('[IncidentService] POST /incidents Exception:', error);
         return { success: false, data: null, messages: [error.message || 'Error al crear la incidencia'] };
     }
 };

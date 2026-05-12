@@ -1,6 +1,14 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, View, Modal, ScrollView } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  View,
+  Modal,
+  ScrollView,
+} from 'react-native';
 import {
   ActivityIndicator,
   Avatar,
@@ -25,18 +33,24 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
+import {
+  ITBadge,
+  ITScreenDatatableLayout,
+  ITText,
+  ITTouchableOpacity,
+} from '../../../shared/components';
+import { ITScreensFiltersModal } from '../../../shared/components/ITScreensFiltersModal';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
+import { theme } from '../../../shared/theme/theme';
 import { getClients } from '../../clients/service/client.service';
 import { IClient } from '../../clients/type/client.types';
-
-const PRIMARY_COLOR = '#059669';
 
 export const RecurringListScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.userState);
   const isAdmin = user.role === UserRole.ADMIN;
-  
+
   const [routes, setRoutes] = useState<any[]>([]);
   const [clients, setClients] = useState<IClient[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,13 +60,13 @@ export const RecurringListScreen = ({ navigation }: any) => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Filters
   const [showFilters, setShowFilters] = useState(false);
-  const [appliedClientId, setAppliedClientId] = useState<number | string>("");
-  const [tempClientId, setTempClientId] = useState<number | string>("");
+  const [appliedClientId, setAppliedClientId] = useState<number | string>('');
+  const [tempClientId, setTempClientId] = useState<number | string>('');
 
   useEffect(() => {
     loadClients();
@@ -65,7 +79,7 @@ export const RecurringListScreen = ({ navigation }: any) => {
         setClients(res.data || []);
       }
     } catch (error) {
-      console.error("Error loading clients for filter:", error);
+      console.error('Error loading clients for filter:', error);
     }
   };
 
@@ -82,43 +96,43 @@ export const RecurringListScreen = ({ navigation }: any) => {
 
   const fetchData = async (pageNum: number, isRefreshing = false) => {
     if (pageNum === 1) {
-        if (!isRefreshing) setLoading(true);
+      if (!isRefreshing) setLoading(true);
     } else {
-        setLoadingMore(true);
+      setLoadingMore(true);
     }
 
     const params = {
-        page: pageNum,
-        limit: 20,
-        filters: {
-            search: debouncedSearch,
-            clientId: appliedClientId || undefined
-        }
+      page: pageNum,
+      limit: 20,
+      filters: {
+        search: debouncedSearch,
+        clientId: appliedClientId || undefined,
+      },
     };
 
     try {
-        const res = await getPaginatedRecurring(params);
-        if (res && res.success && res.data) {
-            const newRows = res.data.rows || [];
-            const totalRows = res.data.total || 0;
+      const res = await getPaginatedRecurring(params);
+      if (res && res.success && res.data) {
+        const newRows = res.data.rows || [];
+        const totalRows = res.data.total || 0;
 
-            if (pageNum === 1) {
-                setRoutes(newRows);
-                setHasMore(newRows.length < totalRows);
-            } else {
-                setRoutes(prev => [...prev, ...newRows]);
-                setHasMore(routes.length + newRows.length < totalRows);
-            }
-
-            setTotal(totalRows);
-            setPage(pageNum);
+        if (pageNum === 1) {
+          setRoutes(newRows);
+          setHasMore(newRows.length < totalRows);
+        } else {
+          setRoutes(prev => [...prev, ...newRows]);
+          setHasMore(routes.length + newRows.length < totalRows);
         }
+
+        setTotal(totalRows);
+        setPage(pageNum);
+      }
     } catch (error) {
-        console.error("Error fetching recurring routes:", error);
+      console.error('Error fetching recurring routes:', error);
     } finally {
-        setLoading(false);
-        setRefreshing(false);
-        setLoadingMore(false);
+      setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
@@ -129,7 +143,7 @@ export const RecurringListScreen = ({ navigation }: any) => {
 
   const handleLoadMore = () => {
     if (!loading && !loadingMore && hasMore) {
-        fetchData(page + 1);
+      fetchData(page + 1);
     }
   };
 
@@ -150,7 +164,7 @@ export const RecurringListScreen = ({ navigation }: any) => {
   };
 
   const handleClearFilters = () => {
-    setTempClientId("");
+    setTempClientId('');
   };
 
   const handleDelete = (item: any) => {
@@ -159,215 +173,225 @@ export const RecurringListScreen = ({ navigation }: any) => {
       `¿Estás seguro de que deseas eliminar la ruta "${item.title}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Eliminar', 
+        {
+          text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
             const res = await deleteRecurring(item.id);
             if (res && res.success) {
-              dispatch(showToast({ message: 'Ruta eliminada', type: 'success' }));
+              dispatch(
+                showToast({ message: 'Ruta eliminada', type: 'success' }),
+              );
               fetchData(1);
             }
-          }
+          },
         },
-      ]
+      ],
     );
   };
 
   const clientOptions = clients.map(c => ({
     label: c.name,
-    value: c.id
+    value: String(c.id),
   }));
 
-  const activeFiltersCount = appliedClientId !== "" ? 1 : 0;
+  const activeFiltersCount = appliedClientId !== '' ? 1 : 0;
 
   const renderItem = ({ item }: { item: any }) => {
-    const clientName = item.client?.name || item.recurringLocations?.[0]?.location?.client?.name || 'N/A';
-    const firstLocation = item.recurringLocations?.[0]?.location?.name || 'SIN UBICACIÓN';
+    const clientName =
+      item.client?.name ||
+      item.recurringLocations?.[0]?.location?.client?.name ||
+      'N/A';
+    const firstLocation =
+      item.recurringLocations?.[0]?.location?.name || 'SIN UBICACIÓN';
     const pointsCount = item.recurringLocations?.length || 0;
     const guardsCount = item.guards?.length || 0;
 
     return (
-        <Card
-            style={styles.itemCard}
-            elevation={2}
-            onPress={() => {
-                navigation.navigate('RECURRING_FORM', { route: item });
-            }}
-        >
-            <View style={styles.cardLayout}>
-                <View style={styles.avatarSection}>
-                    <Avatar.Icon 
-                        size={56} 
-                        icon="clipboard-clock-outline" 
-                        style={styles.avatar} 
-                        color="#059669"
-                    />
-                    <View style={[styles.statusBadge, { backgroundColor: item.active ? '#059669' : '#64748B' }]}>
-                        <Icon source={item.active ? "check" : "minus"} size={10} color="#fff" />
-                    </View>
-                </View>
-
-                <View style={styles.infoSection}>
-                    <Text style={styles.routeName} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.ownerText} numberOfLines={1}>Cliente: {clientName}</Text>
-                    
-                    <View style={styles.locationInfo}>
-                        <Icon source="map-marker-radius" size={14} color="#64748B" />
-                        <Text style={styles.locationText} numberOfLines={1}>{firstLocation}</Text>
-                    </View>
-
-                    <View style={styles.statsRow}>
-                        <View style={styles.statItem}>
-                            <Icon source="format-list-bulleted" size={14} color="#059669" />
-                            <Text style={styles.statText}>{pointsCount} Puntos</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                            <Icon source="account-group" size={14} color="#059669" />
-                            <Text style={styles.statText}>{guardsCount} Guardias</Text>
-                        </View>
-                    </View>
-                </View>
-
-                <View style={styles.actions}>
-                    {isAdmin && (
-                        <View style={styles.adminActions}>
-                            <IconButton
-                                icon="pencil-outline"
-                                size={20}
-                                onPress={() => {
-                                    navigation.navigate('RECURRING_FORM', { route: item });
-                                }}
-                                iconColor="#64748B"
-                            />
-                            <IconButton
-                                icon="trash-can-outline"
-                                size={20}
-                                onPress={() => handleDelete(item)}
-                                iconColor="#ba1a1a"
-                            />
-                        </View>
-                    )}
-                    {!isAdmin && <IconButton icon="chevron-right" iconColor="#CBD5E1" size={24} />}
-                </View>
+      <ITTouchableOpacity
+        style={styles.itemCard}
+        onPress={() => {
+          navigation.navigate('RECURRING_FORM', { route: item });
+        }}
+      >
+        <View style={styles.cardLayout}>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatar}>
+              <Icon
+                source="clipboard-clock-outline"
+                size={24}
+                color={theme.colors.primary}
+              />
             </View>
-        </Card>
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor: item.active
+                    ? theme.colors.primary
+                    : theme.colors.slate400,
+                },
+              ]}
+            >
+              <Icon
+                source={item.active ? 'check' : 'minus'}
+                size={10}
+                color="#fff"
+              />
+            </View>
+          </View>
+
+          <View style={styles.infoSection}>
+            <ITText variant="titleMedium" weight="bold" color="#1E293B">
+              {item.title}
+            </ITText>
+            <ITText variant="labelSmall" weight="bold" color="#94A3B8">
+              CLIENTE: {clientName.toUpperCase()}
+            </ITText>
+
+            <View style={styles.locationInfo}>
+              <Icon
+                source="map-marker-radius"
+                size={14}
+                color={theme.colors.slate500}
+              />
+              <ITText variant="bodySmall" color={theme.colors.slate600}>
+                {firstLocation}
+              </ITText>
+            </View>
+
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Icon
+                  source="format-list-bulleted"
+                  size={12}
+                  color={theme.colors.primary}
+                />
+                <ITText variant="labelSmall" weight="bold" color="#475569">
+                  {pointsCount} Puntos
+                </ITText>
+              </View>
+              <View style={styles.statItem}>
+                <Icon
+                  source="account-group"
+                  size={12}
+                  color={theme.colors.primary}
+                />
+                <ITText variant="labelSmall" weight="bold" color="#475569">
+                  {guardsCount} Guardias
+                </ITText>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.actions}>
+            {isAdmin ? (
+              <View style={styles.adminActions}>
+                <IconButton
+                  icon="pencil-outline"
+                  size={20}
+                  onPress={() => {
+                    navigation.navigate('RECURRING_FORM', { route: item });
+                  }}
+                  iconColor={theme.colors.slate400}
+                />
+                <IconButton
+                  icon="trash-can-outline"
+                  size={20}
+                  onPress={() => handleDelete(item)}
+                  iconColor="#EF4444"
+                />
+              </View>
+            ) : (
+              <Icon source="chevron-right" color="#CBD5E1" size={24} />
+            )}
+          </View>
+        </View>
+      </ITTouchableOpacity>
     );
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.headerTitle}>Rutas</Text>
-            <Text style={styles.headerSubtitle}>{total} rutas configuradas</Text>
-          </View>
-          <IconButton
-            icon="filter-variant"
-            mode="contained"
-            containerColor={activeFiltersCount > 0 ? PRIMARY_COLOR : '#F1F5F9'}
-            iconColor={activeFiltersCount > 0 ? '#FFFFFF' : '#64748B'}
-            onPress={handleOpenFilters}
+      <ITScreenDatatableLayout
+        title="Rutas Recurrentes"
+        subtitle="Configuración de rondas automáticas"
+        totalItems={total}
+        loading={loading}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        onFilterPress={handleOpenFilters}
+        showSearchBar={true}
+        searchBar={
+          <Searchbar
+            placeholder="Buscar por título..."
+            onChangeText={setSearch}
+            value={search}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={theme.colors.primary}
+            placeholderTextColor="#94A3B8"
+            elevation={0}
           />
-        </View>
-        
-        <Searchbar
-          placeholder="Buscar ruta por título..."
-          onChangeText={setSearch}
-          value={search}
-          style={styles.searchBar}
-          inputStyle={styles.searchInput}
-          iconColor={PRIMARY_COLOR}
-          placeholderTextColor="#94A3B8"
-          elevation={0}
-        />
-      </View>
-
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-          <Text style={styles.loadingText}>Cargando rutas...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={routes}
-          keyExtractor={item => String(item.id)}
-          renderItem={renderItem}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[PRIMARY_COLOR]} tintColor={PRIMARY_COLOR} />
-          }
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            loadingMore ? (
-                <View style={styles.footerLoader}>
-                    <ActivityIndicator size="small" color={PRIMARY_COLOR} />
-                </View>
-            ) : null
-          }
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <IconButton icon="clipboard-off-outline" size={40} iconColor="#94A3B8" />
-              </View>
-              <Text style={styles.emptyTitle}>Sin rutas</Text>
-              <Text style={styles.emptyText}>No se encontraron rutas configuradas.</Text>
-            </View>
-          }
-        />
-      )}
-
-      {isAdmin && (
-          <FAB
-            icon="plus"
-            style={[styles.fab, { bottom: insets.bottom + 24 }]}
-            onPress={() => {
-                navigation.navigate('RECURRING_FORM');
-            }}
-            color="white"
-          />
-      )}
-
-      <Portal>
-        <Modal 
-          visible={showFilters} 
-          onDismiss={() => setShowFilters(false)}
-          contentContainerStyle={styles.modalFullScreen}
-        >
-          <View style={[styles.modalHeader, { paddingTop: insets.top + 20 }]}>
-            <View style={styles.modalHeaderTitle}>
-              <Icon source="filter-variant" size={24} color={PRIMARY_COLOR} />
-              <Text style={styles.modalTitle}>Filtros de Rutas</Text>
-            </View>
-            <IconButton icon="close" size={24} onPress={() => setShowFilters(false)} iconColor="#94A3B8" />
-          </View>
-
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR CLIENTE</Text>
-              <SearchComponent
-                label="Cliente"
-                placeholder="Todos los clientes"
-                options={clientOptions}
-                value={tempClientId}
-                onSelect={setTempClientId}
+        }
+        filterBadges={
+          appliedClientId ? (
+            <ITTouchableOpacity
+              onPress={() => setAppliedClientId('')}
+              style={{ marginRight: 8 }}
+            >
+              <ITBadge
+                label={`Cliente: ${
+                  clients.find(c => String(c.id) === String(appliedClientId))
+                    ?.name || '...'
+                }`}
+                variant="primary"
+                onClose={() => setAppliedClientId('')}
               />
-            </View>
-          </ScrollView>
+            </ITTouchableOpacity>
+          ) : null
+        }
+        data={routes}
+        renderItem={renderItem}
+        keyExtractor={item => String(item.id)}
+        onEndReached={handleLoadMore}
+        footerLoader={loadingMore}
+        fab={
+          isAdmin ? (
+            <FAB
+              icon="plus"
+              style={styles.fab}
+              onPress={() => navigation.navigate('RECURRING_FORM')}
+              color="white"
+            />
+          ) : null
+        }
+      />
 
-          <View style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}>
-            <Button mode="outlined" onPress={handleClearFilters} style={styles.footerButton} textColor="#64748B">
-              Limpiar
-            </Button>
-            <Button mode="contained" onPress={handleApplyFilters} style={[styles.footerButton, { backgroundColor: PRIMARY_COLOR }]}>
-              Aplicar Filtros
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
+      <ITScreensFiltersModal
+        visible={showFilters}
+        onDismiss={() => setShowFilters(false)}
+        onApply={handleApplyFilters}
+        onClear={handleClearFilters}
+      >
+        <View style={styles.filterGroup}>
+          <ITText
+            variant="labelSmall"
+            weight="bold"
+            color="#94A3B8"
+            style={styles.filterLabel}
+          >
+            FILTRAR POR CLIENTE
+          </ITText>
+          <SearchComponent
+            label="Cliente"
+            placeholder="Seleccionar cliente"
+            options={clientOptions}
+            value={String(tempClientId)}
+            onSelect={setTempClientId}
+          />
+        </View>
+      </ITScreensFiltersModal>
     </View>
   );
 };
@@ -375,31 +399,7 @@ export const RecurringListScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 2,
+    backgroundColor: '#F8FAFC',
   },
   searchBar: {
     backgroundColor: '#F1F5F9',
@@ -410,38 +410,29 @@ const styles = StyleSheet.create({
     minHeight: 0,
     fontSize: 15,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    color: '#64748b',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  listContainer: {
-    padding: 16,
-    paddingBottom: 100,
-  },
   itemCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     marginBottom: 12,
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   cardLayout: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
   },
   avatarSection: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: 16,
   },
   avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statusBadge: {
     position: 'absolute',
@@ -459,46 +450,27 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  routeName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  ownerText: {
-    fontSize: 13,
-    color: '#94A3B8',
-    fontWeight: '600',
-  },
   locationInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  locationText: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '500',
-    textTransform: 'uppercase',
+    gap: 6,
+    marginTop: 4,
   },
   statsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 6,
+    marginTop: 10,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  statText: {
-    fontSize: 10,
-    color: '#475569',
-    fontWeight: 'bold',
+    gap: 6,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   actions: {
     justifyContent: 'center',
@@ -507,91 +479,18 @@ const styles = StyleSheet.create({
   adminActions: {
     flexDirection: 'column',
     alignItems: 'center',
+    gap: 4,
   },
   fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    backgroundColor: PRIMARY_COLOR,
-    borderRadius: 28,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 100,
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  emptyIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  modalFullScreen: {
-    backgroundColor: 'white',
-    flex: 1,
-    margin: 0,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  modalHeaderTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  modalScroll: {
-    padding: 24,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 16,
+    marginBottom: 20,
   },
   filterGroup: {
-    marginBottom: 32,
+    marginBottom: 20,
   },
   filterLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#94A3B8',
     marginBottom: 12,
     letterSpacing: 1,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  footerButton: {
-    flex: 1,
-    borderRadius: 14,
   },
 });

@@ -1,17 +1,17 @@
 export interface ILocation {
-  id: number;
+  id: string;
   name: string;
-  clientId: number;
+  clientId: string;
   client?: any;
-  zoneId: number;
+  zoneId: string;
   zone?: any;
   reference?: string;
   active: boolean;
 }
 
 export interface ILocationCreate {
-  clientId: number;
-  zoneId: number;
+  clientId: string;
+  zoneId: string;
   name: string;
   reference?: string;
   active?: boolean;

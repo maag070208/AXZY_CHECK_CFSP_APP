@@ -1,245 +1,518 @@
-
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
-import { Avatar, Card, Chip, FAB, Text, useTheme } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import ModernStyles from '../../../shared/theme/app.styles';
-import { getStatusColor, getStatusText } from '../../../shared/utils/revision-status';
+import {
+  useFocusEffect,
+  useIsFocused,
+  useRoute,
+} from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FAB, Icon, Portal, Searchbar } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDispatch } from 'react-redux';
+import { showLoader } from '../../../core/store/slices/loader.slice';
+import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
+import {
+  ITBadge,
+  ITCard,
+  ITScreenWrapper,
+  ITText,
+} from '../../../shared/components';
+import { theme } from '../../../shared/theme/theme';
 import { getAllAssignments } from '../../assignments/service/assignment.service';
-import { IAssignment } from '../../assignments/service/assignment.types';
+import { AssignmentStatus } from '../../assignments/service/assignment.types';
+import { getUserById } from '../../users/service/user.service';
 import { AssignmentModal } from '../components/AssignmentModal';
 
 export const GuardDetailScreen = () => {
-    const theme = useTheme();
-    const route = useRoute<any>();
-    const navigation = useNavigation<any>(); // Moved to top level
-    const { guard } = route.params;
+  const route = useRoute<any>();
+  const insets = useSafeAreaInsets();
+  const dispatch = useDispatch();
+  const { navigateToScreen } = useAppNavigation();
+  const isFocused = useIsFocused();
+  const { guard } = route.params;
 
-    const [assignments, setAssignments] = useState<IAssignment[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [modalVisible, setModalVisible] = useState(false);
+  const [activeGuard, setActiveGuard] = useState<any>(guard);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filteredAssignments, setFilteredAssignments] = useState<any[]>([]);
 
-    const loadAssignments = async () => {
-        setLoading(true);
-        try {
-            const response = await getAllAssignments({ guardId: guard.id });
-            const filtered = (response.data ?? []).filter((a) => a.status !== 'REVIEWED');
-            setAssignments(filtered);
-            console.log(response.data);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const loadGuardData = useCallback(async () => {
+    try {
+      const res = await getUserById(guard.id);
+      if (res.success) {
+        setActiveGuard(res.data);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, [guard.id]);
 
-    useEffect(() => {
-        loadAssignments();
-    }, [guard.id]);
+  const loadAssignments = useCallback(async () => {
+    try {
+      setLoading(true);
+      dispatch(showLoader(true));
+      const res = await getAllAssignments({ guardId: guard.id });
+      if (res.success) {
+        setAssignments(res.data || []);
+        setFilteredAssignments(res.data || []);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+      dispatch(showLoader(false));
+    }
+  }, [guard.id, dispatch]);
 
-
-    useFocusEffect(
-        React.useCallback(() => {
-            loadAssignments();
-        }, [guard.id])
+  useEffect(() => {
+    const filtered = assignments.filter(a =>
+      (a.location?.name || '').toLowerCase().includes(search.toLowerCase()),
     );
+    setFilteredAssignments(filtered);
+  }, [search, assignments]);
 
-    const renderAssignment = ({ item }: { item: IAssignment }) => {
-        const totalTasks = item.tasks?.length || 0;
-        const completedTasks = item.tasks?.filter(t => t.completed).length || 0;
-        const progress = totalTasks > 0 ? completedTasks / totalTasks : 0;
-        // const navigation = useNavigation<any>(); // Removed from here
+  const refreshAll = useCallback(async () => {
+    await Promise.all([loadGuardData(), loadAssignments()]);
+  }, [loadGuardData, loadAssignments]);
 
-        const handlePress = () => {
-            if (item.status === 'UNDER_REVIEW' || item.status === 'REVIEWED') {
-                // Find linked kardex (assuming the backend returns it now)
-                // We typed it in backend but need to verify frontend types.
-                // For now, let's assume item.kardex is an array and we take the first one.
-                const linkedKardex = (item as any).kardex?.[0];
-                
-                if (linkedKardex) {
-                if (linkedKardex) {
-                    navigation.navigate('GUARD_KARDEX_DETAIL', {
-                        item: linkedKardex, // Pass item if available or let it fetch by ID
-                        kardexId: linkedKardex.id 
-                    });
-                }
-                } else {
-                    console.log("No linked report found");
-                }
-            }
+  useEffect(() => {
+    refreshAll();
+  }, [refreshAll]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshAll();
+    }, [refreshAll]),
+  );
+
+  const getStatusConfig = (status: AssignmentStatus) => {
+    switch (status) {
+      case AssignmentStatus.PENDING:
+        return {
+          label: 'Pendiente',
+          color: '#F59E0B',
+          variant: 'warning' as const,
         };
+      case AssignmentStatus.CHECKING:
+        return {
+          label: 'En Curso',
+          color: theme.colors.primary,
+          variant: 'primary' as const,
+        };
+      case AssignmentStatus.ANOMALY:
+        return {
+          label: 'Anomalía',
+          color: '#EF4444',
+          variant: 'error' as const,
+        };
+      default:
+        return {
+          label: status,
+          color: theme.colors.slate500,
+          variant: 'default' as const,
+        };
+    }
+  };
 
-        return (
-            <Card style={styles.card} onPress={handlePress}>
-                <Card.Content>
-                    <View style={styles.row}>
-                        <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>
-                            {item.location?.name || 'Ubicación desconocida'}
-                        </Text>
-                        <Chip 
-                            style={{ backgroundColor: getStatusColor(item.status) + '20' }} 
-                            textStyle={{ color: getStatusColor(item.status), fontSize: 12, fontWeight: '700' }}
-                        >
-                            {getStatusText(item.status)}
-                        </Chip>
-                    </View>
-                    <Text variant="bodySmall" style={{ color: '#666', marginTop: 4, marginBottom: 8 }}>
-                        {new Date(item.createdAt).toLocaleString()}
-                    </Text>
-                    
-                    {totalTasks > 0 && (
-                        <View style={{ marginBottom: 12 }}>
-                            <View style={styles.rowBetween}>
-                                <Text style={styles.progressLabel}>Progreso: {Math.round(progress * 100)}%</Text>
-                                <Text style={styles.progressCount}>{completedTasks}/{totalTasks} Tareas</Text>
-                            </View>
-                            <View style={styles.progressBarBg}>
-                                <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
-                            </View>
-                            
-                            <View style={{ marginTop: 8 }}>
-                                {item.tasks?.map((task, idx) => (
-                                    <View key={idx} style={styles.taskItem}>
-                                        <Icon name={task.completed ? "check-square-o" : "square-o"} size={16} color={task.completed ? "#065911" : "#94a3b8"} />
-                                        <Text style={[styles.taskText, task.completed && styles.taskTextCompleted]}>
-                                            {task.description}
-                                        </Text>
-                                        {task.reqPhoto && <Icon name="camera" size={12} color="#64748b" style={{marginLeft: 'auto'}} />}
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
-                    )}
-
-                    {item.notes && (
-                        <Text variant="bodySmall" style={{ marginTop: 8, fontStyle: 'italic', color: '#64748b' }}>
-                            Nota: "{item.notes}"
-                        </Text>
-                    )}
-                </Card.Content>
-            </Card>
-        );
-    };
+  const renderAssignment = ({ item }: { item: any }) => {
+    const statusConfig = getStatusConfig(item.status);
+    const locationName = item.location?.name || 'Ubicación Desconocida';
+    const taskCount = item.tasks?.length || 0;
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#f6fbf4' }} edges={['right', 'left', 'bottom']}>
-            <View style={{ flex: 1 }}>
-                
-                <View style={styles.header}>
-                    <Avatar.Text 
-                        size={64} 
-                        label={guard.name.charAt(0).toUpperCase()} 
-                        style={{ backgroundColor: theme.colors.primary, marginBottom: 8 }} 
-                    />
-                    <Text variant="headlineSmall" style={{ fontWeight: '700' }}>{guard.name} {guard.lastName}</Text>
-                    <Text variant="bodyMedium" style={{ color: '#666' }}>Turno: {guard.schedule ? guard.schedule.name : 'Sin asignar'}</Text>
-                </View>
-
-                <View style={styles.sectionTitle}>
-                    <Text variant="titleMedium" style={{ fontWeight: '700' }}>Asignaciones Recientes</Text>
-                </View>
-
-                <FlatList
-                    data={assignments}
-                    renderItem={renderAssignment}
-                    keyExtractor={(item) => item.id.toString()}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
-                    refreshing={loading}
-                    onRefresh={loadAssignments}
-                    ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>Sin asignaciones</Text>}
-                />
-
-                <FAB
-                    icon="plus"
-                    label="Asignar Inspección"
-                    style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-                    color="#fff"
-                    onPress={() => setModalVisible(true)}
-                />
-
-                <AssignmentModal 
-                    visible={modalVisible} 
-                    onDismiss={() => setModalVisible(false)} 
-                    guardId={guard.id}
-                    onSuccess={() => {
-                        setModalVisible(false);
-                        loadAssignments();
-                    }}
-                />
+      <ITCard
+        style={styles.assignmentCard}
+        onPress={() =>
+          navigateToScreen('GUARDS_STACK', 'ASSIGNMENT_DETAIL', {
+            assignment: item,
+          })
+        }
+        mode="elevated"
+      >
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.cardAvatar}>
+            <ITText style={styles.cardAvatarText}>
+              {locationName.charAt(0).toUpperCase()}
+            </ITText>
+          </View>
+          <View style={styles.cardInfo}>
+            <ITText
+              variant="titleSmall"
+              weight="700"
+              color={theme.colors.slate900}
+            >
+              {locationName}
+            </ITText>
+            <View style={styles.cardMeta}>
+              <ITBadge
+                label={statusConfig.label}
+                variant={statusConfig.variant}
+                size="small"
+                dot
+              />
+              <View style={styles.dotSeparator} />
+              <ITText variant="labelSmall" color={theme.colors.slate500}>
+                {item.location?.zone?.name || 'General'}
+              </ITText>
             </View>
-        </SafeAreaView>
+          </View>
+          <Icon source="chevron-right" size={20} color={theme.colors.primary} />
+        </View>
+
+        <View style={styles.cardFooterStats}>
+          <View style={styles.statItem}>
+            <Icon
+              source="clipboard-list-outline"
+              size={16}
+              color={theme.colors.primary}
+            />
+            <ITText
+              variant="labelSmall"
+              weight="600"
+              color={theme.colors.primary}
+            >
+              {taskCount} {taskCount === 1 ? 'Tarea' : 'Tareas'}
+            </ITText>
+          </View>
+          <View style={styles.statItem}>
+            <Icon
+              source="calendar-outline"
+              size={16}
+              color={theme.colors.slate500}
+            />
+            <ITText variant="labelSmall" color={theme.colors.slate500}>
+              Hoy
+            </ITText>
+          </View>
+        </View>
+      </ITCard>
     );
+  };
+
+  return (
+    <ITScreenWrapper
+      padding={false}
+      scrollable={false}
+      style={styles.container}
+    >
+      {/* PROFILE HEADER */}
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+        <View style={styles.profileInfo}>
+          <View style={styles.avatarLarge}>
+            <ITText style={styles.avatarLargeText}>
+              {activeGuard.name ? activeGuard.name[0].toUpperCase() : 'G'}
+            </ITText>
+            <View
+              style={[
+                styles.activeDot,
+                { backgroundColor: activeGuard.active ? '#10B981' : '#EF4444' },
+              ]}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <ITText
+              variant="headlineSmall"
+              weight="bold"
+              color={theme.colors.slate900}
+            >
+              {activeGuard.name} {activeGuard.lastName}
+            </ITText>
+            <View style={styles.badgeRow}>
+              <ITBadge
+                label={activeGuard.role?.value || 'Guardia'}
+                variant="primary"
+                size="small"
+                outline
+              />
+              <ITText variant="labelSmall" color={theme.colors.slate500}>
+                @{activeGuard.username}
+              </ITText>
+            </View>
+          </View>
+        </View>
+
+        {/* DASHBOARD STATS */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <ITText
+              variant="titleLarge"
+              weight="bold"
+              color={theme.colors.primary}
+            >
+              {assignments.length}
+            </ITText>
+            <ITText variant="labelSmall" color={theme.colors.slate500}>
+              Rutas
+            </ITText>
+          </View>
+          <View style={styles.statCard}>
+            <ITText variant="titleLarge" weight="bold" color="#10B981">
+              {
+                assignments.filter(a => a.status === AssignmentStatus.CHECKING)
+                  .length
+              }
+            </ITText>
+            <ITText variant="labelSmall" color={theme.colors.slate500}>
+              Activas
+            </ITText>
+          </View>
+          <View style={styles.statCard}>
+            <ITText
+              variant="titleLarge"
+              weight="bold"
+              color={theme.colors.slate900}
+            >
+              {activeGuard.schedule ? activeGuard.schedule.startTime : '--:--'}
+            </ITText>
+            <ITText variant="labelSmall" color={theme.colors.slate500}>
+              Entrada
+            </ITText>
+          </View>
+        </View>
+      </View>
+
+      {/* SEARCH AND LIST */}
+      <View style={styles.listSection}>
+        <View style={styles.sectionHeader}>
+          <ITText
+            variant="titleMedium"
+            weight="bold"
+            color={theme.colors.slate900}
+          >
+            Asignaciones de Hoy
+          </ITText>
+          <Searchbar
+            placeholder="Buscar..."
+            onChangeText={setSearch}
+            value={search}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={theme.colors.primary}
+            placeholderTextColor="#94A3B8"
+            elevation={0}
+          />
+        </View>
+
+        <FlatList
+          data={filteredAssignments}
+          renderItem={renderAssignment}
+          keyExtractor={item => item.id.toString()}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + 100 },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={refreshAll}
+              tintColor={theme.colors.primary}
+            />
+          }
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.emptyContainer}>
+                <Icon
+                  source="clipboard-text-outline"
+                  size={64}
+                  color="#E2E8F0"
+                />
+                <ITText variant="bodyMedium" color={theme.colors.slate400}>
+                  Sin asignaciones hoy
+                </ITText>
+              </View>
+            ) : null
+          }
+        />
+      </View>
+
+      <Portal>
+        {isFocused && (
+          <FAB
+            icon="plus"
+            style={[
+              styles.fab,
+              {
+                bottom: insets.bottom + 24,
+                backgroundColor: theme.colors.primary,
+              },
+            ]}
+            onPress={() => setShowModal(true)}
+            color="#FFFFFF"
+          />
+        )}
+        <AssignmentModal
+          visible={showModal}
+          onDismiss={() => {
+            setShowModal(false);
+            loadGuardData();
+          }}
+          guardId={activeGuard.id}
+          clientId={activeGuard.client?.id}
+          onSuccess={() => {
+            setShowModal(false);
+            refreshAll();
+          }}
+        />
+      </Portal>
+    </ITScreenWrapper>
+  );
 };
 
 const styles = StyleSheet.create({
-    header: {
-        alignItems: 'center',
-        padding: 24,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#f3f4f6',
-    },
-    sectionTitle: {
-        paddingHorizontal: 16,
-        paddingTop: 16,
-    },
-    card: {
-        marginBottom: 12,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        ...ModernStyles.shadowSm,
-    },
-    row: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    fab: {
-        position: 'absolute',
-        margin: 16,
-        right: 0,
-        bottom: 20, 
-    },
-    rowBetween: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 4,
-    },
-    progressLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#065911',
-    },
-    progressCount: {
-        fontSize: 12,
-        color: '#64748b',
-    },
-    progressBarBg: {
-        height: 6,
-        backgroundColor: '#e2e8f0',
-        borderRadius: 3,
-        overflow: 'hidden',
-    },
-    progressBarFill: {
-        height: '100%',
-        backgroundColor: '#065911',
-        borderRadius: 3,
-    },
-    taskItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 2,
-    },
-    taskText: {
-        fontSize: 12,
-        color: '#334155',
-        marginLeft: 8,
-    },
-    taskTextCompleted: {
-        textDecorationLine: 'line-through',
-        color: '#94a3b8',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  header: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+  },
+  profileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+    marginBottom: 24,
+  },
+  avatarLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  avatarLargeText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+  },
+  activeDot: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+  },
+  listSection: {
+    flex: 1,
+    marginTop: 12,
+  },
+  sectionHeader: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  searchBar: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    height: 40,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  searchInput: {
+    fontSize: 13,
+    minHeight: 0,
+  },
+  listContent: {
+    paddingHorizontal: 24,
+  },
+  assignmentCard: {
+    marginBottom: 12,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  cardAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardAvatarText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.slate900,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  dotSeparator: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#CBD5E1',
+  },
+  cardFooterStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 60,
+    gap: 12,
+  },
+  fab: {
+    position: 'absolute',
+    right: 24,
+    borderRadius: 20,
+  },
 });

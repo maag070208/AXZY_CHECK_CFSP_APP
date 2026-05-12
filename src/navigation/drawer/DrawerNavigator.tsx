@@ -1,6 +1,8 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import React from 'react';
+import { Platform, View, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DRAWER_WHITELIST } from '../../core/constants/navigation.constants';
 import { LocationsStack } from '../../screens/locations/stack/LocationsStack';
 import { GuardsStack } from '../../screens/guards/stack/GuardsStack';
@@ -14,7 +16,7 @@ import { IncidentsStack } from '../../screens/assignments/stack/IncidentsStack';
 import { MaintenanceStack } from '../../screens/maintenances/stack/MaintenanceStack';
 import { RoundsStack } from '../../screens/rounds/stack/RoundsStack';
 import { SchedulesStack } from '../../screens/schedules/stack/SchedulesStack';
-import { ClientsStack } from '../../screens/clients/stack/ClientsStack';
+import { ClientStack as ClientsStack } from '../../screens/clients/stack/ClientStack';
 import { ZonesStack } from '../../screens/zones/stack/ZonesStack';
 import { RecurringStack } from '../../screens/recurring/stack/RecurringStack';
 
@@ -47,15 +49,41 @@ const isDrawerEnabled = (route: any) => {
   const routeName = getActiveRouteName(route);
   return DRAWER_WHITELIST.includes(routeName);
 };
+
+// Wrapper para TabNavigator con SafeAreaInsets
+const TabNavigatorWithSafeArea = () => {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View
+      style={[
+        styles.container,
+        { paddingBottom: Platform.OS === 'android' ? insets.bottom : 0 },
+      ]}
+    >
+      <TabNavigator />
+    </View>
+  );
+};
+
 const DrawerNavigator = () => {
   return (
     <Drawer.Navigator
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        drawerStyle: {
+          backgroundColor: '#FFFFFF',
+          width: Platform.OS === 'ios' ? 280 : 260,
+        },
+        overlayColor: 'rgba(0, 0, 0, 0.4)',
+        drawerType: Platform.OS === 'android' ? 'front' : 'slide',
+        swipeEdgeWidth: Platform.OS === 'android' ? 20 : 30,
+      }}
       drawerContent={props => <DrawerContent {...props} />}
     >
       <Drawer.Screen
         name="Tabs"
-        component={TabNavigator}
+        component={TabNavigatorWithSafeArea}
         options={({ route }) => ({
           swipeEnabled: isDrawerEnabled(route),
         })}
@@ -129,7 +157,7 @@ const DrawerNavigator = () => {
         name="INCIDENTS_STACK"
         component={IncidentsStack}
         options={{
-            drawerItemStyle: { display: 'none' }
+          drawerItemStyle: { display: 'none' },
         }}
       />
 
@@ -137,7 +165,7 @@ const DrawerNavigator = () => {
         name="MAINTENANCE_STACK"
         component={MaintenanceStack}
         options={{
-            drawerItemStyle: { display: 'none' }
+          drawerItemStyle: { display: 'none' },
         }}
       />
 
@@ -145,7 +173,7 @@ const DrawerNavigator = () => {
         name="ROUNDS_STACK"
         component={RoundsStack}
         options={{
-            drawerItemStyle: { display: 'none' }
+          drawerItemStyle: { display: 'none' },
         }}
       />
 
@@ -153,7 +181,7 @@ const DrawerNavigator = () => {
         name="SCHEDULES_STACK"
         component={SchedulesStack}
         options={{
-            drawerItemStyle: { display: 'none' }
+          drawerItemStyle: { display: 'none' },
         }}
       />
 
@@ -161,11 +189,18 @@ const DrawerNavigator = () => {
         name="RECURRING_STACK"
         component={RecurringStack}
         options={{
-            drawerItemStyle: { display: 'none' }
+          drawerItemStyle: { display: 'none' },
         }}
       />
     </Drawer.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000000ff',
+  },
+});
 
 export default DrawerNavigator;

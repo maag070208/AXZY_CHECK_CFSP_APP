@@ -4,14 +4,11 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import {
-  Avatar,
-  Chip,
   Dialog,
   Divider,
   Icon,
@@ -28,14 +25,15 @@ import { showLoader } from '../../../core/store/slices/loader.slice';
 import { UserRole } from '../../../core/types/IUser';
 import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
+  ITBadge,
   ITButton,
   ITCard,
+  ITScreenDatatableLayout,
   ITText,
+  ITTouchableOpacity,
   SearchComponent,
 } from '../../../shared/components';
-import { LoaderComponent } from '../../../shared/components/LoaderComponent';
-import ModernStyles from '../../../shared/theme/app.styles';
-import { COLORS } from '../../../shared/utils/constants';
+import { theme } from '../../../shared/theme/theme';
 import { getClients } from '../../clients/service/client.service';
 import { getSchedules } from '../../schedules/service/schedules.service';
 import {
@@ -172,7 +170,7 @@ export const GuardListScreen = () => {
   const { navigateToScreen } = useAppNavigation();
 
   const handleDetail = (guard: any) => {
-    navigateToScreen('GUARDS_STACK', 'GUARD_DETAIL', { guard });
+    // navigateToScreen('GUARDS_STACK', 'GUARD_DETAIL', { guard });
   };
 
   const handleApplyFilters = () => {
@@ -206,366 +204,176 @@ export const GuardListScreen = () => {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => {
-    const roleValue =
-      typeof item.role === 'object' ? item.role.value : item.role;
-    const roleName = typeof item.role === 'object' ? item.role.name : item.role;
+  const renderGuardItem = ({ item }: { item: any }) => (
+    <UserListItem
+      item={item}
+      onPress={handleDetail}
+      onDelete={() => {}} // Main guards list might not need quick delete or handle differently
+      onResetPassword={() => {
+        setChangingGuard(item);
+        setShowScheduleModal(true);
+      }}
+    />
+  );
 
-    const getRoleConfig = (role: any) => {
-      switch (roleName) {
-        case UserRole.SHIFT:
-          return { bg: '#E0E7FF', color: COLORS.indigo };
-        case UserRole.GUARD:
-          return { bg: '#F5F3FF', color: COLORS.rounds };
-        case UserRole.MAINT:
-          return { bg: '#FFFBEB', color: COLORS.maintenance };
-        default:
-          return { bg: '#F8FAFC', color: '#94A3B8' };
-      }
-    };
-
-    const config = getRoleConfig(item.role);
-
+  // Custom render for Guard list with Reassignment buttons
+  const renderGuard = ({ item }: { item: any }) => {
+    const initial = item.name ? item.name.charAt(0).toUpperCase() : 'G';
     return (
       <ITCard
         style={styles.itemCard}
         onPress={() => handleDetail(item)}
         mode="elevated"
       >
-        <View style={styles.cardContent}>
-          <View style={styles.headerRow}>
-            <View style={styles.avatarSection}>
-              <Avatar.Text
-                size={52}
-                label={item.name ? item.name[0].toUpperCase() : 'G'}
-                style={[styles.avatar, { backgroundColor: config.bg }]}
-                labelStyle={{ color: config.color, fontWeight: 'bold' }}
-              />
-              <View
-                style={[
-                  styles.statusIndicator,
-                  { backgroundColor: item.active ? '#10B981' : '#CBD5E1' },
-                ]}
-              />
-            </View>
-
-            <View style={styles.infoSection}>
-              <ITText
-                variant="titleMedium"
-                weight="bold"
-                style={styles.userName}
-              >
-                {item.name} {item.lastName}
-              </ITText>
-              <View style={styles.metaRow}>
-                <View
-                  style={[styles.roleBadge, { backgroundColor: config.bg }]}
-                >
-                  <ITText
-                    variant="labelSmall"
-                    weight="bold"
-                    color={config.color}
-                    style={{ fontSize: 10 }}
-                  >
-                    {roleValue?.toUpperCase()}
-                  </ITText>
-                </View>
-                <ITText variant="labelSmall" color="#94A3B8">
-                  @{item.username}
-                </ITText>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.detailsRow}>
-            <View style={styles.detailItem}>
-              <Icon
-                source="clock-outline"
-                size={14}
-                color={COLORS.textSecondary}
-              />
-              <ITText
-                variant="labelSmall"
-                color="#64748B"
-                weight="medium"
-                style={{ marginLeft: 4 }}
-              >
-                Horario:{' '}
-                <ITText variant="labelSmall" color="#1E293B" weight="bold">
-                  {item.schedule ? item.schedule.name : 'Sin Horario'}
-                </ITText>
-              </ITText>
-            </View>
-            <View style={[styles.detailItem, { marginTop: 4 }]}>
-              <Icon source="office-building" size={14} color={COLORS.primary} />
-              <ITText
-                variant="labelSmall"
-                color="#64748B"
-                weight="medium"
-                style={{ marginLeft: 4 }}
-              >
-                Cliente:{' '}
-                <ITText
-                  variant="labelSmall"
-                  color={COLORS.primary}
-                  weight="bold"
-                >
-                  {item.client ? item.client.name : 'Sin Cliente'}
-                </ITText>
-              </ITText>
-            </View>
-            <View style={[styles.detailItem, { marginTop: 4 }]}>
-              <Icon
-                source="clipboard-check-outline"
-                size={14}
-                color={COLORS.indigo}
-              />
-              <ITText
-                variant="labelSmall"
-                color="#64748B"
-                weight="medium"
-                style={{ marginLeft: 4 }}
-              >
-                Asignaciones:{' '}
-                <ITText variant="labelSmall" color={COLORS.indigo} weight="bold">
-                  {item.assignments?.length || 0}
-                </ITText>
-              </ITText>
-            </View>
-          </View>
-
-          <Divider style={styles.divider} />
-
-          <View style={styles.footer}>
-            <ITButton
-              label="HORARIO"
-              mode="text"
-              icon="calendar-clock"
-              onPress={() => {
-                setChangingGuard(item);
-                setShowScheduleModal(true);
-              }}
-              style={styles.footerBtn}
-              labelStyle={{ fontSize: 12, color: '#F59E0B' }}
-            />
-            <View style={styles.vDivider} />
-            <ITButton
-              label="CLIENTE"
-              mode="text"
-              icon="domain"
-              onPress={() => {
-                setChangingGuard(item);
-                setShowClientModal(true);
-              }}
-              style={styles.footerBtn}
-              labelStyle={{ fontSize: 12, color: COLORS.primary }}
+        <View style={styles.cardHeader}>
+          <View style={styles.avatarContainer}>
+            <ITText style={styles.avatarText}>{initial}</ITText>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: item.active ? '#10B981' : '#EF4444' },
+              ]}
             />
           </View>
+
+          <View style={styles.headerInfo}>
+            <ITText
+              variant="titleMedium"
+              weight="700"
+              style={styles.userName}
+              numberOfLines={1}
+            >
+              {item.name} {item.lastName}
+            </ITText>
+            <View style={styles.headerRowBadge}>
+              <ITBadge
+                label={item.role?.value?.toUpperCase() || 'GUARDIA'}
+                variant="primary"
+                size="small"
+                outline
+              />
+              <ITText variant="labelSmall" style={styles.usernameText}>
+                @{item.username}
+              </ITText>
+            </View>
+          </View>
+
+          <ITBadge
+            label={item.active ? 'Activo' : 'Inactivo'}
+            variant={item.active ? 'success' : 'error'}
+            size="small"
+            dot
+          />
+        </View>
+
+        <View style={styles.cardBody}>
+          <View style={styles.infoItem}>
+            <Icon
+              source="clock-outline"
+              size={16}
+              color={theme.colors.slate500}
+            />
+            <ITText variant="bodySmall" style={styles.infoText}>
+              {item.schedule
+                ? `${item.schedule.name} (${item.schedule.startTime} - ${item.schedule.endTime})`
+                : 'Sin Horario'}
+            </ITText>
+          </View>
+          <View style={styles.infoItem}>
+            <Icon
+              source="office-building"
+              size={16}
+              color={theme.colors.slate500}
+            />
+            <ITText
+              variant="bodySmall"
+              style={styles.infoText}
+              numberOfLines={1}
+            >
+              {item.client ? item.client.name : 'Sin Cliente Asignado'}
+            </ITText>
+          </View>
+        </View>
+
+        <View style={styles.cardFooter}>
+          <ITTouchableOpacity
+            style={styles.footerButton}
+            onPress={() => {
+              setChangingGuard(item);
+              setShowScheduleModal(true);
+            }}
+          >
+            <Icon
+              source="calendar-clock"
+              size={18}
+              color={theme.colors.primary}
+            />
+            <ITText style={styles.footerButtonText}>Horario</ITText>
+          </ITTouchableOpacity>
+
+          <View style={styles.dividerVertical} />
+
+          <ITTouchableOpacity
+            style={styles.footerButton}
+            onPress={() => {
+              setChangingGuard(item);
+              setShowClientModal(true);
+            }}
+          >
+            <Icon source="domain" size={18} color={theme.colors.primary} />
+            <ITText style={styles.footerButtonText}>Cliente</ITText>
+          </ITTouchableOpacity>
         </View>
       </ITCard>
     );
   };
 
   return (
-    <View style={ModernStyles.screenContainer}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <ITText
-              variant="headlineSmall"
-              weight="bold"
-              color={COLORS.textPrimary}
-            >
-              Personal Operativo
-            </ITText>
-            <ITText variant="labelSmall" color={COLORS.textSecondary}>
-              {total} guardias registrados
-            </ITText>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <IconButton
-              icon="filter-variant"
-              mode="contained"
-              containerColor={
-                activeFiltersCount > 0 ? COLORS.primary : '#F1F5F9'
-              }
-              iconColor={activeFiltersCount > 0 ? '#FFF' : COLORS.textSecondary}
-              onPress={() => setShowFilters(true)}
-            />
-            <IconButton
-              icon="refresh"
-              mode="contained"
-              containerColor="#F1F5F9"
-              iconColor={COLORS.textSecondary}
-              onPress={onRefresh}
-            />
-          </View>
-        </View>
-        <Searchbar
-          placeholder="Buscar por nombre o usuario..."
-          onChangeText={setSearch}
-          value={search}
-          style={styles.searchBar}
-          inputStyle={styles.searchInput}
-          iconColor={COLORS.primary}
-          placeholderTextColor="#94A3B8"
-          elevation={0}
-        />
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersRow}
-        >
-          {[
-            { label: 'Todos', value: null },
-            { label: 'Guardias', value: 'GUARD' },
-            { label: 'Jefes', value: 'SHIFT' },
-            { label: 'Mantenimiento', value: 'MAINT' },
-          ].map(role => (
-            <Chip
-              key={role.label}
-              selected={selectedRole === role.value}
-              onPress={() => setSelectedRole(role.value)}
-              style={[
-                styles.filterChip,
-                {
-                  backgroundColor:
-                    selectedRole === role.value ? COLORS.primary : '#F1F5F9',
-                },
-              ]}
-              textStyle={[
-                styles.chipText,
-                {
-                  color: selectedRole === role.value ? '#FFFFFF' : '#64748B',
-                },
-              ]}
-              showSelectedCheck={false}
-            >
-              {role.label}
-            </Chip>
-          ))}
-        </ScrollView>
-      </View>
-
-      <FlatList
-        data={guards}
-        renderItem={renderItem}
-        keyExtractor={item => item.id.toString()}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.primary]}
+    <View style={styles.container}>
+      <ITScreenDatatableLayout
+        title="Personal Operativo"
+        totalItems={total}
+        loading={loading}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        onLoadMore={handleLoadMore}
+        loadingMore={loadingMore}
+        showSearchBar={true}
+        searchQuery={search}
+        onSearchChange={setSearch}
+        searchBar={
+          <Searchbar
+            placeholder="Buscar guardia por nombre..."
+            onChangeText={setSearch}
+            value={search}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={theme.colors.primary}
+            placeholderTextColor="#94A3B8"
+            elevation={0}
           />
         }
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={() =>
-          loadingMore ? (
-            <ActivityIndicator style={{ margin: 16 }} color={COLORS.primary} />
-          ) : null
-        }
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: insets.bottom + 40 },
-        ]}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <Icon source="shield-search" size={64} color="#E2E8F0" />
-              <ITText variant="titleMedium" color="#94A3B8">
-                No se encontró personal
-              </ITText>
-            </View>
-          ) : (
-            <ActivityIndicator
-              style={{ marginTop: 40 }}
-              color={COLORS.primary}
-            />
-          )
-        }
+        data={guards}
+        renderItem={renderGuard}
+        keyExtractor={item => item.id.toString()}
       />
 
-      <Portal>
-        <Modal
-          visible={showFilters}
-          onDismiss={() => setShowFilters(false)}
-          contentContainerStyle={styles.filterModalContainer}
-        >
-          <View style={styles.modalHeaderFilter}>
-            <View style={styles.modalHeaderTitle}>
-              <Icon source="filter-variant" size={24} color={COLORS.primary} />
-              <ITText variant="titleLarge" weight="bold">
-                Filtros
-              </ITText>
-            </View>
-            <IconButton
-              icon="close"
-              size={24}
-              onPress={() => setShowFilters(false)}
-              iconColor="#94A3B8"
-            />
-          </View>
-
-          <ScrollView
-            style={styles.modalScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.filterGroup}>
-              <ITText
-                variant="labelSmall"
-                weight="bold"
-                color="#94A3B8"
-                style={{ marginBottom: 12, letterSpacing: 1 }}
-              >
-                POR CLIENTE
-              </ITText>
-              <SearchComponent
-                label="Cliente"
-                placeholder="Todos los clientes"
-                options={[
-                  { label: 'Todos los clientes', value: 'ALL' },
-                  ...clients,
-                ]}
-                value={tempClientId}
-                onSelect={setTempClientId}
-              />
-            </View>
-          </ScrollView>
-
-          <View
-            style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
-          >
-            <ITButton
-              label="Limpiar"
-              mode="outlined"
-              onPress={handleClearFilters}
-              style={styles.footerButton}
-              labelStyle={{ color: '#64748B' }}
-            />
-            <ITButton
-              label="Aplicar Filtros"
-              mode="contained"
-              onPress={handleApplyFilters}
-              style={styles.footerButton}
-            />
-          </View>
-        </Modal>
-      </Portal>
-
-      {/* Client Selection Modal (Reassignment) */}
+      {/* REASSIGNMENT MODALS */}
       <Portal>
         <Dialog
           visible={showClientModal}
           onDismiss={() => setShowClientModal(false)}
           style={styles.reassignDialog}
         >
-          <Dialog.Title>Reasignar Cliente</Dialog.Title>
+          <Dialog.Title>
+            <ITText variant="headlineSmall" weight="bold">
+              Reasignar Cliente
+            </ITText>
+          </Dialog.Title>
           <Dialog.Content>
             {updating ? (
               <ActivityIndicator
-                color={COLORS.primary}
+                color={theme.colors.primary}
                 style={{ margin: 20 }}
               />
             ) : (
@@ -580,44 +388,57 @@ export const GuardListScreen = () => {
                       onPress={() =>
                         handleUpdate(changingGuard.id, { clientId: item.value })
                       }
-                      left={props => <List.Icon {...props} icon="domain" />}
+                      left={props => (
+                        <List.Icon
+                          {...props}
+                          icon="domain"
+                          color={
+                            isSelected
+                              ? theme.colors.primary
+                              : theme.colors.slate500
+                          }
+                        />
+                      )}
                       right={props =>
                         isSelected ? (
                           <List.Icon
                             {...props}
                             icon="check"
-                            color={COLORS.primary}
+                            color={theme.colors.primary}
                           />
                         ) : null
                       }
                       titleStyle={
                         isSelected
-                          ? { color: COLORS.primary, fontWeight: 'bold' }
-                          : undefined
+                          ? { color: theme.colors.primary, fontWeight: 'bold' }
+                          : { color: theme.colors.slate900 }
                       }
                     />
                   );
                 }}
-                ItemSeparatorComponent={Divider}
+                ItemSeparatorComponent={() => (
+                  <Divider style={{ backgroundColor: '#F1F5F9' }} />
+                )}
                 style={{ maxHeight: 400 }}
               />
             )}
           </Dialog.Content>
         </Dialog>
-      </Portal>
 
-      {/* Schedule Selection Modal (Reassignment) */}
-      <Portal>
         <Dialog
           visible={showScheduleModal}
           onDismiss={() => setShowScheduleModal(false)}
           style={styles.reassignDialog}
         >
-          <Dialog.Title>Cambiar Horario</Dialog.Title>
+          <Dialog.Title>
+            <ITText variant="headlineSmall" weight="bold">
+              Cambiar Horario
+            </ITText>
+          </Dialog.Title>
           <Dialog.Content>
             {updating ? (
               <ActivityIndicator
-                color={COLORS.primary}
+                color={theme.colors.primary}
                 style={{ margin: 20 }}
               />
             ) : (
@@ -634,164 +455,253 @@ export const GuardListScreen = () => {
                         handleUpdate(changingGuard.id, { scheduleId: item.id })
                       }
                       left={props => (
-                        <List.Icon {...props} icon="clock-outline" />
+                        <List.Icon
+                          {...props}
+                          icon="clock-outline"
+                          color={
+                            isSelected
+                              ? theme.colors.primary
+                              : theme.colors.slate500
+                          }
+                        />
                       )}
                       right={props =>
                         isSelected ? (
                           <List.Icon
                             {...props}
                             icon="check"
-                            color={COLORS.primary}
+                            color={theme.colors.primary}
                           />
                         ) : null
                       }
                       titleStyle={
                         isSelected
-                          ? { color: COLORS.primary, fontWeight: 'bold' }
-                          : undefined
+                          ? { color: theme.colors.primary, fontWeight: 'bold' }
+                          : { color: theme.colors.slate900 }
                       }
                     />
                   );
                 }}
-                ItemSeparatorComponent={Divider}
+                ItemSeparatorComponent={() => (
+                  <Divider style={{ backgroundColor: '#F1F5F9' }} />
+                )}
                 style={{ maxHeight: 400 }}
               />
             )}
           </Dialog.Content>
         </Dialog>
       </Portal>
-      <LoaderComponent />
+
+      {/* FILTER MODAL */}
+      <Portal>
+        <Modal
+          visible={showFilters}
+          onDismiss={() => setShowFilters(false)}
+          contentContainerStyle={styles.filterModalContainer}
+        >
+          <View
+            style={[styles.modalHeaderFilter, { paddingTop: insets.top + 16 }]}
+          >
+            <View style={styles.modalHeaderTitle}>
+              <Icon
+                source="filter-variant"
+                size={24}
+                color={theme.colors.primary}
+              />
+              <ITText variant="titleLarge" weight="bold">
+                Filtros Avanzados
+              </ITText>
+            </View>
+            <IconButton
+              icon="close"
+              size={24}
+              onPress={() => setShowFilters(false)}
+              iconColor={theme.colors.slate500}
+            />
+          </View>
+
+          <ScrollView
+            style={styles.modalScroll}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.filterGroup}>
+              <ITText
+                variant="labelSmall"
+                weight="bold"
+                color={theme.colors.slate500}
+                style={styles.filterLabel}
+              >
+                FILTRAR POR CLIENTE
+              </ITText>
+              <SearchComponent
+                label="Cliente"
+                placeholder="Todos los clientes"
+                options={[
+                  { label: 'Todos los clientes', value: 'ALL' },
+                  ...clients,
+                ]}
+                value={tempClientId}
+                onSelect={setTempClientId}
+              />
+            </View>
+          </ScrollView>
+
+          <View
+            style={[styles.modalFooter, { paddingBottom: insets.bottom + 24 }]}
+          >
+            <ITButton
+              label="Limpiar Filtros"
+              mode="outlined"
+              onPress={handleClearFilters}
+              style={styles.footerButton}
+              textColor={theme.colors.slate500}
+            />
+            <ITButton
+              label="Aplicar"
+              mode="contained"
+              onPress={handleApplyFilters}
+              style={[
+                styles.footerButton,
+                { backgroundColor: theme.colors.primary },
+              ]}
+            />
+          </View>
+        </Modal>
+      </Portal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  header: {
+  container: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
   },
   searchBar: {
-    backgroundColor: '#F1F5F9',
-    borderRadius: 12,
-    height: 44,
-    marginBottom: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    fontSize: 14,
   },
   searchInput: {
     fontSize: 14,
     minHeight: 0,
+    color: '#0F172A',
   },
-  filtersRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  filterChip: {
-    borderWidth: 0,
-    borderRadius: 10,
-    height: 32,
-  },
-  chipText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  listContent: {
-    padding: 16,
-  },
-  itemCard: {
-    marginBottom: 16,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-  },
-  cardContent: {
-    padding: 0,
-  },
-  headerRow: {
+  filtersWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  filtersRow: {
+    paddingVertical: 4,
+    gap: 10,
+  },
+  itemCard: {
+    marginBottom: 12,
+    borderRadius: 20,
     padding: 16,
-    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
   },
-  avatarSection: {
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
     position: 'relative',
-    marginRight: 14,
   },
-  avatar: {
-    borderWidth: 0,
+  avatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.primary,
   },
-  statusIndicator: {
+  statusDot: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  infoSection: {
+  headerInfo: {
     flex: 1,
   },
   userName: {
-    color: '#1E293B',
+    color: theme.colors.slate900,
+    fontSize: 16,
+    letterSpacing: -0.3,
     marginBottom: 2,
   },
-  metaRow: {
+  headerRowBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+  usernameText: {
+    color: theme.colors.slate500,
+    fontSize: 12,
   },
-  detailsRow: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+  cardBody: {
+    gap: 8,
+    marginBottom: 16,
   },
-  detailItem: {
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
+  infoText: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '500',
   },
-  footer: {
+  cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
-  footerBtn: {
+  footerButton: {
     flex: 1,
-    borderRadius: 0,
-    height: '100%',
-    justifyContent: 'center',
-    marginVertical: 0, // Override ITButton default
-  },
-  vDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#F1F5F9',
-  },
-  emptyContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 80,
-    gap: 12,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  footerButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  dividerVertical: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#E2E8F0',
+  },
+  reassignDialog: {
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
   },
   filterModalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
     flex: 1,
     margin: 0,
   },
@@ -799,36 +709,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
   modalHeaderTitle: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   modalScroll: {
+    flex: 1,
     padding: 24,
   },
   filterGroup: {
     marginBottom: 32,
   },
+  filterLabel: {
+    marginBottom: 16,
+    letterSpacing: 1,
+  },
   modalFooter: {
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    padding: 24,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
-  },
-  footerButton: {
-    flex: 1,
-    borderRadius: 14,
-  },
-  reassignDialog: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
   },
 });

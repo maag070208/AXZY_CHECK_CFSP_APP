@@ -3,6 +3,7 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import { ITText } from '../../../shared/components';
+import { theme } from '../../../shared/theme/theme';
 
 interface HomeItemComponentProps {
   icon: string;
@@ -19,7 +20,7 @@ export const HomeItemComponent = ({
   label,
   stack,
   screen,
-  color = '#6366F1',
+  color = theme.colors.primary,
   badge,
   params,
 }: HomeItemComponentProps) => {
@@ -31,7 +32,6 @@ export const HomeItemComponent = ({
   return (
     <TouchableOpacity
       style={styles.cardContainer}
-      activeOpacity={0.7}
       onPress={() => resetToModule(stack, screen, params)}
     >
       <View style={styles.contentContainer}>
@@ -64,16 +64,15 @@ export const HomeItemComponent = ({
 const styles = StyleSheet.create({
   cardContainer: {
     height: 100,
-    borderRadius: 20,
+    borderRadius: 24, // More curved, friendly look
     backgroundColor: '#FFFFFF',
     padding: 12,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
+    // Removed borderWidth and borderColor for a cleaner float
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 1,
+    shadowRadius: 16,
+    elevation: 3,
   },
   contentContainer: {
     flex: 1,
@@ -83,7 +82,7 @@ const styles = StyleSheet.create({
   iconWrapper: {
     width: 44,
     height: 44,
-    borderRadius: 16,
+    borderRadius: 22, // Perfect circle icon backgrounds
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -91,16 +90,19 @@ const styles = StyleSheet.create({
   label: {
     textAlign: 'center',
     width: '100%',
+    color: '#334155', // slightly softer text
   },
   notificationBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    top: -6,
+    right: -6,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFFFFF', // Cut out effect
   },
 });

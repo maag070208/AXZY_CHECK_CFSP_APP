@@ -2,7 +2,7 @@ import { MD3LightTheme } from 'react-native-paper';
 
 // Paleta base
 const baseColors = {
-  primary: '#065911',
+  primary: '#46a545',
   onPrimary: '#FFFFFF',
   primaryContainer: '#d0f8d3',
   onPrimaryContainer: '#022104',
@@ -57,6 +57,18 @@ const baseColors = {
   TabNavigationBackground: '#f8f8f8',
   TabNavigationIcon: '#c1c1c4',
   TabNavigationIconFocused: '#065911',
+
+  indigo: '#1fd036ff',
+  indigo500: '#010101ff',
+  slate900: '#0F172A',
+  slate800: '#1E293B',
+  slate700: '#334155',
+  slate600: '#475569',
+  slate500: '#64748B',
+  slate400: '#94A3B8',
+  slate300: '#CBD5E1',
+  slate200: '#E2E8F0',
+  slate100: '#F1F5F9',
 };
 
 export const ITTheme = {

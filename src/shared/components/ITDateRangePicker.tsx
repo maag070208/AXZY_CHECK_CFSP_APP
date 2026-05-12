@@ -8,7 +8,10 @@ interface ITDateRangePickerProps {
   label: string;
   startDate: Date | undefined;
   endDate: Date | undefined;
-  onConfirm: (params: { startDate: Date | undefined; endDate: Date | undefined }) => void;
+  onConfirm: (params: {
+    startDate: Date | undefined;
+    endDate: Date | undefined;
+  }) => void;
   error?: string;
   touched?: boolean;
   disabled?: boolean;
@@ -34,13 +37,15 @@ export const ITDateRangePicker: React.FC<ITDateRangePickerProps> = ({
     onConfirm({ startDate: params.startDate, endDate: params.endDate });
   };
 
-  const displayText = startDate 
-    ? `${dayjs(startDate).format('DD/MM/YYYY')} - ${endDate ? dayjs(endDate).format('DD/MM/YYYY') : '...'}`
+  const displayText = startDate
+    ? `${dayjs(startDate).format('DD/MM/YYYY')} - ${
+        endDate ? dayjs(endDate).format('DD/MM/YYYY') : '...'
+      }`
     : '';
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => !disabled && setVisible(true)} activeOpacity={0.7}>
+      <TouchableOpacity onPress={() => !disabled && setVisible(true)}>
         <View pointerEvents="none">
           <TextInput
             label={label}
@@ -50,13 +55,22 @@ export const ITDateRangePicker: React.FC<ITDateRangePickerProps> = ({
             mode="outlined"
             style={styles.input}
             outlineStyle={styles.outline}
-            right={<TextInput.Icon icon="calendar-range" color={theme.colors.primary} />}
+            right={
+              <TextInput.Icon
+                icon="calendar-range"
+                color={theme.colors.primary}
+              />
+            }
             editable={false}
           />
         </View>
       </TouchableOpacity>
-      
-      {hasError && <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>}
+
+      {hasError && (
+        <Text style={[styles.errorText, { color: theme.colors.error }]}>
+          {error}
+        </Text>
+      )}
 
       <DatePickerModal
         locale="es"

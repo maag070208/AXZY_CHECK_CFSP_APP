@@ -3,7 +3,7 @@ import { ViewStyle, TextStyle, StyleSheet } from 'react-native';
 import { Button, useTheme } from 'react-native-paper';
 
 interface ITButtonProps {
-  label: string;
+  label?: string;
   onPress: () => void;
   mode?: 'text' | 'outlined' | 'contained' | 'elevated' | 'contained-tonal';
   loading?: boolean;
@@ -14,6 +14,8 @@ interface ITButtonProps {
   color?: string;
   textColor?: string;
   iconColor?: string;
+  children?: React.ReactNode;
+  testID?: string;
 }
 
 export const ITButton: React.FC<ITButtonProps> = ({
@@ -28,11 +30,14 @@ export const ITButton: React.FC<ITButtonProps> = ({
   color,
   textColor,
   iconColor,
+  children,
+  testID,
 }) => {
   const theme = useTheme();
 
   return (
     <Button
+      testID={testID}
       mode={mode}
       onPress={onPress}
       loading={loading}
@@ -44,7 +49,7 @@ export const ITButton: React.FC<ITButtonProps> = ({
       buttonColor={color}
       textColor={textColor}
     >
-      {label}
+      {children || label}
     </Button>
   );
 };

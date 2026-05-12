@@ -20,6 +20,9 @@ interface ITScreenWrapperProps {
   contentContainerStyle?: ViewStyle;
   edges?: Edge[];
   keyboardShouldPersistTaps?: 'handled' | 'always' | 'never';
+  backgroundColor?: string;
+  roundedTop?: boolean;
+  roundedBottom?: boolean;
 }
 
 export const ITScreenWrapper: React.FC<ITScreenWrapperProps> = ({
@@ -29,14 +32,19 @@ export const ITScreenWrapper: React.FC<ITScreenWrapperProps> = ({
   padding = true,
   style,
   contentContainerStyle,
-  edges = ['right', 'left'],
+  edges = ['left', 'right'],
   keyboardShouldPersistTaps = 'handled',
+  backgroundColor,
+  roundedTop = true,
+  roundedBottom = false,
 }) => {
   const theme = useTheme();
 
   const containerStyle = [
     styles.container,
-    { backgroundColor: theme?.colors?.background || '#f8f8f8' },
+    { backgroundColor: backgroundColor || '#FFF' },
+    roundedTop && styles.roundedTop,
+    roundedBottom && styles.roundedBottom,
     style,
   ];
 
@@ -47,15 +55,17 @@ export const ITScreenWrapper: React.FC<ITScreenWrapperProps> = ({
           style={styles.flex}
           contentContainerStyle={[
             styles.scrollContent,
-            padding && styles.padding,
+            !padding && styles.noPaddingContent,
             contentContainerStyle,
           ]}
           keyboardShouldPersistTaps={keyboardShouldPersistTaps}
           enableOnAndroid={true}
           enableAutomaticScroll={true}
-          extraScrollHeight={120}
-          extraHeight={120}
+          extraScrollHeight={Platform.OS === 'ios' ? 120 : 100}
+          extraHeight={Platform.OS === 'ios' ? 120 : 100}
+          resetScrollToCoords={{ x: 0, y: 0 }}
           showsVerticalScrollIndicator={false}
+          bounces={true}
         >
           {children}
         </KeyboardAwareScrollView>
@@ -63,7 +73,11 @@ export const ITScreenWrapper: React.FC<ITScreenWrapperProps> = ({
     }
     return (
       <View
-        style={[styles.flex, padding && styles.padding, contentContainerStyle]}
+        style={[
+          styles.flex,
+          !padding && styles.noPaddingContent,
+          contentContainerStyle,
+        ]}
       >
         {children}
       </View>
@@ -74,19 +88,32 @@ export const ITScreenWrapper: React.FC<ITScreenWrapperProps> = ({
     <SafeAreaView style={containerStyle} edges={edges}>
       <StatusBar
         barStyle="dark-content"
-        backgroundColor={theme.colors.background}
+        backgroundColor={backgroundColor || '#FFF'}
+        translucent={Platform.OS === 'android'}
       />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {renderContent()}
-        {footer && (
-          <View style={[padding && styles.padding, styles.footer]}>
-            {footer}
-          </View>
-        )}
-      </KeyboardAvoidingView>
+      {scrollable ? (
+        <>
+          {renderContent()}
+          {footer && (
+            <View style={[!padding && styles.noPaddingFooter, styles.footer]}>
+              {footer}
+            </View>
+          )}
+        </>
+      ) : (
+        <KeyboardAvoidingView
+          style={[styles.flex, roundedTop && styles.roundedTop]}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          {renderContent()}
+          {footer && (
+            <View style={[!padding && styles.noPaddingFooter, styles.footer]}>
+              {footer}
+            </View>
+          )}
+        </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 };
@@ -95,17 +122,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  roundedTop: {
+    marginTop: 5,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+  },
+  roundedBottom: {
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
   flex: {
     flex: 1,
   },
-  padding: {
+  noPaddingContent: {
+    paddingHorizontal: 0,
+  },
+  noPaddingFooter: {
     paddingHorizontal: 20,
   },
   scrollContent: {
     flexGrow: 1,
   },
   footer: {
-    paddingBottom: 16,
-    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 16,
+    paddingTop: 12,
+    backgroundColor: 'transparent',
   },
 });

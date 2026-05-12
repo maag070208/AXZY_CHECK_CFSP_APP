@@ -1,37 +1,26 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, FlatList, RefreshControl } from 'react-native';
 import {
-  Avatar,
-  IconButton,
-  Portal,
-  FAB,
-  Divider,
-  Searchbar,
-} from 'react-native-paper';
-import {
-  useRoute,
-  useNavigation,
   useFocusEffect,
   useIsFocused,
+  useRoute,
 } from '@react-navigation/native';
-import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
-import { AssignmentModal } from '../components/AssignmentModal';
+import React, { useCallback, useEffect, useState } from 'react';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FAB, Icon, Portal, Searchbar } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
-import {
-  ITScreenWrapper,
-  ITCard,
-  ITText,
-  ITBadge,
-  ITButton,
-} from '../../../shared/components';
-import { COLORS } from '../../../shared/utils/constants';
-import { getAllAssignments } from '../../assignments/service/assignment.service';
-import { getUserById } from '../../users/service/user.service';
-import { AssignmentStatus } from '../../assignments/service/assignment.types';
-import { LoaderComponent } from '../../../shared/components/LoaderComponent';
 import { showLoader } from '../../../core/store/slices/loader.slice';
-import ModernStyles from '../../../shared/theme/app.styles';
+import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
+import {
+  ITBadge,
+  ITCard,
+  ITScreenWrapper,
+  ITText,
+} from '../../../shared/components';
+import { theme } from '../../../shared/theme/theme';
+import { getAllAssignments } from '../../assignments/service/assignment.service';
+import { AssignmentStatus } from '../../assignments/service/assignment.types';
+import { getUserById } from '../../users/service/user.service';
+import { AssignmentModal } from '../components/AssignmentModal';
 
 export const GuardDetailScreen = () => {
   const route = useRoute<any>();
@@ -100,13 +89,29 @@ export const GuardDetailScreen = () => {
   const getStatusConfig = (status: AssignmentStatus) => {
     switch (status) {
       case AssignmentStatus.PENDING:
-        return { label: 'Pendiente', color: '#F59E0B' };
+        return {
+          label: 'Pendiente',
+          color: '#F59E0B',
+          variant: 'warning' as const,
+        };
       case AssignmentStatus.CHECKING:
-        return { label: 'En Curso', color: COLORS.primary };
+        return {
+          label: 'En Curso',
+          color: theme.colors.primary,
+          variant: 'primary' as const,
+        };
       case AssignmentStatus.ANOMALY:
-        return { label: 'Anomalía', color: COLORS.error };
+        return {
+          label: 'Anomalía',
+          color: '#EF4444',
+          variant: 'error' as const,
+        };
       default:
-        return { label: status, color: '#64748B' };
+        return {
+          label: status,
+          color: theme.colors.slate500,
+          variant: 'default' as const,
+        };
     }
   };
 
@@ -123,91 +128,62 @@ export const GuardDetailScreen = () => {
             assignment: item,
           })
         }
+        mode="elevated"
       >
-        <View style={styles.cardContent}>
-          <View style={styles.headerRow}>
-            <View style={styles.avatarSection}>
-              <Avatar.Text
-                size={44}
-                label={locationName[0].toUpperCase()}
-                style={[
-                  styles.avatarCard,
-                  { backgroundColor: statusConfig.color + '10' },
-                ]}
-                labelStyle={{
-                  color: statusConfig.color,
-                  fontWeight: 'bold',
-                  fontSize: 18,
-                }}
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.cardAvatar}>
+            <ITText style={styles.cardAvatarText}>
+              {locationName.charAt(0).toUpperCase()}
+            </ITText>
+          </View>
+          <View style={styles.cardInfo}>
+            <ITText
+              variant="titleSmall"
+              weight="700"
+              color={theme.colors.slate900}
+            >
+              {locationName}
+            </ITText>
+            <View style={styles.cardMeta}>
+              <ITBadge
+                label={statusConfig.label}
+                variant={statusConfig.variant}
+                size="small"
+                dot
               />
+              <View style={styles.dotSeparator} />
+              <ITText variant="labelSmall" color={theme.colors.slate500}>
+                {item.location?.zone?.name || 'General'}
+              </ITText>
             </View>
+          </View>
+          <Icon source="chevron-right" size={20} color={theme.colors.primary} />
+        </View>
 
-            <View style={styles.infoSectionCard}>
-              <View style={styles.titleRow}>
-                <ITText
-                  variant="titleSmall"
-                  weight="bold"
-                  color={COLORS.textPrimary}
-                  numberOfLines={1}
-                  style={{ flex: 1, marginRight: 8 }}
-                >
-                  {locationName}
-                </ITText>
-              </View>
-
-              <View style={styles.metaRowCard}>
-                <View style={styles.detailItemCard}>
-                  <ITBadge
-                    label={statusConfig.label.toUpperCase()}
-                    style={{
-                      backgroundColor: statusConfig.color + '15',
-                    }}
-                    labelStyle={{
-                      color: statusConfig.color,
-                      fontSize: 8,
-                    }}
-                  />
-                  <IconButton
-                    icon="clipboard-list"
-                    size={14}
-                    iconColor={COLORS.indigo}
-                    style={{ margin: 0, padding: 0 }}
-                  />
-                  <ITText
-                    variant="labelSmall"
-                    color={COLORS.indigo}
-                    weight="bold"
-                    style={{ marginLeft: -2 }}
-                  >
-                    {taskCount} {taskCount === 1 ? 'tarea' : 'tareas'}
-                  </ITText>
-                </View>
-
-                <View style={[styles.detailItemCard, { marginLeft: 16 }]}>
-                  <IconButton
-                    icon="map-marker"
-                    size={14}
-                    iconColor="#64748B"
-                    style={{ margin: 0, padding: 0 }}
-                  />
-                  <ITText
-                    variant="labelSmall"
-                    color="#64748B"
-                    weight="medium"
-                    style={{ marginLeft: -2 }}
-                  >
-                    {item.location?.zone?.name || 'General'}
-                  </ITText>
-                </View>
-              </View>
-            </View>
-
-            <IconButton
-              icon="chevron-right"
-              size={20}
-              iconColor="#CBD5E1"
-              style={{ marginRight: -8 }}
+        <View style={styles.cardFooterStats}>
+          <View style={styles.statItem}>
+            <Icon
+              source="clipboard-list-outline"
+              size={16}
+              color={theme.colors.primary}
             />
+            <ITText
+              variant="labelSmall"
+              weight="600"
+              color={theme.colors.primary}
+            >
+              {taskCount} {taskCount === 1 ? 'Tarea' : 'Tareas'}
+            </ITText>
+          </View>
+          <View style={styles.statItem}>
+            <Icon
+              source="calendar-outline"
+              size={16}
+              color={theme.colors.slate500}
+            />
+            <ITText variant="labelSmall" color={theme.colors.slate500}>
+              Hoy
+            </ITText>
           </View>
         </View>
       </ITCard>
@@ -220,116 +196,147 @@ export const GuardDetailScreen = () => {
       scrollable={false}
       style={styles.container}
     >
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.profileRow}>
-          <Avatar.Text
-            size={72}
-            label={activeGuard.name ? activeGuard.name[0].toUpperCase() : 'G'}
-            style={styles.avatar}
-            labelStyle={styles.avatarLabel}
-          />
-          <View style={styles.nameSection}>
+      {/* PROFILE HEADER */}
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+        <View style={styles.profileInfo}>
+          <View style={styles.avatarLarge}>
+            <ITText style={styles.avatarLargeText}>
+              {activeGuard.name ? activeGuard.name[0].toUpperCase() : 'G'}
+            </ITText>
+            <View
+              style={[
+                styles.activeDot,
+                { backgroundColor: activeGuard.active ? '#10B981' : '#EF4444' },
+              ]}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
             <ITText
               variant="headlineSmall"
               weight="bold"
-              color={COLORS.textPrimary}
+              color={theme.colors.slate900}
             >
               {activeGuard.name} {activeGuard.lastName}
             </ITText>
-            <View style={styles.subInfo}>
+            <View style={styles.badgeRow}>
               <ITBadge
                 label={activeGuard.role?.value || 'Guardia'}
                 variant="primary"
                 size="small"
-                style={{ marginRight: 8 }}
+                outline
               />
-              <ITText variant="labelSmall" color={COLORS.textSecondary}>
+              <ITText variant="labelSmall" color={theme.colors.slate500}>
                 @{activeGuard.username}
-              </ITText>
-            </View>
-            <View style={styles.scheduleRow}>
-              <IconButton
-                icon="clock-outline"
-                size={16}
-                iconColor={COLORS.primary}
-                style={{ margin: 0, marginLeft: -4 }}
-              />
-              <ITText variant="labelSmall" weight="bold" color={COLORS.primary}>
-                {activeGuard.schedule
-                  ? activeGuard.schedule.name
-                  : 'Sin Horario'}
               </ITText>
             </View>
           </View>
         </View>
+
+        {/* DASHBOARD STATS */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <ITText
+              variant="titleLarge"
+              weight="bold"
+              color={theme.colors.primary}
+            >
+              {assignments.length}
+            </ITText>
+            <ITText variant="labelSmall" color={theme.colors.slate500}>
+              Rutas
+            </ITText>
+          </View>
+          <View style={styles.statCard}>
+            <ITText variant="titleLarge" weight="bold" color="#10B981">
+              {
+                assignments.filter(a => a.status === AssignmentStatus.CHECKING)
+                  .length
+              }
+            </ITText>
+            <ITText variant="labelSmall" color={theme.colors.slate500}>
+              Activas
+            </ITText>
+          </View>
+          <View style={styles.statCard}>
+            <ITText
+              variant="titleLarge"
+              weight="bold"
+              color={theme.colors.slate900}
+            >
+              {activeGuard.schedule ? activeGuard.schedule.startTime : '--:--'}
+            </ITText>
+            <ITText variant="labelSmall" color={theme.colors.slate500}>
+              Entrada
+            </ITText>
+          </View>
+        </View>
       </View>
 
-      <View style={styles.sectionTitleRow}>
-        <View style={{ flex: 1, marginRight: 16 }}>
+      {/* SEARCH AND LIST */}
+      <View style={styles.listSection}>
+        <View style={styles.sectionHeader}>
           <ITText
             variant="titleMedium"
             weight="bold"
-            color={COLORS.textPrimary}
+            color={theme.colors.slate900}
           >
-            Asignaciones
+            Asignaciones de Hoy
           </ITText>
-        </View>
-        <ITBadge
-          label={assignments.length.toString()}
-          variant="surface"
-          size="small"
-        />
-      </View>
-
-      <View style={{ paddingHorizontal: 24, marginBottom: 12 }}>
-        <Searchbar
-          placeholder="Buscar ubicación..."
-          onChangeText={setSearch}
-          value={search}
-          style={styles.searchBar}
-          inputStyle={styles.searchInput}
-          iconColor={COLORS.primary}
-          placeholderTextColor="#94A3B8"
-          elevation={0}
-        />
-      </View>
-
-      <FlatList
-        data={filteredAssignments}
-        renderItem={renderAssignment}
-        keyExtractor={item => item.id.toString()}
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading}
-            onRefresh={refreshAll}
-            colors={[COLORS.primary]}
+          <Searchbar
+            placeholder="Buscar..."
+            onChangeText={setSearch}
+            value={search}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={theme.colors.primary}
+            placeholderTextColor="#94A3B8"
+            elevation={0}
           />
-        }
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <IconButton
-                icon="clipboard-text-outline"
-                size={48}
-                iconColor="#E2E8F0"
-              />
-              <ITText variant="bodyMedium" color="#94A3B8">
-                Sin asignaciones registradas
-              </ITText>
-            </View>
-          ) : null
-        }
-      />
+        </View>
+
+        <FlatList
+          data={filteredAssignments}
+          renderItem={renderAssignment}
+          keyExtractor={item => item.id.toString()}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + 100 },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={refreshAll}
+              tintColor={theme.colors.primary}
+            />
+          }
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.emptyContainer}>
+                <Icon
+                  source="clipboard-text-outline"
+                  size={64}
+                  color="#E2E8F0"
+                />
+                <ITText variant="bodyMedium" color={theme.colors.slate400}>
+                  Sin asignaciones hoy
+                </ITText>
+              </View>
+            ) : null
+          }
+        />
+      </View>
 
       <Portal>
         {isFocused && (
           <FAB
             icon="plus"
-            style={[styles.fab, { bottom: insets.bottom + 24 }]}
+            style={[
+              styles.fab,
+              {
+                bottom: insets.bottom + 24,
+                backgroundColor: theme.colors.primary,
+              },
+            ]}
             onPress={() => setShowModal(true)}
             color="#FFFFFF"
           />
@@ -338,7 +345,7 @@ export const GuardDetailScreen = () => {
           visible={showModal}
           onDismiss={() => {
             setShowModal(false);
-            loadGuardData(); // Refresh guard data on close to sync client
+            loadGuardData();
           }}
           guardId={activeGuard.id}
           clientId={activeGuard.client?.id}
@@ -348,7 +355,6 @@ export const GuardDetailScreen = () => {
           }}
         />
       </Portal>
-      <LoaderComponent />
     </ITScreenWrapper>
   );
 };
@@ -360,45 +366,89 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#FFFFFF',
-    padding: 24,
-    paddingTop: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    ...ModernStyles.shadowSm,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
   },
-  profileRow: {
+  profileInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 20,
+    marginBottom: 24,
   },
-  avatar: {
-    backgroundColor: COLORS.surface,
-    marginRight: 20,
-  },
-  avatarLabel: {
-    color: COLORS.primary,
-    fontWeight: 'bold',
-  },
-  nameSection: {
-    flex: 1,
+  avatarLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
-  subInfo: {
+  avatarLargeText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+  },
+  activeDot: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
+  },
+  badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     marginTop: 4,
   },
-  scheduleRow: {
+  statsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
+    gap: 12,
   },
-  sectionTitleRow: {
+  statCard: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+  },
+  listSection: {
+    flex: 1,
+    marginTop: 12,
+  },
+  sectionHeader: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 16,
+    gap: 16,
+  },
+  searchBar: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    height: 40,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  searchInput: {
+    fontSize: 13,
+    minHeight: 0,
   },
   listContent: {
     paddingHorizontal: 24,
@@ -407,83 +457,62 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    ...ModernStyles.shadowSm,
+    padding: 16,
   },
-  cardContent: {
-    padding: 12,
-  },
-  headerRow: {
+  cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
   },
-  avatarSection: {
-    marginRight: 12,
-  },
-  avatarCard: {
-    borderWidth: 0,
-  },
-  infoSectionCard: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  metaRowCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  roleBadgeCard: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  detailsRowCard: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  detailItemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  dividerCard: {
-    height: 1,
+  cardAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  searchBar: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    height: 48,
-    ...ModernStyles.shadowSm,
+  cardAvatarText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.slate900,
   },
-  searchInput: {
-    fontSize: 14,
-    minHeight: 0,
+  cardInfo: {
+    flex: 1,
   },
-  footerCard: {
+  cardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
+    gap: 8,
+    marginTop: 2,
   },
-  footerBtnCard: {
-    flex: 1,
-    borderRadius: 0,
-    height: '100%',
-    justifyContent: 'center',
-    marginVertical: 0,
+  dotSeparator: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#CBD5E1',
+  },
+  cardFooterStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   emptyContainer: {
     alignItems: 'center',
     marginTop: 60,
+    gap: 12,
   },
   fab: {
     position: 'absolute',
     right: 24,
-    backgroundColor: COLORS.primary,
     borderRadius: 20,
   },
 });

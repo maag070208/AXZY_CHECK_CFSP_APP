@@ -1,10 +1,12 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Avatar, Divider } from 'react-native-paper';
-import { ITCard, ITText, ITButton } from '../../../shared/components';
-import { IUser, UserRole } from '../../../core/types/IUser';
-import { COLORS } from '../../../shared/utils/constants';
+import { Icon } from 'react-native-paper';
+import {
+  ITBadge,
+  ITText,
+  ITTouchableOpacity,
+} from '../../../shared/components';
 import { theme } from '../../../shared/theme/theme';
+import { IUser } from '../service/user.types';
+import { StyleSheet, View } from 'react-native';
 
 interface UserListItemProps {
   item: IUser;
@@ -19,189 +21,266 @@ export const UserListItem = ({
   onDelete,
   onResetPassword,
 }: UserListItemProps) => {
-  const getRoleConfig = (role: any) => {
-    const roleName = typeof role === 'object' ? role.name : role;
-    const roleValue = typeof role === 'object' ? role.value : role;
+  const initial = item.name ? item.name.charAt(0).toUpperCase() : 'U';
 
+  const getRoleVariant = (roleName: string) => {
     switch (roleName) {
-      case UserRole.ADMIN:
-        return { bg: '#FEE2E2', color: COLORS.red, label: roleValue };
-      case UserRole.SHIFT:
-        return { bg: '#E0E7FF', color: COLORS.indigo, label: roleValue };
-      case UserRole.GUARD:
-        return { bg: '#F5F3FF', color: COLORS.rounds, label: roleValue };
-      case UserRole.MAINT:
-        return { bg: '#FFFBEB', color: COLORS.maintenance, label: roleValue };
-      case UserRole.RESDN:
-        return { bg: '#F1F5F9', color: '#64748B', label: roleValue };
+      case 'ADMIN':
+        return 'error';
+      case 'SUPERVISOR':
+        return 'primary';
+      case 'GUARD':
+        return 'success';
       default:
-        return {
-          bg: '#F8FAFC',
-          color: '#94A3B8',
-          label: roleValue || 'Usuario',
-        };
+        return 'default';
     }
   };
 
-  const config = getRoleConfig(item.role);
+  const isActive = item.active;
 
   return (
-    <ITCard
-      style={styles.itemCard}
-      onPress={() => onPress(item)}
-      mode="elevated"
-    >
-      <View style={styles.cardContent}>
-        <View style={styles.headerRow}>
-          <View style={styles.avatarSection}>
-            <Avatar.Text
-              size={52}
-              label={item.name ? item.name[0].toUpperCase() : 'U'}
-              style={[styles.avatar, { backgroundColor: config.bg }]}
-              labelStyle={{ color: config.color, fontWeight: 'bold' }}
-            />
-            <View
-              style={[
-                styles.statusIndicator,
-                { backgroundColor: item.active ? '#10B981' : '#CBD5E1' },
-              ]}
-            />
+    <ITTouchableOpacity onPress={() => onPress(item)}>
+      <View style={[styles.card, !isActive && styles.cardInactive]}>
+        {/* Header: Avatar + Info + Status */}
+        <View style={styles.cardHeader}>
+          <View style={styles.headerLeft}>
+            <View style={styles.avatarContainer}>
+              <ITText style={styles.avatarText}>{initial}</ITText>
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: isActive ? '#10B981' : '#EF4444' },
+                ]}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <ITText
+                variant="titleSmall"
+                weight="bold"
+                style={styles.userName}
+                numberOfLines={1}
+              >
+                {item.name} {item.lastName}
+              </ITText>
+              <ITBadge
+                style={{ alignSelf: 'flex-start', margin: 0 }}
+                labelStyle={{
+                  fontSize: 10,
+                }}
+                label={item.role?.value?.toUpperCase() || 'USUARIO'}
+                variant={getRoleVariant(item.role?.name)}
+                size="small"
+                outline
+              />
+              <View style={styles.headerMeta}>
+                <View style={styles.metaChip}>
+                  <ITText variant="labelSmall" style={styles.metaChipText}>
+                    @{item.username}
+                  </ITText>
+                </View>
+              </View>
+            </View>
           </View>
 
-          <View style={styles.infoSection}>
-            <ITText variant="titleMedium" weight="bold" style={styles.userName}>
-              {item.name} {item.lastName}
-            </ITText>
-            <View style={styles.metaRow}>
-              <View style={[styles.roleBadge, { backgroundColor: config.bg }]}>
-                <ITText
-                  variant="labelSmall"
-                  weight="bold"
-                  color={config.color}
-                  style={{ fontSize: 10 }}
-                >
-                  {config.label?.toUpperCase()}
-                </ITText>
+          <ITBadge
+            label={isActive ? 'Activo' : 'Inactivo'}
+            variant={isActive ? 'success' : 'error'}
+            size="small"
+            dot={isActive}
+          />
+        </View>
+
+        {/* Body: Relation Info */}
+        <View style={styles.cardBody}>
+          <View style={styles.infoGrid}>
+            <View style={styles.infoItem}>
+              <View style={styles.infoIconBox}>
+                <Icon source="office-building" size={12} color={theme.colors.primary} />
               </View>
-              <ITText variant="labelSmall" color="#94A3B8">
-                @{item.username}
+              <ITText
+                variant="labelSmall"
+                style={styles.infoText}
+                numberOfLines={1}
+              >
+                {item.client?.name || 'Sin cliente'}
+              </ITText>
+            </View>
+
+            <View style={styles.infoItem}>
+              <View style={styles.infoIconBox}>
+                <Icon
+                  source="clock-outline"
+                  size={12}
+                  color={theme.colors.primary}
+                />
+              </View>
+              <ITText
+                variant="labelSmall"
+                style={styles.infoText}
+                numberOfLines={1}
+              >
+                {item.schedule ? `${item.schedule.name}` : 'Sin horario'}
               </ITText>
             </View>
           </View>
         </View>
 
-        <View style={styles.detailsRow}>
-           {item.schedule && (
-              <View style={styles.detailItem}>
-                <ITText variant="labelSmall" color="#64748B" weight="medium">
-                    Horario: <ITText variant="labelSmall" color="#1E293B" weight="bold">{item.schedule.name}</ITText>
-                </ITText>
-              </View>
-            )}
-        </View>
-
-        <Divider style={styles.divider} />
-
-        <View style={styles.footer}>
-            <ITButton 
-                label="Seguridad"
-                mode="text"
-                icon="key-variant"
-                onPress={() => onResetPassword(item)}
-                style={styles.footerBtn}
-                labelStyle={{ fontSize: 13, color: theme.colors.primary }}
+        {/* Footer: Quick Actions */}
+        <View style={styles.cardFooter}>
+          <ITTouchableOpacity
+            style={styles.footerButton}
+            onPress={() => onResetPassword(item)}
+          >
+            <Icon
+              source="shield-key-outline"
+              size={16}
+              color={theme.colors.primary}
             />
-            <View style={styles.vDivider} />
-            <ITButton 
-                label="Eliminar"
-                mode="text"
-                icon="trash-can-outline"
-                onPress={() => onDelete(item.id)}
-                style={styles.footerBtn}
-                labelStyle={{ fontSize: 13, color: theme.colors.error }}
-            />
+            <ITText style={styles.footerButtonText}>Seguridad</ITText>
+          </ITTouchableOpacity>
+
+          <View style={styles.footerSeparator} />
+
+          <ITTouchableOpacity
+            style={styles.footerButton}
+            onPress={() => onDelete(item.id)}
+          >
+            <Icon source="trash-can-outline" size={16} color="#EF4444" />
+            <ITText style={[styles.footerButtonText, { color: '#EF4444' }]}>
+              Eliminar
+            </ITText>
+          </ITTouchableOpacity>
         </View>
       </View>
-    </ITCard>
+    </ITTouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  itemCard: {
-    marginBottom: 16,
-    borderRadius: 24,
+  card: {
     backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
+    borderRadius: 20,
+    marginBottom: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  cardContent: {
-    padding: 0,
+  cardInactive: {
+    backgroundColor: '#F8FAFC',
+    opacity: 0.8,
   },
-  headerRow: {
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    paddingBottom: 12,
+    gap: 12,
+    flex: 1,
   },
-  avatarSection: {
+  avatarContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
     position: 'relative',
-    marginRight: 14,
   },
-  avatar: {
-    borderWidth: 0,
+  avatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.primary,
   },
-  statusIndicator: {
+  statusDot: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    bottom: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
-  infoSection: {
-    flex: 1,
-  },
   userName: {
-    color: '#1E293B',
-    marginBottom: 2,
+    color: '#0F172A',
+    fontSize: 15,
+    letterSpacing: -0.3,
+    marginBottom: 4,
   },
-  metaRow: {
+  headerMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  roleBadge: {
-    paddingHorizontal: 8,
+  metaChip: {
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: 6,
   },
-  detailsRow: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+  metaChipText: {
+    color: '#64748B',
+    fontSize: 10,
+    fontWeight: '500',
   },
-  detailItem: {
+  cardBody: {
+    marginBottom: 12,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 48,
-  },
-  footerBtn: {
+    gap: 6,
     flex: 1,
-    borderRadius: 0,
-    height: '100%',
-    justifyContent: 'center',
   },
-  vDivider: {
+  infoIconBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoText: {
+    color: '#475569',
+    fontSize: 11,
+    flex: 1,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  footerButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  footerButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  footerSeparator: {
     width: 1,
-    height: 24,
-    backgroundColor: '#F1F5F9',
-  }
+    height: 16,
+    backgroundColor: '#E2E8F0',
+  },
 });

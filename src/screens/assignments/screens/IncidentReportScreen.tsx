@@ -6,16 +6,8 @@ import {
 } from '@react-navigation/native';
 import { Formik } from 'formik';
 import React, { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { Icon, useTheme } from 'react-native-paper';
+import { Dimensions, StyleSheet, View } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import * as Yup from 'yup';
 
@@ -52,8 +44,6 @@ interface CatalogItem {
   type?: string;
   categoryId?: string;
 }
-
-
 
 export const IncidentReportScreen = () => {
   const navigation = useNavigation();
@@ -207,7 +197,15 @@ export const IncidentReportScreen = () => {
   const isUploading = media.some(m => m.uploading);
 
   const onFormSubmit = async (values: any) => {
+    console.log(
+      '[IncidentReportScreen] Form submitted with values:',
+      JSON.stringify(values, null, 2),
+    );
+
     if (isUploading) {
+      console.warn(
+        '[IncidentReportScreen] Submit blocked: media still uploading',
+      );
       dispatch(
         showToast({
           message: 'Espera a que termine la subida',
@@ -218,37 +216,54 @@ export const IncidentReportScreen = () => {
     }
 
     if (media.some(m => m.error)) {
+      console.warn(
+        '[IncidentReportScreen] Submit blocked: media upload error exists',
+      );
       dispatch(
         showToast({ message: 'Reintenta o elimina fallidos', type: 'error' }),
       );
       return;
     }
 
-    const validMedia = media
-      .filter(m => m.url)
-      .map(m => ({
-        type: m.type === 'video' ? 'VIDEO' : 'IMAGE',
-        url: m.url,
-      }));
+    const validMedia = media.filter(m => m.url).map(m => m.url!);
+
+    console.log(
+      '[IncidentReportScreen] Mapped media URLs:',
+      JSON.stringify(validMedia, null, 2),
+    );
 
     dispatch(showLoader(true));
 
     const selectedType = allTypes.find(t => t.id === values.typeId);
 
+    // API REQUIRES locationId. Fallback chain: params.location.id -> params.roundId -> values.clientId
+    const finalLocationId =
+      route.params?.location?.id || roundId || values.clientId;
+
     const sendReport = async (position?: any) => {
+      console.log(
+        '[IncidentReportScreen] sendReport. locationId:',
+        finalLocationId,
+      );
       try {
         const res = await createIncident({
           title: selectedType?.value || 'Incidencia',
+          description: values.description || '',
+          locationId: finalLocationId,
+          media: validMedia,
           categoryId: values.categoryId,
           typeId: values.typeId,
-          description: values.description,
-          media: validMedia,
           latitude: position?.coords?.latitude,
           longitude: position?.coords?.longitude,
           clientId: values.clientId || undefined,
           guardId: user.id,
           roundId: roundId || undefined,
         });
+
+        console.log(
+          '[IncidentReportScreen] createIncident result:',
+          JSON.stringify(res, null, 2),
+        );
 
         if (res.success) {
           dispatch(
@@ -259,26 +274,38 @@ export const IncidentReportScreen = () => {
           );
           navigation.goBack();
         } else {
+          console.error('[IncidentReportScreen] API Error:', res.messages);
           dispatch(
-            showToast({ message: 'Error al enviar reporte', type: 'error' }),
+            showToast({
+              message: res.messages?.[0] || 'Error al enviar reporte',
+              type: 'error',
+            }),
           );
         }
-      } catch (e) {
+      } catch (e: any) {
+        console.error('[IncidentReportScreen] Connection/Catch error:', e);
         dispatch(showToast({ message: 'Error de conexión', type: 'error' }));
       } finally {
         dispatch(showLoader(false));
       }
     };
 
+    console.log('[IncidentReportScreen] Getting current position...');
     Geolocation.getCurrentPosition(
-      pos => sendReport(pos),
-      () => sendReport(),
+      pos => {
+        console.log('[IncidentReportScreen] Position success');
+        sendReport(pos);
+      },
+      err => {
+        console.error('[IncidentReportScreen] Position error:', err);
+        sendReport();
+      },
       { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 },
     );
   };
 
   return (
-    <ITScreenWrapper padding={false}>
+    <ITScreenWrapper padding={false} edges={['bottom']}>
       <Formik
         initialValues={{
           categoryId: null,
@@ -291,122 +318,114 @@ export const IncidentReportScreen = () => {
         onSubmit={onFormSubmit}
       >
         {({ setFieldValue, handleSubmit, values, errors, touched }) => (
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.paddingContainer}>
-              <ITText variant="headlineSmall" weight="bold">
-                Nuevo Reporte
-              </ITText>
-              <ITText
-                variant="bodyMedium"
-                style={{ opacity: 0.6, marginBottom: 20 }}
-              >
-                Completa los detalles de la incidencia
-              </ITText>
+          <View style={styles.paddingContainer}>
+            <ITText variant="headlineSmall" weight="bold">
+              Nuevo Reporte
+            </ITText>
+            <ITText
+              variant="bodyMedium"
+              style={{ opacity: 0.6, marginBottom: 20 }}
+            >
+              Completa los detalles de la incidencia
+            </ITText>
 
-              {user.role === UserRole.ADMIN && (
-                <View style={styles.section}>
-                  <ITText
-                    variant="labelLarge"
-                    weight="bold"
-                    style={styles.label}
-                  >
-                    SELECCIONAR CLIENTE
-                  </ITText>
-                  <SearchComponent
-                    label="Cliente"
-                    placeholder="Selecciona un cliente..."
-                    options={clients}
-                    value={values.clientId}
-                    onSelect={val => setFieldValue('clientId', val)}
-                  />
-                  {errors.clientId && touched.clientId && (
-                    <ITText
-                      variant="bodySmall"
-                      color={theme.colors.error}
-                      style={{ marginTop: 4 }}
-                    >
-                      {errors.clientId as string}
-                    </ITText>
-                  )}
-                </View>
-              )}
-
-              <ITCategorySelector
-                categories={categories}
-                selectedId={values.categoryId}
-                onSelect={id => {
-                  setFieldValue('categoryId', id);
-                  setFieldValue('typeId', null);
-                }}
-              />
-              {errors.categoryId && touched.categoryId && (
-                <ITText
-                  variant="bodySmall"
-                  color={theme.colors.error}
-                  style={{ marginTop: -16, marginBottom: 16 }}
-                >
-                  {errors.categoryId as string}
-                </ITText>
-              )}
-
-              {values.categoryId && (
-                <ITTypeSelector
-                  types={allTypes.filter(
-                    t => t.categoryId === values.categoryId,
-                  )}
-                  selectedId={values.typeId}
-                  onSelect={id => setFieldValue('typeId', id)}
-                  label="2. TIPO DE INCIDENCIA"
-                />
-              )}
-              {errors.typeId && touched.typeId && (
-                <ITText
-                  variant="bodySmall"
-                  color={theme.colors.error}
-                  style={{ marginTop: -16, marginBottom: 16 }}
-                >
-                  {errors.typeId as string}
-                </ITText>
-              )}
-
-              <ITMediaPicker
-                media={media}
-                onMediaChange={setMedia}
-                uploadPath="incident"
-                roundId={roundId}
-              />
-
+            {user.role === UserRole.ADMIN && (
               <View style={styles.section}>
                 <ITText variant="labelLarge" weight="bold" style={styles.label}>
-                  4. OBSERVACIONES
+                  SELECCIONAR CLIENTE
                 </ITText>
-                <ITInput
-                  placeholder="Describe lo sucedido brevemente..."
-                  multiline
-                  numberOfLines={4}
-                  value={values.description}
-                  onChangeText={val => setFieldValue('description', val)}
+                <SearchComponent
+                  label="Cliente"
+                  placeholder="Selecciona un cliente..."
+                  options={clients}
+                  value={values.clientId}
+                  onSelect={val => setFieldValue('clientId', val)}
                 />
+                {errors.clientId && touched.clientId && (
+                  <ITText
+                    variant="bodySmall"
+                    color={theme.colors.error}
+                    style={{ marginTop: 4 }}
+                  >
+                    {errors.clientId as string}
+                  </ITText>
+                )}
               </View>
+            )}
 
-              <ITButton
-                label={isUploading ? 'SUBIENDO...' : 'ENVIAR REPORTE'}
-                onPress={() => handleSubmit()}
-                loading={loading}
-                disabled={
-                  loading ||
-                  isUploading ||
-                  !values.categoryId ||
-                  !values.typeId ||
-                  (user.role === UserRole.ADMIN && !values.clientId)
-                }
-                style={{ marginTop: 20 }}
+            <ITCategorySelector
+              categories={categories}
+              selectedId={values.categoryId}
+              onSelect={id => {
+                setFieldValue('categoryId', id);
+                setFieldValue('typeId', null);
+              }}
+            />
+            {errors.categoryId && touched.categoryId && (
+              <ITText
+                variant="bodySmall"
+                color={theme.colors.error}
+                style={{ marginTop: -16, marginBottom: 16 }}
+              >
+                {errors.categoryId as string}
+              </ITText>
+            )}
+
+            {values.categoryId && (
+              <ITTypeSelector
+                types={allTypes.filter(t => t.categoryId === values.categoryId)}
+                selectedId={values.typeId}
+                onSelect={id => setFieldValue('typeId', id)}
+                label="2. TIPO DE INCIDENCIA"
+              />
+            )}
+            {errors.typeId && touched.typeId && (
+              <ITText
+                variant="bodySmall"
+                color={theme.colors.error}
+                style={{ marginTop: -16, marginBottom: 16 }}
+              >
+                {errors.typeId as string}
+              </ITText>
+            )}
+
+            <ITMediaPicker
+              media={media}
+              onMediaChange={setMedia}
+              uploadPath="incident"
+              roundId={roundId}
+            />
+
+            <View style={styles.section}>
+              <ITText variant="labelLarge" weight="bold" style={styles.label}>
+                4. OBSERVACIONES
+              </ITText>
+              <ITInput
+                testID="DESCRIPTION_INPUT"
+                placeholder="Describe lo sucedido brevemente..."
+                multiline
+                numberOfLines={4}
+                value={values.description}
+                onChangeText={val => setFieldValue('description', val)}
+                label={'Descripción'}
               />
             </View>
-          </ScrollView>
+
+            <ITButton
+              testID="SUBMIT_INCIDENT_REPORT_BTN"
+              label={isUploading ? 'SUBIENDO...' : 'ENVIAR REPORTE'}
+              onPress={() => handleSubmit()}
+              loading={loading}
+              disabled={
+                loading ||
+                isUploading ||
+                !values.categoryId ||
+                !values.typeId ||
+                (user.role === UserRole.ADMIN && !values.clientId)
+              }
+              style={{ marginTop: 20 }}
+            />
+          </View>
         )}
       </Formik>
 

@@ -1,0 +1,43 @@
+# Estatus de Refinación - AXZY Administrative App
+
+## ✅ Pantallas Completadas (Modernizadas)
+Módulos que ya cumplen con el estándar IT* (Emerald/Slate), ITScreenDatatableLayout y TResult.
+
+- **User Management**: Lista de usuarios, filtros avanzados y creación/edición.
+- **Client Management**: Dashboard de cliente, lista de clientes y perfiles.
+- **Zones (Zonas)**: Lista premium, filtros por cliente y formulario full-screen.
+- **Locations (Ubicaciones)**: Lista de puntos, filtros y formulario optimizado.
+- **Recurring Rounds**: Módulo de rondas recurrentes (Wizard de 4 pasos).
+- **Incidents & Maintenance**: Listas administrativas, filtros de fecha y detalle de multimedia.
+- **Schedules**: Gestión de horarios y asignación de personal.
+
+## ⏳ Pantallas Pendientes (Por Refinar)
+Módulos que aún usan componentes legacy o estilos "raw".
+
+- **Check (Escaneo)**: El visor de la cámara y el overlay de escaneo necesitan un look más premium y animaciones de feedback.
+- **Check Report**: El formulario donde el guardia llena la inspección tras escanear.
+- **Kardex**: Refinar las tablas de historial y los indicadores de desempeño.
+- **Rounds (Historial)**: El detalle de las rondas realizadas necesita una mejor visualización de la línea de tiempo (Timeline).
+- **Guards**: El detalle del perfil del guardia y su historial de asistencia.
+- **Profile**: El perfil del usuario logueado.
+- **Auth (Login)**: Modernizar la entrada a la app con un diseño más corporativo.
+
+## 🚀 Puntos de Mejora General (Roadmap Premium)
+
+1.  **Splash Screen Animado**:
+    - Implementar una pantalla de carga inicial con el logo de AXZY usando Lottie para una entrada suave.
+2.  **Feedback Háptico**:
+    - Agregar vibraciones sutiles al escanear correctamente o al recibir errores.
+3.  **Modo Offline (CRÍTICO)**:
+    - Implementar persistencia local (SQLite/WatermelonDB) para que los guardias puedan escanear en sótanos sin señal y sincronizar al salir.
+4.  **Multimedia Premium**:
+    - Usar un carrusel de imágenes más fluido en los detalles de incidencias con zoom (pinch-to-zoom).
+5.  **Micro-animaciones de Éxito**:
+    - Reemplazar los Toasts simples por checkmarks animados al guardar formularios.
+6.  **Dashboard Analytics**:
+    - Agregar una pantalla inicial con gráficas (Victory Native) que muestre el cumplimiento de rondas en tiempo real.
+7.  **Skeletons Globales**:
+    - Asegurar que el 100% de las peticiones async muestren el esqueleto exacto del contenido final.
+
+---
+*Generado por Antigravity - AXZY Engineering Standards*

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
-import { ITInput, ITButton } from '../../../shared/components';
+import { ITInput, ITButton, ITText } from '../../../shared/components';
+import { theme } from '../../../shared/theme/theme';
 
 export interface LoginFormComponentValues {
   username: string;
@@ -15,9 +16,7 @@ interface LoginFormComponentProps {
 }
 
 const validationSchema = Yup.object().shape({
-  username: Yup.string()
-    .trim()
-    .required('El usuario es obligatorio'),
+  username: Yup.string().trim().required('El usuario es obligatorio'),
   password: Yup.string()
     .trim()
     .required('La contraseña es obligatoria')
@@ -53,19 +52,20 @@ export const LoginFormComponent: React.FC<LoginFormComponentProps> = ({
           <ITInput
             label="Usuario"
             placeholder="Ingresa tu usuario"
-            leftIcon="account-outline"
+            leftIcon="account-circle-outline"
             value={values.username}
             onChangeText={handleChange('username')}
             onBlur={handleBlur('username')}
             error={errors.username}
             touched={touched.username}
             disabled={loading}
+            autoCapitalize="none"
           />
 
           <ITInput
             label="Contraseña"
-            placeholder="Ingresa tu contraseña"
-            leftIcon="lock-outline"
+            placeholder="••••••••"
+            leftIcon="shield-lock-outline"
             rightIcon={showPassword ? 'eye-off' : 'eye'}
             onRightIconPress={() => setShowPassword(!showPassword)}
             secureTextEntry={!showPassword}
@@ -77,11 +77,18 @@ export const LoginFormComponent: React.FC<LoginFormComponentProps> = ({
             disabled={loading}
           />
 
+          {/* <TouchableOpacity style={styles.forgotPassword}>
+            <ITText variant="labelMedium" color={theme.colors.primary} weight="600">
+              ¿Olvidaste tu contraseña?
+            </ITText>
+          </TouchableOpacity> */}
+
           <ITButton
-            label="Iniciar Sesión"
+            label="Entrar al Sistema"
             onPress={handleSubmit as any}
             loading={loading}
             style={styles.button}
+            mode="contained"
           />
         </View>
       )}
@@ -93,7 +100,15 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
   },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+    marginTop: -4,
+  },
   button: {
-    marginTop: 12,
+    height: 52,
+    justifyContent: 'center',
+    borderRadius: 16,
+    backgroundColor: theme.colors.primary,
   },
 });

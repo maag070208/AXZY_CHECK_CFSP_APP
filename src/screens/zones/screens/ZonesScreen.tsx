@@ -11,18 +11,13 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import {
-  ActivityIndicator,
-  Avatar,
-  Card,
-  Icon,
-  IconButton,
-  Searchbar,
-  Text,
-  FAB,
-  Button,
-  Portal,
-  Divider,
-} from 'react-native-paper';
+  ITBadge,
+  ITScreenDatatableLayout,
+  ITText,
+  ITTouchableOpacity,
+} from '../../../shared/components';
+import { ITScreensFiltersModal } from '../../../shared/components/ITScreensFiltersModal';
+import { theme } from '../../../shared/theme/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showLoader } from '../../../core/store/slices/loader.slice';
 import { ITAlert } from '../../../shared/components';
@@ -42,8 +37,7 @@ import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
 import { ZoneFormModal } from '../components/ZoneFormModal';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
-
-const PRIMARY_COLOR = '#0F4C3A';
+import { Icon, IconButton, Searchbar, FAB } from 'react-native-paper';
 
 export const ZonesScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
@@ -249,215 +243,179 @@ export const ZonesScreen = ({ navigation }: any) => {
 
   const clientOptions = clients.map(c => ({
     label: c.name,
-    value: c.id,
+    value: String(c.id),
   }));
 
   const activeFiltersCount = appliedClientId !== '' ? 1 : 0;
 
-  const renderItem = ({ item }: { item: IZone }) => (
-    <Card
-      style={styles.itemCard}
-      elevation={1}
-      onPress={() => {
-        navigation.navigate('LOCATIONS_STACK', {
-          screen: 'LOCATIONS_MAIN',
-          params: { zoneId: item.id, zoneName: item.name },
-        });
-      }}
-    >
-      <View style={styles.cardLayout}>
-        <View style={styles.avatarSection}>
-          <Avatar.Icon
-            size={56}
-            icon="map-clock-outline"
-            style={styles.avatar}
-            color="#0F4C3A"
-          />
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: item.active ? '#059669' : '#64748B' },
-            ]}
-          >
-            <Icon
-              source={item.active ? 'check' : 'minus'}
-              size={10}
-              color="#fff"
+  const renderItem = ({ item }: { item: IZone }) => {
+    const isActive = item.active;
+
+    return (
+      <ITTouchableOpacity
+        onPress={() => {
+          navigation.navigate('LOCATIONS_STACK', {
+            screen: 'LOCATIONS_MAIN',
+            params: { zoneId: item.id, zoneName: item.name },
+          });
+        }}
+      >
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.headerLeft}>
+              <View style={styles.iconContainer}>
+                <Icon
+                  source="map-clock-outline"
+                  size={24}
+                  color={theme.colors.primary}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ITText variant="titleMedium" weight="bold" color="#0F172A">
+                  {item.name}
+                </ITText>
+                <View style={styles.headerMeta}>
+                  <View style={styles.metaChip}>
+                    <Icon
+                      source="office-building"
+                      size={12}
+                      color={theme.colors.slate400}
+                    />
+                    <ITText variant="labelSmall" color={theme.colors.slate500}>
+                      {item.client?.name || 'Sin Cliente'}
+                    </ITText>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            <ITBadge
+              label={isActive ? 'Activo' : 'Inactivo'}
+              variant={isActive ? 'success' : 'surface'}
+              size="small"
+              dot={isActive}
             />
           </View>
-        </View>
 
-        <View style={styles.infoSection}>
-          <Text style={styles.propertyName} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <Text style={styles.ownerText} numberOfLines={1}>
-            Cliente: {item.client?.name || 'N/A'}
-          </Text>
-        </View>
-
-        <View style={styles.actions}>
-          {isAdmin ? (
-            <View style={{ flexDirection: 'row' }}>
-              <IconButton
-                icon="pencil-outline"
-                size={20}
-                onPress={() => handleEdit(item)}
-                iconColor="#64748B"
-              />
-              <IconButton
-                icon="trash-can-outline"
-                size={20}
-                onPress={() => handleDeletePress(item)}
-                iconColor="#ba1a1a"
-              />
+          <View style={styles.cardFooter}>
+            <View style={styles.footerItem}>
+              <View style={styles.footerIconBox}>
+                <Icon
+                  source="map-marker-radius"
+                  size={12}
+                  color={theme.colors.primary}
+                />
+              </View>
+              <ITText variant="labelSmall" color={theme.colors.slate600}>
+                Ver ubicaciones vinculadas
+              </ITText>
             </View>
-          ) : (
-            <IconButton icon="chevron-right" iconColor="#CBD5E1" size={24} />
-          )}
+
+            {isAdmin && (
+              <View style={styles.adminActions}>
+                <IconButton
+                  icon="pencil-outline"
+                  size={18}
+                  onPress={() => handleEdit(item)}
+                  iconColor={theme.colors.slate400}
+                  style={styles.actionButton}
+                />
+                <IconButton
+                  icon="trash-can-outline"
+                  size={18}
+                  onPress={() => handleDeletePress(item)}
+                  iconColor="#EF4444"
+                  style={styles.actionButton}
+                />
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    </Card>
-  );
+      </ITTouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.headerTitle}>Zonas</Text>
-            <Text style={styles.headerSubtitle}>{total} zonas registradas</Text>
-          </View>
-          <IconButton
-            icon="filter-variant"
-            mode="contained"
-            containerColor={activeFiltersCount > 0 ? PRIMARY_COLOR : '#F1F5F9'}
-            iconColor={activeFiltersCount > 0 ? '#FFFFFF' : '#64748B'}
-            onPress={handleOpenFilters}
+      <ITScreenDatatableLayout
+        title="Zonas"
+        subtitle="Organización por sectores"
+        totalItems={total}
+        loading={loading}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        onFilterPress={handleOpenFilters}
+        showSearchBar={true}
+        searchBar={
+          <Searchbar
+            placeholder="Buscar por nombre..."
+            onChangeText={setSearch}
+            value={search}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={theme.colors.primary}
+            placeholderTextColor="#94A3B8"
+            elevation={0}
+          />
+        }
+        filterBadges={
+          appliedClientId ? (
+            <ITTouchableOpacity
+              onPress={() => setAppliedClientId('')}
+              style={{ marginRight: 8 }}
+            >
+              <ITBadge
+                label={`Cliente: ${
+                  clients.find(c => String(c.id) === String(appliedClientId))
+                    ?.name || '...'
+                }`}
+                variant="primary"
+                onClose={() => setAppliedClientId('')}
+              />
+            </ITTouchableOpacity>
+          ) : null
+        }
+        data={zones}
+        renderItem={renderItem}
+        keyExtractor={item => String(item.id)}
+        onEndReached={handleLoadMore}
+        footerLoader={loadingMore}
+        fab={
+          isAdmin ? (
+            <FAB
+              icon="plus"
+              style={styles.fab}
+              onPress={handleCreate}
+              color="white"
+            />
+          ) : null
+        }
+      />
+
+      <ITScreensFiltersModal
+        visible={showFilters}
+        onDismiss={() => setShowFilters(false)}
+        onApply={handleApplyFilters}
+        onClear={handleClearFilters}
+      >
+        <View style={styles.filterGroup}>
+          <ITText
+            variant="labelSmall"
+            weight="bold"
+            color="#94A3B8"
+            style={styles.filterLabel}
+          >
+            FILTRAR POR CLIENTE
+          </ITText>
+          <SearchComponent
+            label="Cliente"
+            placeholder="Seleccionar cliente"
+            options={clientOptions}
+            value={String(tempClientId)}
+            onSelect={setTempClientId}
           />
         </View>
-
-        <Searchbar
-          placeholder="Buscar zona por nombre..."
-          onChangeText={setSearch}
-          value={search}
-          style={styles.searchBar}
-          inputStyle={styles.searchInput}
-          iconColor={PRIMARY_COLOR}
-          placeholderTextColor="#94A3B8"
-          elevation={0}
-        />
-      </View>
-
-      {!loading || refreshing ? (
-        <FlatList
-          data={zones}
-          keyExtractor={item => String(item.id)}
-          renderItem={renderItem}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              colors={[PRIMARY_COLOR]}
-              tintColor={PRIMARY_COLOR}
-            />
-          }
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color={PRIMARY_COLOR} />
-              </View>
-            ) : null
-          }
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <IconButton
-                  icon="map-off-outline"
-                  size={40}
-                  iconColor="#94A3B8"
-                />
-              </View>
-              <Text style={styles.emptyTitle}>Sin zonas</Text>
-              <Text style={styles.emptyText}>
-                No se encontraron zonas registradas.
-              </Text>
-            </View>
-          }
-        />
-      ) : (
-        <></>
-      )}
-
-      {isAdmin && (
-        <FAB
-          icon="plus"
-          style={[styles.fab, { bottom: insets.bottom + 24 }]}
-          onPress={handleCreate}
-          color="white"
-        />
-      )}
-
-      <Portal>
-        <Modal
-          visible={showFilters}
-          onDismiss={() => setShowFilters(false)}
-          contentContainerStyle={styles.modalFullScreen}
-        >
-          <View style={[styles.modalHeader, { paddingTop: insets.top + 20 }]}>
-            <View style={styles.modalHeaderTitle}>
-              <Icon source="filter-variant" size={24} color={PRIMARY_COLOR} />
-              <Text style={styles.modalTitle}>Filtros de Zonas</Text>
-            </View>
-            <IconButton
-              icon="close"
-              size={24}
-              onPress={() => setShowFilters(false)}
-              iconColor="#94A3B8"
-            />
-          </View>
-
-          <ScrollView
-            style={styles.modalScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR CLIENTE</Text>
-              <SearchComponent
-                label="Cliente"
-                placeholder="Todos los clientes"
-                options={clientOptions}
-                value={tempClientId}
-                onSelect={setTempClientId}
-              />
-            </View>
-          </ScrollView>
-
-          <View
-            style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
-          >
-            <Button
-              mode="outlined"
-              onPress={handleClearFilters}
-              style={styles.footerButton}
-              textColor="#64748B"
-            >
-              Limpiar
-            </Button>
-            <Button
-              mode="contained"
-              onPress={handleApplyFilters}
-              style={[styles.footerButton, { backgroundColor: PRIMARY_COLOR }]}
-            >
-              Aplicar Filtros
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
+      </ITScreensFiltersModal>
 
       <ZoneFormModal
         visible={modalVisible}
@@ -477,7 +435,7 @@ export const ZonesScreen = ({ navigation }: any) => {
         title="Eliminar Zona"
         description={`¿Estás seguro de que deseas eliminar la zona "${zoneToDelete?.name}"? Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar"
-        type="danger"
+        type="alert"
         loading={isDeleting}
       />
     </View>
@@ -487,187 +445,101 @@ export const ZonesScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 2,
+    backgroundColor: '#F8FAFC',
   },
   searchBar: {
-    backgroundColor: '#F1F5F9',
-    borderRadius: 12,
-    height: 44,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   searchInput: {
     minHeight: 0,
-    fontSize: 15,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    color: '#64748b',
     fontSize: 14,
-    fontWeight: '500',
+    color: '#0F172A',
   },
-  listContainer: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  itemCard: {
+  card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     marginBottom: 12,
-    overflow: 'hidden',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    elevation: 1,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
   },
-  cardLayout: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-  },
-  avatarSection: {
-    position: 'relative',
-    marginRight: 12,
-  },
-  avatar: {
-    backgroundColor: '#F1F5F9',
-  },
-  statusBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  infoSection: {
-    flex: 1,
-    gap: 2,
-  },
-  propertyName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  ownerText: {
-    fontSize: 13,
-    color: '#94A3B8',
-  },
-  actions: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    backgroundColor: PRIMARY_COLOR,
-    borderRadius: 28,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 100,
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  emptyIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  modalFullScreen: {
-    backgroundColor: 'white',
-    flex: 1,
-    margin: 0,
-  },
-  modalHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
-  modalHeaderTitle: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  modalScroll: {
-    padding: 24,
-  },
-  filterGroup: {
-    marginBottom: 32,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#94A3B8',
-    marginBottom: 12,
-    letterSpacing: 1,
-  },
-  modalFooter: {
-    flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    flex: 1,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerMeta: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
-  footerButton: {
-    flex: 1,
-    borderRadius: 14,
+  footerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  footerIconBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  adminActions: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  actionButton: {
+    margin: 0,
+  },
+  fab: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 16,
+    marginBottom: 20,
+  },
+  filterGroup: {
+    marginBottom: 20,
+  },
+  filterLabel: {
+    marginBottom: 12,
+    letterSpacing: 1,
   },
 });

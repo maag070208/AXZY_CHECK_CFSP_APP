@@ -1,74 +1,195 @@
-import React from 'react';
-import { StyleSheet, View, ViewStyle, TextStyle } from 'react-native';
+import { StyleSheet, ViewStyle, TextStyle, View } from 'react-native';
 import { theme } from '../theme/theme';
 import { ITText } from './ITText';
+import { ITTouchableOpacity } from './ITTouchableOpacity';
 
 interface ITBadgeProps {
   label: string;
-  variant?: 'primary' | 'secondary' | 'error' | 'success' | 'surface';
+  variant?:
+    | 'primary'
+    | 'secondary'
+    | 'error'
+    | 'success'
+    | 'warning'
+    | 'info'
+    | 'default';
   outline?: boolean;
   style?: ViewStyle;
   labelStyle?: TextStyle;
   size?: 'small' | 'medium' | 'large';
+  onPress?: () => void;
+  dot?: boolean; // Nueva prop para indicador de punto
+  icon?: string; // Nueva prop para icono (opcional)
 }
 
 export const ITBadge: React.FC<ITBadgeProps> = ({
   label,
-  variant = 'primary',
+  variant = 'default',
   outline = false,
   style,
   labelStyle,
-  size = 'medium'
+  size = 'medium',
+  onPress,
+  dot = false,
+  icon,
 }) => {
   const getColors = () => {
     switch (variant) {
-      case 'primary': return { bg: theme.colors.primary, text: '#FFFFFF', border: theme.colors.primary };
-      case 'secondary': return { bg: theme.colors.secondaryContainer, text: theme.colors.onSecondaryContainer, border: theme.colors.outlineVariant };
-      case 'error': return { bg: theme.colors.errorContainer, text: theme.colors.onErrorContainer, border: theme.colors.error };
-      case 'success': return { bg: '#E6F4EA', text: '#1E7E34', border: '#1E7E34' };
-      case 'surface': return { bg: theme.colors.surfaceVariant, text: theme.colors.onSurfaceVariant, border: theme.colors.outlineVariant };
-      default: return { bg: theme.colors.surfaceVariant, text: theme.colors.onSurfaceVariant, border: theme.colors.outlineVariant };
+      case 'primary':
+        return {
+          bg: '#EEF2FF',
+          text: theme.colors.primary,
+          border: theme.colors.primary,
+          dot: theme.colors.primary,
+        };
+      case 'secondary':
+        return {
+          bg: '#F1F5F9',
+          text: '#64748B',
+          border: '#64748B',
+          dot: '#64748B',
+        };
+      case 'error':
+        return {
+          bg: '#FEF2F2',
+          text: '#EF4444',
+          border: '#EF4444',
+          dot: '#EF4444',
+        };
+      case 'success':
+        return {
+          bg: '#F0FDF4',
+          text: '#10B981',
+          border: '#10B981',
+          dot: '#10B981',
+        };
+      case 'warning':
+        return {
+          bg: '#FFFBEB',
+          text: '#F59E0B',
+          border: '#F59E0B',
+          dot: '#F59E0B',
+        };
+      case 'info':
+        return {
+          bg: '#EFF6FF',
+          text: '#3B82F6',
+          border: '#3B82F6',
+          dot: '#3B82F6',
+        };
+      default:
+        return {
+          bg: '#F8FAFC',
+          text: '#475569',
+          border: '#CBD5E1',
+          dot: '#94A3B8',
+        };
     }
   };
 
   const colors = getColors();
-  const paddings = {
-    small: { py: 4, px: 8, font: 'labelSmall' as const },
-    medium: { py: 6, px: 12, font: 'labelLarge' as const },
-    large: { py: 10, px: 16, font: 'titleSmall' as const }
+
+  const sizes = {
+    small: {
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      fontSize: 'labelSmall' as const,
+      dotSize: 6,
+      borderRadius: 16,
+    },
+    medium: {
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+      fontSize: 'labelMedium' as const,
+      dotSize: 8,
+      borderRadius: 20,
+    },
+    large: {
+      paddingVertical: 8,
+      paddingHorizontal: 18,
+      fontSize: 'labelLarge' as const,
+      dotSize: 10,
+      borderRadius: 24,
+    },
   };
 
-  const currentPadding = paddings[size];
+  const currentSize = sizes[size];
 
-  return (
-    <View style={[
-      styles.badge,
-      { 
-        backgroundColor: outline ? 'transparent' : colors.bg,
-        borderColor: colors.border,
-        borderWidth: outline ? 1.5 : 0,
-        paddingVertical: currentPadding.py,
-        paddingHorizontal: currentPadding.px,
-      },
-      style
-    ]}>
-      <ITText 
-        variant={currentPadding.font} 
-        weight="bold" 
-        color={outline ? colors.border : colors.text}
-        style={labelStyle}
-      >
-        {label}
-      </ITText>
+  const content = (
+    <View
+      style={[
+        styles.badge,
+        {
+          backgroundColor: outline ? 'transparent' : colors.bg,
+          borderColor: colors.border,
+          borderWidth: outline ? 1 : 0,
+          paddingVertical: currentSize.paddingVertical,
+          paddingHorizontal: currentSize.paddingHorizontal,
+          borderRadius: currentSize.borderRadius,
+        },
+        style,
+      ]}
+    >
+      <View style={styles.contentContainer}>
+        {dot && !icon && (
+          <View
+            style={[
+              styles.dot,
+              {
+                width: currentSize.dotSize,
+                height: currentSize.dotSize,
+                borderRadius: currentSize.dotSize / 2,
+                backgroundColor: colors.dot,
+              },
+            ]}
+          />
+        )}
+        <ITText
+          variant={currentSize.fontSize}
+          weight={outline ? '600' : '500'}
+          color={outline ? colors.border : colors.text}
+          style={[
+            styles.label,
+            labelStyle,
+            (dot || icon) && styles.labelWithIcon,
+          ]}
+        >
+          {label}
+        </ITText>
+      </View>
     </View>
   );
+
+  if (onPress) {
+    return <ITTouchableOpacity onPress={onPress}>{content}</ITTouchableOpacity>;
+  }
+
+  return content;
 };
 
 const styles = StyleSheet.create({
   badge: {
-    borderRadius: 12,
     alignSelf: 'flex-start',
     justifyContent: 'center',
     alignItems: 'center',
-  }
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 0,
+  },
+  contentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: {
+    marginRight: 2,
+  },
+  label: {
+    letterSpacing: -0.2,
+  },
+  labelWithIcon: {
+    marginLeft: 0,
+  },
 });

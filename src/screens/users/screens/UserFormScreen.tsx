@@ -6,21 +6,23 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 import * as Yup from 'yup';
-import { IUser, UserRole } from '../../../core/types/IUser';
 import { showToast } from '../../../core/store/slices/toast.slice';
+import { ITScreenWrapper, ITText } from '../../../shared/components';
+import { getCatalog } from '../../../shared/service/catalog.service';
+import { theme } from '../../../shared/theme/theme';
 import {
   getSchedules,
   ISchedule,
 } from '../../schedules/service/schedules.service';
 import { createUser, updateUser } from '../../users/service/user.service';
-import { getCatalog } from '../../../shared/service/catalog.service';
-import { ITScreenWrapper } from '../../../shared/components';
 import { UserFormStepper } from '../components/UserFormStepper';
-import { theme } from '../../../shared/theme/theme';
+import { CreateUserDTO, IUser, UpdateUserDTO } from '../service/user.types';
+import { ROLE_CLIENT } from '../../../core/constants/constants';
 
 const UserSchema = Yup.object().shape({
   name: Yup.string().required('El nombre es requerido'),
@@ -38,15 +40,6 @@ const UserSchema = Yup.object().shape({
     otherwise: schema => schema.optional(),
   }),
   roleId: Yup.string().required('El rol es requerido'),
-  scheduleId: Yup.string().when('role', {
-    is: (val: string) =>
-      val === UserRole.GUARD ||
-      val === UserRole.SHIFT ||
-      val === UserRole.MAINT,
-    then: schema =>
-      schema.required('El horario es requerido para personal operativo'),
-    otherwise: schema => schema.optional(),
-  }),
 });
 
 export const UserFormScreen = () => {
@@ -73,19 +66,21 @@ export const UserFormScreen = () => {
 
   const handleSubmit = async (values: any) => {
     setSaving(true);
-    // Remove 'role' string before sending to API to avoid confusion, API wants roleId
+    // Remove 'role' string before sending to API to avoid confusion
     const { role, ...payload } = values;
-    
+
     try {
       const res = isEdit
-        ? await updateUser(user.id, payload)
-        : await createUser(payload);
+        ? await updateUser(user.id, payload as UpdateUserDTO)
+        : await createUser(payload as CreateUserDTO);
 
       if (res.success) {
         dispatch(
           showToast({
             type: 'success',
-            message: isEdit ? 'Usuario actualizado' : 'Usuario creado',
+            message: isEdit
+              ? 'Usuario actualizado con éxito'
+              : 'Usuario creado con éxito',
           }),
         );
         navigation.goBack();
@@ -109,12 +104,27 @@ export const UserFormScreen = () => {
   return (
     <ITScreenWrapper
       padding={false}
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[styles.container, { backgroundColor: '#FFFFFF' }]}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
+        <View style={styles.header}>
+          <ITText
+            variant="headlineSmall"
+            weight="bold"
+            color={theme.colors.slate900}
+          >
+            {isEdit ? 'Editar Usuario' : 'Nuevo Usuario'}
+          </ITText>
+          <ITText variant="bodySmall" color={theme.colors.slate500}>
+            {isEdit
+              ? 'Actualiza la información del personal'
+              : 'Registra un nuevo miembro en el sistema'}
+          </ITText>
+        </View>
+
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
@@ -129,18 +139,16 @@ export const UserFormScreen = () => {
               lastName: user?.lastName || '',
               username: user?.username || '',
               password: '',
-              roleId: user?.role?.id || '', // UUID requerido por API
+              roleId: user?.role?.id || '',
               role: user
                 ? typeof user.role === 'object'
                   ? user.role.name
                   : user.role
-                : UserRole.GUARD,
-              scheduleId: user?.schedule?.id || (user as any)?.scheduleId || '',
+                : 'GUARD',
+              scheduleId: user?.schedule?.id || '',
               active: user?.active ?? true,
             }}
             validationSchema={UserSchema}
-            validateOnMount={false}
-            validateOnChange={true}
             onSubmit={handleSubmit}
             enableReinitialize
             context={{ isEdit }}
@@ -148,7 +156,7 @@ export const UserFormScreen = () => {
             {formikProps => (
               <UserFormStepper
                 {...formikProps}
-                roles={roles}
+                roles={roles.filter(r => r.name !== ROLE_CLIENT)}
                 schedules={schedules}
                 saving={saving}
                 onSubmit={formikProps.handleSubmit}
@@ -164,5 +172,10 @@ export const UserFormScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  header: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    backgroundColor: '#FFFFFF',
+  },
   scrollContent: { padding: 0 },
 });

@@ -1,0 +1,111 @@
+=======================================================
+   AXZY CHECK - DESIGN SYSTEM & COMPONENT LIBRARY (APP)
+=======================================================
+Este documento define el estándar visual y arquitectónico de la aplicación móvil AXZY CHECK.
+Todos los desarrolladores e IA deben apegarse a estas directrices para mantener la consistencia.
+
+1. TEMA Y COLORES BASE (theme.ts)
+-------------------------------------------------------
+La aplicación utiliza un tema premium basado en tonos Emerald (Verdes) y Slate (Grisáceos).
+* NO usar colores hardcodeados (hexadecimales directos) en los estilos. Siempre usar `theme.colors.*`.
+
+- Primary: `#065911` (Verde corporativo AXZY). Usado para acciones principales, botones CTA, y branding.
+- Secondary: `#54634d` (Verde atenuado). Usado para elementos secundarios y soporte.
+- Background: `#f8f8f8` (Gris súper claro). Fondo por defecto de todas las pantallas.
+- Surface: `#FBFDF7` o `white`. Fondo para Cards, modales y hojas inferiores.
+- TextPrimary (onSurface): `#1B1B1F` (Casi negro). Para títulos y texto principal.
+- TextSecondary (outline): `#75796C`. Para subtítulos, descripciones y placeholders.
+- Danger / Error: `#BA1A1A` o `#EF4444` (Rojo puro). Acciones destructivas (Borrar) o mensajes de error.
+- Success: `#4ADE80` (Verde claro vibrante). Para indicadores de estado activo o éxito.
+
+
+2. TIPOGRAFÍA (ITText)
+-------------------------------------------------------
+Componente obligatorio para cualquier texto. Extiende de react-native-paper.
+Nunca usar `<Text>` nativo de React Native.
+
+Uso: <ITText variant="titleLarge">Hola</ITText>
+
+Variantes Principales:
+- `display*`: Para números muy grandes o KPIs.
+- `titleLarge` / `titleMedium` / `titleSmall`: Títulos de pantallas, cabeceras de tarjetas o modales.
+- `bodyLarge` / `bodyMedium` / `bodySmall`: Texto normal de lectura y descripciones.
+- `labelLarge` / `labelMedium` / `labelSmall`: Textos de botones, badges y etiquetas pequeñas.
+
+
+3. BOTONES (ITButton, ITTouchableOpacity)
+-------------------------------------------------------
+Nunca usar `<Button>` o `<TouchableOpacity>` nativos directamente si existe una versión IT*.
+
+A. ITButton
+Propósito: Botones principales de formulario y acciones del sistema.
+Modos (`mode`):
+- `contained`: Fondo relleno (Primary). Para acciones principales (Ej: Guardar, Confirmar).
+- `outlined`: Fondo transparente con borde. Para acciones secundarias (Ej: Cancelar, Imprimir QR, Eliminar).
+- `text`: Solo texto. Para enlaces o acciones terciarias.
+- `contained-tonal`: Fondo atenuado. Para flujos repetitivos (Ej: Guardar y Nueva).
+
+B. ITTouchableOpacity
+Propósito: Contenedores interactivos (Cards clickeables, filas de listas, badges de filtro).
+Ventaja: Maneja opacidad estándar y previene múltiples taps rápidos por error.
+
+
+4. ENTRADAS DE DATOS (ITInput, SearchComponent)
+-------------------------------------------------------
+A. ITInput / ITInputNumeric
+- Siempre deben tener un `label`.
+- El borde es sutil y redondeado.
+- Deben recibir la prop `error={true}` si fallan la validación de Zod, seguido de un `<ITText style={{color: error}}>` abajo.
+
+B. SearchComponent
+- Dropdowns o Selectores con búsqueda integrada.
+- Reemplaza a los antiguos Pickers. Usa un modal de pantalla completa para buscar listas largas (Ej: Zonas, Clientes).
+
+
+5. CONTENEDORES Y ESTRUCTURA (ITCard, ITScreenDatatableLayout)
+-------------------------------------------------------
+A. ITCard
+- Tarjetas blancas con `borderRadius: 12`, borde sutil `#E2E8F0` y elevación muy ligera (`elevation: 1`).
+- Usado para envolver métricas o secciones de un formulario.
+
+B. ITScreenDatatableLayout (CRÍTICO)
+- ESQUEMA OBLIGATORIO para pantallas de listado (Catálogos, Registros, Tablas).
+- Propiedades clave:
+  - `showSearchBar`: Muestra barra superior.
+  - `filterBadges`: Fila de `ITBadge` horizontales para filtros rápidos (Todos, Activos, Inactivos).
+  - `loading` y `refreshing`: Maneja automáticamente el renderizado de `Skeleton` loaders (Premium UX) durante 2000ms mínimos para evitar flickering.
+  - `fab`: El botón flotante (+) para crear nuevos registros, siempre debe ir abajo a la derecha.
+
+C. Skeleton Loaders
+- Usamos `react-native-reanimated-skeleton`. 
+- No mostrar `LoaderComponent` (el spinner en medio) para cargas iniciales. El spinner solo se usa para bloqueos de mutación (guardar, borrar).
+
+
+6. BADGES Y ESTADOS (ITBadge)
+-------------------------------------------------------
+- Pastillas redondeadas usadas para mostrar estados, roles o filtros.
+- Variantes comunes:
+  - `primary`: Activo, seleccionado.
+  - `surface` / `gray`: Inactivo, no seleccionado.
+  - `success`: Aprobado, completado.
+  - `error` / `danger`: Rechazado, cancelado.
+
+
+7. ALERTAS Y FEEDBACK (ITAlert, CustomToast)
+-------------------------------------------------------
+A. ITAlert
+- Modal en el centro de la pantalla. Obligatorio para confirmaciones destructivas (Borrar) o acciones críticas.
+- `type="danger"` pinta el botón de confirmación en rojo.
+- Siempre manejar estado de `loading` si la API tarda.
+
+B. CustomToast (Redux showToast)
+- Notificaciones efímeras estilo snackbar que bajan desde arriba.
+- `type`: 'success' | 'error' | 'info'.
+- Obligatorio para dar respuesta tras CUALQUIER llamada a la API (mutate).
+
+
+8. REGLAS DE ARQUITECTURA GENERAL
+-------------------------------------------------------
+1. Tipado Fuerte (Zod + TypeScript): Nunca usar `any`. Mapear las respuestas exactas de la API (TResult).
+2. Seguridad de Modal: Si un modal (ITAlert) se abre después de cerrar otro (FormModal), debe existir un `setTimeout` de ~600ms para evitar colisión de animaciones nativas en iOS/Android.
+3. Consistencia: Los márgenes estándar (padding) en pantallas completas son `16` o `20`. Separaciones entre inputs son de `16`. Bordes de modales o cards son de `12` o `16`.

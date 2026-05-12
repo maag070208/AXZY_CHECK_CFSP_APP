@@ -7,6 +7,7 @@ import React, { useCallback, useState } from 'react';
 import {
   Dimensions,
   FlatList,
+  Modal,
   RefreshControl,
   StatusBar,
   StyleSheet,
@@ -31,7 +32,14 @@ import {
   startRound,
 } from '../../home/service/round.service';
 import { getRecurringByGuard } from '../service/recurring.service';
-import { ITText, ITButton, ITCard, ITScreenWrapper } from '../../../shared/components';
+import {
+  ITText,
+  ITButton,
+  ITCard,
+  ITScreenWrapper,
+  ITAlert,
+  LoaderComponent,
+} from '../../../shared/components';
 
 const { width } = Dimensions.get('window');
 
@@ -56,7 +64,7 @@ export const GuardDashboard = () => {
     visible: boolean;
     title: string;
     message: string;
-    type: 'error' | 'success' | 'warning' | 'info';
+    type: 'alert' | 'check' | 'warning' | 'info';
     onConfirm?: () => void;
   }>({
     visible: false,
@@ -72,7 +80,10 @@ export const GuardDashboard = () => {
     setLoading(true);
     try {
       const [recurringRes, roundRes, activeRoundsRes] = await Promise.all([
-        getRecurringByGuard(user.id).catch(() => ({ success: false, data: [] })),
+        getRecurringByGuard(user.id).catch(() => ({
+          success: false,
+          data: [],
+        })),
         getCurrentRound().catch(() => ({ success: false, data: null })),
         getActiveRounds().catch(() => ({ success: false, data: [] })),
       ]);
@@ -126,7 +137,9 @@ export const GuardDashboard = () => {
       if (res.success) {
         setActiveRound(res.data);
         loadData();
-        dispatch(showToast({ message: 'Ronda iniciada con éxito', type: 'success' }));
+        dispatch(
+          showToast({ message: 'Ronda iniciada con éxito', type: 'success' }),
+        );
       }
     } catch (e) {
       dispatch(showToast({ message: 'Error al iniciar ronda', type: 'error' }));
@@ -185,8 +198,8 @@ export const GuardDashboard = () => {
         (rl: any) => ({ ...rl.location, tasks: rl.tasks }),
       );
     const foundLocation = locations?.find(
-      (l: any) => 
-        (scannedName && l.name.toUpperCase() === scannedName.toUpperCase()) || 
+      (l: any) =>
+        (scannedName && l.name.toUpperCase() === scannedName.toUpperCase()) ||
         (scannedId && String(l.id) === String(scannedId)),
     );
 
@@ -252,9 +265,13 @@ export const GuardDashboard = () => {
           ]}
         />
         <View style={styles.locMainInfo}>
-          <ITText variant="bodyMedium" weight="bold">{item.name}</ITText>
+          <ITText variant="bodyMedium" weight="bold">
+            {item.name}
+          </ITText>
           <ITText variant="bodySmall" style={{ opacity: 0.6 }}>
-            {isCompleted ? 'Verificado' : `${item.tasks?.length || 0} tareas pendientes`}
+            {isCompleted
+              ? 'Verificado'
+              : `${item.tasks?.length || 0} tareas pendientes`}
           </ITText>
         </View>
         <Icon
@@ -267,21 +284,26 @@ export const GuardDashboard = () => {
   };
 
   return (
-    <ITScreenWrapper 
-      scrollable={false} 
-      padding={false} 
-      style={styles.container}
+    <ITScreenWrapper
+      scrollable={false}
+      padding={false}
+      style={[styles.container, { paddingTop: 10 }]}
       edges={['left', 'right']}
     >
+      <LoaderComponent visible={loading} />
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-      {/* Header / Cámara */}
       <View
         style={[
           styles.headerContainer,
-          isMyRound && cameraActive ? { height: '40%' } : { height: '25%' },
+          isMyRound && cameraActive ? { height: '45%' } : { height: '25%' },
         ]}
       >
+        {/* Decorative Background QR */}
+        <View style={styles.bgIconWrapper}>
+          <Icon source="qrcode" size={280} color="rgba(255,255,255,0.04)" />
+        </View>
+
         {!isMyRound ? (
           <View style={styles.lockedCamera}>
             <Surface style={styles.lockCircle} elevation={0}>
@@ -306,12 +328,17 @@ export const GuardDashboard = () => {
                 color={theme.colors.primary}
               />
             </Surface>
-            <ITText variant="labelLarge" weight="bold" color="#FFF" style={{ letterSpacing: 1 }}>
+            <ITText
+              variant="labelLarge"
+              weight="bold"
+              color="#FFF"
+              style={{ letterSpacing: 1 }}
+            >
               TOCA PARA ESCANEAR CÓDIGO
             </ITText>
           </TouchableOpacity>
         ) : (
-          <View style={StyleSheet.absoluteFill}>
+          <View style={[StyleSheet.absoluteFill]}>
             {isFocused && device && (
               <Camera
                 style={StyleSheet.absoluteFill}
@@ -324,7 +351,6 @@ export const GuardDashboard = () => {
               <View style={styles.targetFrame} />
               <ITButton
                 mode="text"
-                color="#FFF"
                 label="Cancelar"
                 onPress={() => setCameraActive(false)}
                 style={styles.closeCamBtn}
@@ -340,11 +366,23 @@ export const GuardDashboard = () => {
 
         <View style={styles.actionSection}>
           <ITButton
-            label={isRoundActive ? (isMyRound ? 'FINALIZAR RUTA' : 'RONDA EN CURSO') : 'INICIAR RUTA'}
+            label={
+              isRoundActive
+                ? isMyRound
+                  ? 'FINALIZAR RUTA'
+                  : 'RONDA EN CURSO'
+                : 'INICIAR RUTA'
+            }
             onPress={handleToggleRound}
             loading={roundLoading}
             icon={isRoundActive ? 'stop-circle' : 'play'}
-            color={isRoundActive ? (isMyRound ? COLORS.red : '#94A3B8') : theme.colors.primary}
+            color={
+              isRoundActive
+                ? isMyRound
+                  ? COLORS.red
+                  : '#94A3B8'
+                : theme.colors.primary
+            }
             style={styles.mainActionBtn}
           />
 
@@ -367,26 +405,46 @@ export const GuardDashboard = () => {
                 label="Mantenimiento"
                 color={COLORS.orange}
                 bg="#FFFBEB"
-                onPress={() => navigation.navigate('MAINTENANCE_REPORT', { roundId: activeRound?.id })}
+                onPress={() =>
+                  navigation.navigate('MAINTENANCE_REPORT', {
+                    roundId: activeRound?.id,
+                  })
+                }
               />
             )}
           </View>
         </View>
 
         <FlatList
-          data={isMyRound ? clients.filter(c => c.id === activeRound.recurringConfigurationId) : clients}
+          data={
+            isMyRound
+              ? clients.filter(
+                  c => c.id === activeRound.recurringConfigurationId,
+                )
+              : clients
+          }
           keyExtractor={item => String(item.id)}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <ITText variant="labelSmall" weight="bold" style={styles.sectionTitle}>
+            <ITText
+              variant="labelSmall"
+              weight="bold"
+              style={styles.sectionTitle}
+            >
               {isMyRound ? 'RUTA ACTUAL EN PROCESO' : 'RUTAS ASIGNADAS'}
             </ITText>
           }
-          renderItem={({ item }) => (
-            <ITCard style={styles.routeCard} mode="contained">
+          renderItem={({ item, index }) => (
+            <ITCard style={styles.routeCard} mode="contained" key={index}>
               <View style={styles.routeHeader}>
-                <Icon source="map-marker-distance" size={20} color={theme.colors.primary} />
-                <ITText variant="titleMedium" weight="bold" style={{ flex: 1 }}>{item.title}</ITText>
+                <Icon
+                  source="map-marker-distance"
+                  size={20}
+                  color={theme.colors.primary}
+                />
+                <ITText variant="titleMedium" weight="bold" style={{ flex: 1 }}>
+                  {item.title}
+                </ITText>
                 <View style={styles.ptsBadge}>
                   <ITText variant="labelSmall" weight="bold" color="#475569">
                     {item.recurringLocations?.length || 0} pts
@@ -397,7 +455,9 @@ export const GuardDashboard = () => {
               {isMyRound && (
                 <View style={styles.locationList}>
                   {(item.recurringLocations || []).map((rl: any) =>
-                    renderLocationItem({ item: { ...rl.location, tasks: rl.tasks } }),
+                    renderLocationItem({
+                      item: { ...rl.location, tasks: rl.tasks },
+                    }),
                   )}
                 </View>
               )}
@@ -406,76 +466,194 @@ export const GuardDashboard = () => {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Icon source="clipboard-text-outline" size={48} color="#E2E8F0" />
-              <ITText variant="bodyMedium" color="#94A3B8">No hay rutas programadas</ITText>
+              <ITText variant="bodyMedium" color="#94A3B8">
+                No hay rutas programadas
+              </ITText>
             </View>
           }
           contentContainerStyle={{ paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} />}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={loadData} />
+          }
         />
       </View>
 
       {/* Diálogos / Modales */}
       <Portal>
-        <Modal visible={routeSelectionVisible} onDismiss={() => setRouteSelectionVisible(false)} contentContainerStyle={styles.modalBase}>
-          <ITText variant="headlineSmall" weight="bold" center style={{ marginBottom: 16 }}>Seleccionar Ruta</ITText>
+        <Modal
+          visible={routeSelectionVisible}
+          onDismiss={() => setRouteSelectionVisible(false)}
+          contentContainerStyle={styles.modalBase}
+        >
+          <ITText
+            variant="headlineSmall"
+            weight="bold"
+            center
+            style={{ marginBottom: 16 }}
+          >
+            Seleccionar Ruta
+          </ITText>
           {clients.map(item => (
-            <TouchableOpacity key={item.id} style={styles.modalOption} onPress={() => onStartRoundConfirmed(item.id)}>
-              <Icon source="arrow-right-circle" size={24} color={theme.colors.primary} />
-              <ITText variant="bodyLarge" weight="bold">{item.title}</ITText>
+            <TouchableOpacity
+              key={item.id}
+              style={styles.modalOption}
+              onPress={() => onStartRoundConfirmed(item.id)}
+            >
+              <Icon
+                source="arrow-right-circle"
+                size={24}
+                color={theme.colors.primary}
+              />
+              <ITText variant="bodyLarge" weight="bold">
+                {item.title}
+              </ITText>
             </TouchableOpacity>
           ))}
         </Modal>
 
-        <Modal visible={endRoundVisible} onDismiss={() => setEndRoundVisible(false)} contentContainerStyle={styles.modalBase}>
-          <ITText variant="headlineSmall" weight="bold" center style={{ marginBottom: 8 }}>¿Finalizar Ruta?</ITText>
-          <ITText variant="bodyMedium" center style={{ marginBottom: 24, opacity: 0.7 }}>
-            Asegúrate de haber verificado todos los puntos antes de concluir.
-          </ITText>
-          <View style={styles.modalActions}>
-            <ITButton mode="outlined" label="Cancelar" onPress={() => setEndRoundVisible(false)} style={{ flex: 1 }} />
-            <ITButton label="Sí, terminar" color={COLORS.red} onPress={onEndRoundConfirmed} style={{ flex: 1 }} />
-          </View>
-        </Modal>
-
-        <Modal visible={alertConfig.visible} onDismiss={() => setAlertConfig({ ...alertConfig, visible: false })} contentContainerStyle={styles.modalBase}>
-          <ITText variant="headlineSmall" weight="bold" center style={{ marginBottom: 8 }}>{alertConfig.title}</ITText>
-          <ITText variant="bodyMedium" center style={{ marginBottom: 24, opacity: 0.7 }}>{alertConfig.message}</ITText>
-          <ITButton label="Entendido" onPress={() => { setAlertConfig({ ...alertConfig, visible: false }); alertConfig.onConfirm?.(); }} />
-        </Modal>
+        <ITAlert
+          visible={endRoundVisible}
+          onDismiss={() => setEndRoundVisible(false)}
+          onConfirm={onEndRoundConfirmed}
+          title="¿Finalizar Ruta?"
+          description="Asegúrate de haber verificado todos los puntos antes de concluir."
+          confirmLabel="Sí, terminar"
+          cancelLabel="Cancelar"
+          type="warning"
+        />
+        <ITAlert
+          visible={alertConfig.visible}
+          onDismiss={() => setAlertConfig({ ...alertConfig, visible: false })}
+          onConfirm={() => {
+            setAlertConfig({ ...alertConfig, visible: false });
+            alertConfig.onConfirm?.();
+          }}
+          title={alertConfig.title}
+          description={alertConfig.message}
+          type={alertConfig.type}
+          confirmLabel="Entendido"
+        />
       </Portal>
     </ITScreenWrapper>
   );
 };
 
 const QuickAction = ({ icon, label, color, bg, onPress }: any) => (
-  <TouchableOpacity style={[styles.quickBtn, { backgroundColor: bg }]} onPress={onPress}>
+  <TouchableOpacity
+    style={[styles.quickBtn, { backgroundColor: bg }]}
+    onPress={onPress}
+  >
     <Icon source={icon} size={22} color={color} />
-    <ITText variant="labelMedium" weight="bold" style={{ color }}>{label}</ITText>
+    <ITText variant="labelMedium" weight="bold" style={{ color }}>
+      {label}
+    </ITText>
   </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  headerContainer: { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  headerContainer: {
+    backgroundColor: '#000',
+    borderRadius: 32,
+    marginHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  bgIconWrapper: {
+    position: 'absolute',
+    opacity: 0.4,
+    transform: [{ rotate: '-15deg' }],
+    right: -40,
+    bottom: -40,
+  },
   lockedCamera: { alignItems: 'center', opacity: 0.6, padding: 20 },
-  lockCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#1A1A1A', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  lockCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   activateCameraBtn: { alignItems: 'center' },
-  cameraIconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  scanOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
-  targetFrame: { width: 240, height: 240, borderWidth: 2, borderColor: '#FFF', borderRadius: 32, backgroundColor: 'transparent' },
+  cameraIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  scanOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  targetFrame: {
+    width: 200,
+    height: 200,
+    borderWidth: 2,
+    borderColor: '#FFF',
+    borderRadius: 40,
+    backgroundColor: 'transparent',
+  },
   closeCamBtn: { position: 'absolute', bottom: 30 },
-  contentSheet: { flex: 1, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 20 },
-  dragIndicator: { width: 40, height: 5, backgroundColor: '#E2E8F0', borderRadius: 3, alignSelf: 'center', marginVertical: 14 },
+  contentSheet: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 20,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginVertical: 14,
+  },
   actionSection: { marginBottom: 20 },
   mainActionBtn: { borderRadius: 16, height: 56, justifyContent: 'center' },
   secondaryActions: { flexDirection: 'row', gap: 12, marginTop: 14 },
-  quickBtn: { flex: 1, height: 54, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  sectionTitle: { color: '#94A3B8', marginBottom: 14, letterSpacing: 1, textTransform: 'uppercase' },
+  quickBtn: {
+    flex: 1,
+    height: 54,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  sectionTitle: {
+    color: '#94A3B8',
+    marginBottom: 14,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
   routeCard: { borderRadius: 24, padding: 16, marginBottom: 16 },
   routeHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  ptsBadge: { backgroundColor: '#E2E8F0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  ptsBadge: {
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
   locationList: { marginTop: 18, gap: 10 },
-  locCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 14, borderRadius: 16, gap: 14, borderWidth: 1, borderColor: '#F1F5F9' },
+  locCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 14,
+    borderRadius: 16,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
   completedCard: { opacity: 0.5, backgroundColor: '#F8FAFC' },
   statusIndicator: { width: 4, height: 28, borderRadius: 2 },
   bgPending: { backgroundColor: '#CBD5E1' },
@@ -483,7 +661,20 @@ const styles = StyleSheet.create({
   bgSuccess: { backgroundColor: COLORS.emerald },
   locMainInfo: { flex: 1 },
   emptyContainer: { alignItems: 'center', padding: 50 },
-  modalBase: { backgroundColor: '#fff', margin: 24, borderRadius: 28, padding: 28 },
-  modalOption: { flexDirection: 'row', alignItems: 'center', padding: 18, backgroundColor: '#F8FAFC', borderRadius: 16, marginBottom: 10, gap: 14 },
+  modalBase: {
+    backgroundColor: '#fff',
+    margin: 24,
+    borderRadius: 28,
+    padding: 28,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 18,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    marginBottom: 10,
+    gap: 14,
+  },
   modalActions: { flexDirection: 'row', gap: 12 },
 });

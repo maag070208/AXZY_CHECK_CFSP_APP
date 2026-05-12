@@ -39,7 +39,8 @@ const CameraComponent = ({
   onCancel,
 }: CameraComponentProps) => {
   const cameraRef = useRef<Camera>(null);
-  const [cameraPermission, setCameraPermission] = useState<CameraPermissionStatus>('not-determined');
+  const [cameraPermission, setCameraPermission] =
+    useState<CameraPermissionStatus>('not-determined');
   const [isActive, setIsActive] = useState(true);
   const [photo, setPhoto] = useState<PhotoFile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +48,7 @@ const CameraComponent = ({
 
   const codeScanner = useCodeScanner({
     codeTypes: ['qr', 'ean-13', 'ean-8', 'code-128', 'code-39'],
-    onCodeScanned: (codes) => {
+    onCodeScanned: codes => {
       if (mode === 'scan' && onCodeScanned) onCodeScanned(codes);
     },
   });
@@ -60,10 +61,7 @@ const CameraComponent = ({
 
   // --- UI COMPONENTS ---
 
-  const TechnicalInfo = () => (
-    <View style={styles.techOverlay}>
-    </View>
-  );
+  const TechnicalInfo = () => <View style={styles.techOverlay}></View>;
 
   const Leveler = () => (
     <View style={styles.levelerContainer}>
@@ -100,26 +98,40 @@ const CameraComponent = ({
         <View style={styles.previewHeader}>
           <Text style={styles.previewTag}>CAPTURADO EXITOSAMENTE</Text>
           <Text variant="headlineSmall" style={styles.darkTitle}>
-              Validar que la imagen sea clara y legible
-            </Text>
+            Validar que la imagen sea clara y legible
+          </Text>
         </View>
 
         <View style={styles.imageCard}>
-          <Image source={{ uri: `file://${photo.path}` }} style={styles.previewImage} />
+          <Image
+            source={{ uri: `file://${photo.path}` }}
+            style={styles.previewImage}
+          />
           <View style={styles.metaDataBadge}>
-            <Text style={styles.metaText}>{photo.width}x{photo.height} PX</Text>
+            <Text style={styles.metaText}>
+              {photo.width}x{photo.height} PX
+            </Text>
             <Text style={styles.metaText}> • </Text>
             <Text style={styles.metaText}>IMAGE/JPG</Text>
           </View>
         </View>
 
         <View style={styles.previewActions}>
-          <TouchableOpacity style={styles.secondaryCircleButton} onPress={() => setPhoto(null)}>
-            <IconButton icon="camera-retake-outline" iconColor="#666" size={24} />
+          <TouchableOpacity
+            style={styles.secondaryCircleButton}
+            onPress={() => setPhoto(null)}
+          >
+            <IconButton
+              icon="camera-retake-outline"
+              iconColor="#666"
+              size={24}
+            />
           </TouchableOpacity>
-          <Button 
-            mode="contained" 
-            onPress={() => onPhotoTaken?.({ uri: `file://${photo.path}`, path: photo.path })} 
+          <Button
+            mode="contained"
+            onPress={() =>
+              onPhotoTaken?.({ uri: `file://${photo.path}`, path: photo.path })
+            }
             style={styles.mainButton}
             contentStyle={styles.buttonContent}
           >
@@ -132,8 +144,12 @@ const CameraComponent = ({
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
+
       {device && (
         <Camera
           ref={cameraRef}
@@ -149,16 +165,21 @@ const CameraComponent = ({
       {/* Capa técnica superior */}
       <View style={styles.topContainer}>
         <View style={styles.headerRow}>
-          <IconButton icon="close" iconColor="white" onPress={onCancel} style={styles.blurButton} />
+          <IconButton
+            icon="close"
+            iconColor="white"
+            onPress={onCancel}
+            style={styles.blurButton}
+          />
           <View style={styles.statusBadge}>
             <View style={styles.pulse} />
             <Text style={styles.statusText}>SISTEMA LISTO</Text>
           </View>
-          <IconButton 
-            icon={flash === 'on' ? 'flash' : 'flash-off'} 
-            iconColor="white" 
-            onPress={() => setFlash(f => f === 'off' ? 'on' : 'off')} 
-            style={styles.blurButton} 
+          <IconButton
+            icon={flash === 'on' ? 'flash' : 'flash-off'}
+            iconColor="white"
+            onPress={() => setFlash(f => (f === 'off' ? 'on' : 'off'))}
+            style={styles.blurButton}
           />
         </View>
         <TechnicalInfo />
@@ -169,29 +190,32 @@ const CameraComponent = ({
         <Leveler />
         {mode === 'scan' && (
           <View style={styles.scannerGuide}>
-             <View style={styles.scannerLine} />
+            <View style={styles.scannerLine} />
           </View>
         )}
       </View>
 
       {/* Controles inferiores */}
       <View style={styles.bottomContainer}>
-        
         <View style={styles.captureRow}>
           <View style={styles.sideControl}>
-             <IconButton icon="image-outline" iconColor="white" />
+            <IconButton icon="image-outline" iconColor="white" />
           </View>
-          
-          <TouchableOpacity activeOpacity={0.9} onPress={takePicture} disabled={isLoading}>
+
+          <TouchableOpacity onPress={takePicture} disabled={isLoading}>
             <View style={styles.outerRing}>
               <View style={styles.innerCircle}>
-                {isLoading ? <ActivityIndicator color={PRIMARY_COLOR} /> : <View style={styles.dot} />}
+                {isLoading ? (
+                  <ActivityIndicator color={PRIMARY_COLOR} />
+                ) : (
+                  <View style={styles.dot} />
+                )}
               </View>
             </View>
           </TouchableOpacity>
 
           <View style={styles.sideControl}>
-             <IconButton icon="dots-vertical" iconColor="white" />
+            <IconButton icon="dots-vertical" iconColor="white" />
           </View>
         </View>
       </View>
@@ -202,12 +226,21 @@ const CameraComponent = ({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   whiteContainer: { flex: 1, backgroundColor: '#fff', padding: 24 },
-  
+
   // Elementos Técnicos (Overlays)
-  topContainer: { position: 'absolute', top: 50, width: '100%', paddingHorizontal: 20 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  topContainer: {
+    position: 'absolute',
+    top: 50,
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   blurButton: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12 },
-  
+
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -218,19 +251,54 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.3)',
   },
-  statusText: { color: 'white', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  pulse: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4CAF50', marginRight: 8 },
+  statusText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  pulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4CAF50',
+    marginRight: 8,
+  },
 
   techOverlay: { marginTop: 15, alignItems: 'center' },
   techRow: { flexDirection: 'row', gap: 15 },
-  techText: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600', letterSpacing: 1 },
-  techSeparator: { height: 1, width: 40, backgroundColor: 'rgba(255,255,255,0.3)', marginVertical: 4 },
+  techText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  techSeparator: {
+    height: 1,
+    width: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginVertical: 4,
+  },
   techTextSmall: { color: PRIMARY_COLOR, fontSize: 9, fontWeight: 'bold' },
 
-  centerOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
-  levelerContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, opacity: 0.4 },
+  centerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  levelerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    opacity: 0.4,
+  },
   levelerLine: { width: 40, height: 1, backgroundColor: 'white' },
-  levelerCenter: { width: 4, height: 4, borderRadius: 2, backgroundColor: PRIMARY_COLOR },
+  levelerCenter: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: PRIMARY_COLOR,
+  },
 
   scannerGuide: {
     width: screenWidth * 0.7,
@@ -238,17 +306,36 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.3)',
     borderRadius: 8,
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
-  scannerLine: { height: 2, backgroundColor: PRIMARY_COLOR, width: '100%', opacity: 0.5 },
+  scannerLine: {
+    height: 2,
+    backgroundColor: PRIMARY_COLOR,
+    width: '100%',
+    opacity: 0.5,
+  },
 
   // Controles
   bottomContainer: { position: 'absolute', bottom: 40, width: '100%' },
-  resolutionInfo: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 40, marginBottom: 20 },
+  resolutionInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 40,
+    marginBottom: 20,
+  },
   resText: { color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 'bold' },
-  
-  captureRow: { flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center' },
-  sideControl: { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
+
+  captureRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+  },
+  sideControl: {
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   outerRing: {
     width: 84,
     height: 84,
@@ -268,9 +355,20 @@ const styles = StyleSheet.create({
 
   // Preview Professional
   previewHeader: { marginTop: 40, marginBottom: 20 },
-  previewTag: { color: PRIMARY_COLOR, fontSize: 14, fontWeight: '700', letterSpacing: 2 },
+  previewTag: {
+    color: PRIMARY_COLOR,
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 2,
+  },
   darkTitle: { color: '#1a1a1a', fontWeight: '400', fontSize: 14 },
-  imageCard: { flex: 1, borderRadius: 16, overflow: 'hidden', elevation: 10, backgroundColor: '#000' },
+  imageCard: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 10,
+    backgroundColor: '#000',
+  },
   previewImage: { flex: 1, opacity: 0.95 },
   metaDataBadge: {
     position: 'absolute',
@@ -283,10 +381,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   metaText: { color: 'white', fontSize: 11, fontWeight: '600' },
-  previewActions: { flexDirection: 'row', marginTop: 24, gap: 15, alignItems: 'center' },
+  previewActions: {
+    flexDirection: 'row',
+    marginTop: 24,
+    gap: 15,
+    alignItems: 'center',
+  },
   mainButton: { flex: 1, backgroundColor: PRIMARY_COLOR, borderRadius: 14 },
   buttonContent: { height: 56 },
-  secondaryCircleButton: { width: 56, height: 56, borderRadius: 14, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center' },
+  secondaryCircleButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
 
 export default CameraComponent;

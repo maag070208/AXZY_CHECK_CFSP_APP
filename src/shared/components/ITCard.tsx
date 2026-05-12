@@ -1,6 +1,6 @@
-import React from 'react';
 import { StyleSheet, ViewStyle } from 'react-native';
-import { Card, Text, useTheme } from 'react-native-paper';
+import { Card, useTheme } from 'react-native-paper';
+import { ITTouchableOpacity } from './ITTouchableOpacity';
 
 interface ITCardProps {
   title?: string;
@@ -29,9 +29,8 @@ export const ITCard: React.FC<ITCardProps> = ({
 }) => {
   const theme = useTheme();
 
-  return (
+  const cardContent = (
     <Card
-      onPress={onPress}
       style={[{ backgroundColor: theme.colors.surface }, styles.card, style]}
       elevation={elevation}
       mode={mode}
@@ -51,6 +50,14 @@ export const ITCard: React.FC<ITCardProps> = ({
       </Card.Content>
     </Card>
   );
+
+  if (onPress) {
+    return (
+      <ITTouchableOpacity onPress={onPress}>{cardContent}</ITTouchableOpacity>
+    );
+  }
+
+  return cardContent;
 };
 
 const styles = StyleSheet.create({

@@ -9,18 +9,14 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import {
-  Button,
-  HelperText,
-  IconButton,
-  Text,
-  TextInput,
-} from 'react-native-paper';
+import { IconButton, Icon } from 'react-native-paper';
 import * as Yup from 'yup';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
 import { getClients } from '../../clients/service/client.service';
 import { getPaginatedZones } from '../../zones/service/zone.service';
 import { ILocation, ILocationCreate } from '../type/location.types';
+import { ITButton, ITInput, ITText, ITCard } from '../../../shared/components';
+import { theme } from '../../../shared/theme/theme';
 
 interface Props {
   visible: boolean;
@@ -88,221 +84,214 @@ export const LocationFormModal = ({
     >
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <View>
-            <Text variant="headlineSmall" style={styles.title}>
-              {initialData ? 'Editar Ubicación' : 'Nueva Ubicación'}
-            </Text>
-            <Text variant="bodySmall" style={styles.subtitle}>
-              Sincronizado con el catálogo de clientes y zonas
-            </Text>
+          <View style={styles.headerInfo}>
+            <ITText variant="headlineSmall" weight="800" style={styles.title}>
+              {initialData ? 'Editar Ubicación' : 'Nuevo Punto'}
+            </ITText>
+            <ITText variant="bodySmall" color={theme.colors.slate500}>
+              Configuración de punto de control
+            </ITText>
           </View>
-          <IconButton icon="close" onPress={onDismiss} disabled={loading} />
+          <IconButton
+            icon="close"
+            onPress={onDismiss}
+            disabled={loading}
+            containerColor="#F1F5F9"
+            iconColor={theme.colors.slate500}
+          />
         </View>
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
-          <ScrollView
-            bounces={false}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.scrollContent}
+          <Formik
+            initialValues={initialValues}
+            enableReinitialize
+            validationSchema={validationSchema}
+            onSubmit={() => {}}
           >
-            <Formik
-              initialValues={initialValues}
-              enableReinitialize
-              validationSchema={validationSchema}
-              onSubmit={() => {}} // Not used as we use custom buttons
-            >
-              {({
-                handleChange,
-                handleBlur,
-                setFieldValue,
-                values,
-                errors,
-                touched,
-              }) => {
-                useEffect(() => {
-                  if (values.clientId) loadZones(values.clientId);
-                }, [values.clientId]);
+            {({
+              handleChange,
+              handleBlur,
+              setFieldValue,
+              values,
+              errors,
+              touched,
+              isValid,
+            }) => {
+              useEffect(() => {
+                if (values.clientId) loadZones(values.clientId);
+              }, [values.clientId]);
 
-                const handleSaveAndNew = async () => {
-                  const selectedClient = clients.find(c => String(c.id) === String(values.clientId));
-                  const selectedZone = zones.find(z => String(z.id) === String(values.zoneId));
-                  
-                  const clientName = selectedClient?.name || 'S/C';
-                  const zoneName = selectedZone?.name || 'S/Z';
-                  const prefix = `${clientName}-${zoneName}-`;
-                  
-                  let finalName = values.name;
-                  if (!finalName.startsWith(prefix)) {
-                    finalName = `${prefix}${finalName}`;
-                  }
+              const handleSaveAndNew = async () => {
+                const success = await onSubmit(values, true);
+                if (success) {
+                  setShowSuccess(true);
+                  setFieldValue('name', '');
+                  setTimeout(() => {
+                    setShowSuccess(false);
+                    nameInputRef.current?.focus();
+                  }, 1000);
+                }
+              };
 
-                  const success = await onSubmit({ ...values, name: finalName }, true);
-                  if (success) {
-                    setShowSuccess(true);
-                    setFieldValue('name', '');
-                    setTimeout(() => {
-                      setShowSuccess(false);
-                      nameInputRef.current?.focus();
-                    }, 1000);
-                  }
-                };
+              const handleNormalSubmit = async () => {
+                const success = await onSubmit(values, false);
+                if (success) {
+                  onDismiss();
+                }
+              };
 
-                const handleNormalSubmit = async () => {
-                  const selectedClient = clients.find(c => String(c.id) === String(values.clientId));
-                  const selectedZone = zones.find(z => String(z.id) === String(values.zoneId));
-                  
-                  const clientName = selectedClient?.name || 'S/C';
-                  const zoneName = selectedZone?.name || 'S/Z';
-                  const prefix = `${clientName}-${zoneName}-`;
-                  
-                  let finalName = values.name;
-                  if (!finalName.startsWith(prefix)) {
-                    finalName = `${prefix}${finalName}`;
-                  }
-
-                  const success = await onSubmit({ ...values, name: finalName }, false);
-                  if (success) {
-                    onDismiss();
-                  }
-                };
-
-                return (
-                  <View style={styles.formContent}>
-                    {showSuccess && (
-                      <View style={styles.successBanner}>
-                        <IconButton
-                          icon="check-circle"
-                          iconColor="#059669"
-                          size={20}
-                          style={{ margin: 0 }}
-                        />
-                        <Text style={styles.successText}>
-                          ¡Ubicación creada!
-                        </Text>
-                      </View>
-                    )}
-                    <View
-                      style={[
-                        styles.inputContainer,
-                        loading && { opacity: 0.6 },
-                      ]}
-                      pointerEvents={loading ? 'none' : 'auto'}
-                    >
-                      <SearchComponent
-                        label="CLIENTE *"
-                        placeholder="Selecciona un cliente"
-                        options={clients.map(c => ({
-                          label: c.name,
-                          value: c.id,
-                        }))}
-                        value={values.clientId}
-                        onSelect={val => {
-                          setFieldValue('clientId', val);
-                          setFieldValue('zoneId', '');
-                        }}
-                        error={touched.clientId && errors.clientId}
-                        disabled={!!initialData || loading}
-                      />
-                    </View>
-
-                    <View
-                      style={[
-                        styles.inputContainer,
-                        loading && { opacity: 0.6 },
-                      ]}
-                      pointerEvents={loading ? 'none' : 'auto'}
-                    >
-                      <SearchComponent
-                        label="RECURRENTE (ZONA) *"
-                        placeholder={
-                          values.clientId
-                            ? 'Selecciona una zona'
-                            : 'Primero selecciona un cliente'
-                        }
-                        disabled={
-                          !!initialData ||
-                          !values.clientId ||
-                          loadingZones ||
-                          loading
-                        }
-                        options={zones.map(z => ({
-                          label: z.name,
-                          value: z.id,
-                        }))}
-                        value={values.zoneId}
-                        onSelect={val => setFieldValue('zoneId', val)}
-                        error={touched.zoneId && errors.zoneId}
-                        helperText={
-                          loadingZones ? 'Cargando zonas...' : undefined
-                        }
-                      />
-                    </View>
-
-                    <View
-                      style={[
-                        styles.inputContainer,
-                        loading && { opacity: 0.6 },
-                      ]}
-                      pointerEvents={loading ? 'none' : 'auto'}
-                    >
-                      <Text style={styles.label}>NOMBRE UBICACIÓN *</Text>
-                      <TextInput
-                        ref={nameInputRef}
-                        mode="outlined"
-                        placeholder="Ej: Recepción, Oficina 101"
-                        value={values.name}
-                        onChangeText={handleChange('name')}
-                        onBlur={handleBlur('name')}
-                        error={touched.name && !!errors.name}
-                        style={styles.input}
-                        outlineStyle={styles.inputOutline}
-                        disabled={loading}
-                      />
-                      {touched.name && errors.name && (
-                        <HelperText type="error" visible={true}>
-                          {errors.name}
-                        </HelperText>
+              return (
+                <View style={{ flex: 1 }}>
+                  <ScrollView
+                    bounces={false}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={styles.scrollContent}
+                  >
+                    <View style={styles.formContent}>
+                      {showSuccess && (
+                        <ITCard style={styles.successBanner}>
+                          <Icon
+                            source="check-circle"
+                            color="#059669"
+                            size={20}
+                          />
+                          <ITText
+                            variant="bodySmall"
+                            weight="700"
+                            style={{ color: '#065F46', marginLeft: 8 }}
+                          >
+                            ¡Punto creado! Puedes agregar otro.
+                          </ITText>
+                        </ITCard>
                       )}
-                    </View>
 
-                    <View style={styles.actions}>
-                      {!initialData && (
-                        <Button
-                          mode="outlined"
-                          onPress={handleSaveAndNew}
-                          style={styles.button}
-                          loading={loading}
-                          disabled={
-                            loading ||
-                            !values.name ||
-                            !values.clientId ||
-                            !values.zoneId
-                          }
-                          textColor="#059669"
+                      <View style={styles.section}>
+                        <ITText
+                          variant="labelSmall"
+                          weight="bold"
+                          color={theme.colors.slate500}
+                          style={styles.sectionLabel}
                         >
-                          Guardar y Nueva
-                        </Button>
-                      )}
-                      <Button
-                        mode="contained"
-                        onPress={handleNormalSubmit}
-                        loading={loading}
-                        disabled={loading}
-                        buttonColor="#059669"
-                        style={[styles.button, styles.saveButton]}
-                      >
-                        {initialData ? 'Actualizar' : 'Guardar'}
-                      </Button>
+                          ASIGNACIÓN PRINCIPAL
+                        </ITText>
+
+                        <View style={styles.inputGroup}>
+                          <SearchComponent
+                            label="CLIENTE *"
+                            placeholder="Selecciona un cliente"
+                            options={clients.map(c => ({
+                              label: c.name,
+                              value: c.id,
+                            }))}
+                            value={values.clientId}
+                            onSelect={val => {
+                              setFieldValue('clientId', val);
+                              setFieldValue('zoneId', '');
+                            }}
+                            error={touched.clientId && errors.clientId}
+                            disabled={!!initialData || loading}
+                          />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                          <SearchComponent
+                            label="RECURRENTE (ZONA) *"
+                            placeholder={
+                              values.clientId
+                                ? 'Selecciona una zona'
+                                : 'Primero selecciona un cliente'
+                            }
+                            disabled={
+                              !!initialData ||
+                              !values.clientId ||
+                              loadingZones ||
+                              loading
+                            }
+                            options={zones.map(z => ({
+                              label: z.name,
+                              value: z.id,
+                            }))}
+                            value={values.zoneId}
+                            onSelect={val => setFieldValue('zoneId', val)}
+                            error={touched.zoneId && errors.zoneId}
+                            helperText={
+                              loadingZones ? 'Cargando zonas...' : undefined
+                            }
+                          />
+                        </View>
+                      </View>
+
+                      <View style={styles.section}>
+                        <ITText
+                          variant="labelSmall"
+                          weight="bold"
+                          color={theme.colors.slate500}
+                          style={styles.sectionLabel}
+                        >
+                          DETALLES DEL PUNTO
+                        </ITText>
+
+                        <ITInput
+                          label="NOMBRE DEL PUNTO *"
+                          placeholder="Ej: Recepción, Oficina 101"
+                          value={values.name}
+                          onChangeText={handleChange('name')}
+                          onBlur={handleBlur('name')}
+                          error={touched.name && errors.name}
+                          disabled={loading}
+                          containerStyle={styles.inputGroup}
+                          ref={nameInputRef}
+                        />
+                      </View>
                     </View>
+                  </ScrollView>
+
+                  <View style={styles.footer}>
+                    <View style={styles.actionButtonsRow}>
+                      <ITButton
+                        label="Cancelar"
+                        onPress={onDismiss}
+                        mode="outlined"
+                        style={[styles.footerBtn, { flex: 1 }]}
+                        disabled={loading}
+                        textColor={theme.colors.slate500}
+                      />
+                      <View style={{ width: 12 }} />
+                      <ITButton
+                        label={initialData ? 'Actualizar' : 'Guardar'}
+                        onPress={handleNormalSubmit}
+                        mode="contained"
+                        style={[
+                          styles.footerBtn,
+                          { flex: 1, backgroundColor: theme.colors.primary },
+                        ]}
+                        disabled={loading || !isValid}
+                        loading={loading}
+                      />
+                    </View>
+                    {!initialData && (
+                      <ITButton
+                        label="Guardar y Nueva"
+                        onPress={handleSaveAndNew}
+                        mode="contained"
+                        style={[
+                          styles.footerBtn,
+                          { marginTop: 12, backgroundColor: '#EEF2FF' },
+                        ]}
+                        textColor={theme.colors.primary}
+                        disabled={loading || !isValid}
+                        icon="plus"
+                      />
+                    )}
                   </View>
-                );
-              }}
-            </Formik>
-          </ScrollView>
+                </View>
+              );
+            }}
+          </Formik>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </RNModal>
@@ -387,5 +376,30 @@ const styles = StyleSheet.create({
     color: '#065F46',
     fontWeight: '700',
     fontSize: 13,
+  },
+  footer: {
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+  },
+  footerBtn: {
+    borderRadius: 14,
+    height: 50,
+    justifyContent: 'center',
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionLabel: {
+    marginBottom: 16,
+    letterSpacing: 1.5,
+  },
+  inputGroup: {
+    marginBottom: 16,
   },
 });

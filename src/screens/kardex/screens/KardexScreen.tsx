@@ -1,37 +1,36 @@
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import dayjs from 'dayjs';
-import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { IconButton, Icon, Searchbar } from 'react-native-paper';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
+  Modal,
   RefreshControl,
+  ScrollView,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
   View,
-  ScrollView,
-  Modal,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { Icon, IconButton, Searchbar } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  ITButton,
+  ITCard,
+  ITScreenWrapper,
+  ITText,
+} from '../../../shared/components';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
 import { getCatalog } from '../../../shared/service/catalog.service';
+import { theme } from '../../../shared/theme/theme';
+import { COLORS } from '../../../shared/utils/constants';
 import { getLocations } from '../../locations/service/location.service';
 import {
   getPaginatedKardex,
   IKardexEntry,
   IKardexFilter,
 } from '../service/kardex.service';
-import {
-  ITScreenWrapper,
-  ITText,
-  ITCard,
-  ITButton,
-  LoaderComponent,
-} from '../../../shared/components';
-import { theme } from '../../../shared/theme/theme';
-import { COLORS } from '../../../shared/utils/constants';
 
 export const KardexScreen = () => {
   const navigation = useNavigation<any>();
@@ -261,7 +260,7 @@ export const KardexScreen = () => {
       case 'ASSIGNMENT':
         return {
           label: 'Asignación',
-          color: '#8B5CF6',
+          color: theme.colors.primary,
           icon: 'clipboard-check',
         };
       case 'FREE':
@@ -395,7 +394,6 @@ export const KardexScreen = () => {
 
   return (
     <ITScreenWrapper padding={false} style={styles.container}>
-      <LoaderComponent visible={loading && !refreshing} />
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
@@ -513,13 +511,6 @@ export const KardexScreen = () => {
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={() =>
-          loadingMore ? (
-            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-              <LoaderComponent visible={true} />
-            </View>
-          ) : null
-        }
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: insets.bottom + 20 },

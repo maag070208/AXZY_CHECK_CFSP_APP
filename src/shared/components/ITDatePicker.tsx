@@ -40,7 +40,7 @@ export const ITDatePicker: React.FC<ITDatePickerProps> = ({
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => !disabled && setVisible(true)} activeOpacity={0.7}>
+      <TouchableOpacity onPress={() => !disabled && setVisible(true)}>
         <View pointerEvents="none">
           <TextInput
             label={label}
@@ -51,13 +51,19 @@ export const ITDatePicker: React.FC<ITDatePickerProps> = ({
             mode="outlined"
             style={styles.input}
             outlineStyle={styles.outline}
-            right={<TextInput.Icon icon="calendar" color={theme.colors.primary} />}
+            right={
+              <TextInput.Icon icon="calendar" color={theme.colors.primary} />
+            }
             editable={false}
           />
         </View>
       </TouchableOpacity>
-      
-      {hasError && <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>}
+
+      {hasError && (
+        <Text style={[styles.errorText, { color: theme.colors.error }]}>
+          {error}
+        </Text>
+      )}
 
       <DatePickerModal
         locale="es"

@@ -1,29 +1,12 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-  Modal,
-  ScrollView,
-} from 'react-native';
-import {
-  ActivityIndicator,
-  Avatar,
-  Button,
-  Card,
-  FAB,
-  Icon,
-  IconButton,
-  Searchbar,
-  Text,
-  Portal,
-} from 'react-native-paper';
+import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { FAB, Icon, IconButton, Portal, Searchbar } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showLoader } from '../../../core/store/slices/loader.slice';
+import { getClients } from '../../clients/service/client.service';
+import { IClient } from '../../clients/type/client.types';
+import { getZonesByClient } from '../../zones/service/zone.service';
 import { LocationFormModal } from '../components/LocationFormModal';
 import {
   createLocation,
@@ -31,19 +14,26 @@ import {
   getPaginatedLocations,
   updateLocation,
 } from '../service/location.service';
-import { getClients } from '../../clients/service/client.service';
-import { getZonesByClient } from '../../zones/service/zone.service';
 import { ILocation } from '../type/location.types';
-import { IClient } from '../../clients/type/client.types';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
-import { SearchComponent } from '../../../shared/components/SearchComponent';
-import { ITAlert } from '../../../shared/components';
-
-const PRIMARY_COLOR = '#0F4C3A';
+import {
+  ITAlert,
+  ITBadge,
+  ITButton,
+  ITCard,
+  ITScreenDatatableLayout,
+  ITText,
+  ITTouchableOpacity,
+  SearchComponent,
+} from '../../../shared/components';
+import { theme } from '../../../shared/theme/theme';
+import { ITScreensFiltersModal } from '../../../shared/components/ITScreensFiltersModal';
+import { handleLocationQRPrint } from '../utils/qr.utils';
+import { BulkPrintModal } from '../modal/BulkPrintModal';
 
 export const LocationsScreen = ({ navigation, route }: any) => {
   const insets = useSafeAreaInsets();
@@ -70,6 +60,18 @@ export const LocationsScreen = ({ navigation, route }: any) => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Filters
+  const [printing, setPrinting] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+
+  const handlePrintQR = async (item: ILocation) => {
+    dispatch(showLoader(true));
+    const success = await handleLocationQRPrint([item.id], `QR_${item.name}`);
+    dispatch(showLoader(false));
+    if (!success) {
+      dispatch(showToast({ message: 'Error al generar QR', type: 'error' }));
+    }
+  };
+
   const [showFilters, setShowFilters] = useState(false);
   const [appliedClientId, setAppliedClientId] = useState<number | string>(
     routeClientId || '',
@@ -82,9 +84,12 @@ export const LocationsScreen = ({ navigation, route }: any) => {
   );
   const [tempZoneId, setTempZoneId] = useState<number | string>(zoneId || '');
   const [zones, setZones] = useState<any[]>([]);
-  const [filterStatus, setFilterStatus] = useState<
+  const [appliedStatus, setAppliedStatus] = useState<
     'ALL' | 'ACTIVE' | 'INACTIVE'
   >('ALL');
+  const [tempStatus, setTempStatus] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>(
+    'ALL',
+  );
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingLocation, setEditingLocation] = useState<ILocation | null>(
@@ -103,7 +108,7 @@ export const LocationsScreen = ({ navigation, route }: any) => {
         setClients(res.data || []);
       }
     } catch (error) {
-      console.error('Error loading clients for filter:', error);
+      console.error('Error loading clients:', error);
     }
   };
 
@@ -123,9 +128,10 @@ export const LocationsScreen = ({ navigation, route }: any) => {
 
   useEffect(() => {
     const loadZones = async () => {
-      if (tempClientId) {
+      const targetId = showFilters ? tempClientId : appliedClientId;
+      if (targetId) {
         try {
-          const res = await getZonesByClient(tempClientId);
+          const res = await getZonesByClient(targetId);
           if (res.success) {
             setZones(res.data || []);
           }
@@ -137,11 +143,11 @@ export const LocationsScreen = ({ navigation, route }: any) => {
       }
     };
     loadZones();
-  }, [tempClientId]);
+  }, [tempClientId, appliedClientId, showFilters]);
 
   useEffect(() => {
     fetchData(1);
-  }, [debouncedSearch, filterStatus, appliedClientId, appliedZoneId]);
+  }, [debouncedSearch, appliedStatus, appliedClientId, appliedZoneId]);
 
   const fetchData = async (pageNum: number, isRefreshing = false) => {
     if (pageNum === 1) {
@@ -161,9 +167,9 @@ export const LocationsScreen = ({ navigation, route }: any) => {
         clientId: appliedClientId || undefined,
         zoneId: appliedZoneId || undefined,
         active:
-          filterStatus === 'ALL'
+          appliedStatus === 'ALL'
             ? undefined
-            : filterStatus === 'ACTIVE'
+            : appliedStatus === 'ACTIVE'
             ? true
             : false,
       },
@@ -215,22 +221,22 @@ export const LocationsScreen = ({ navigation, route }: any) => {
 
   const handleOpenFilters = () => {
     setTempClientId(appliedClientId);
+    setTempZoneId(appliedZoneId);
+    setTempStatus(appliedStatus);
     setShowFilters(true);
   };
 
   const handleApplyFilters = () => {
     setAppliedClientId(tempClientId);
     setAppliedZoneId(tempZoneId);
+    setAppliedStatus(tempStatus);
     setShowFilters(false);
   };
 
   const handleClearFilters = () => {
     setTempClientId('');
     setTempZoneId('');
-    // If we were viewing a specific client from params, we clear it too
-    if (routeClientId) {
-      navigation.setParams({ clientId: undefined, clientName: undefined });
-    }
+    setTempStatus('ALL');
   };
 
   const handleCreate = () => {
@@ -261,14 +267,13 @@ export const LocationsScreen = ({ navigation, route }: any) => {
         );
 
         if (keepOpen) {
-          // Keep modal open, refresh list in background
           fetchData(1);
         } else {
           setModalVisible(false);
           setEditingLocation(null);
           fetchData(1);
         }
-        return true; // Success for modal logic
+        return true;
       } else {
         dispatch(
           showToast({ message: 'Error al guardar ubicación', type: 'error' }),
@@ -319,245 +324,291 @@ export const LocationsScreen = ({ navigation, route }: any) => {
     value: c.id,
   }));
 
-  const activeFiltersCount =
-    (appliedClientId !== '' ? 1 : 0) + (appliedZoneId !== '' ? 1 : 0);
-
-  const renderItem = ({ item }: { item: ILocation }) => (
-    <Card style={styles.itemCard} elevation={1}>
-      <View style={styles.cardLayout}>
-        <View style={styles.avatarSection}>
-          <Avatar.Icon
-            size={56}
-            icon="map-marker-radius-outline"
-            style={styles.avatar}
-            color="#0F4C3A"
-          />
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: item.active ? '#059669' : '#64748B' },
-            ]}
-          >
-            <Icon
-              source={item.active ? 'check' : 'minus'}
-              size={10}
-              color="#fff"
+  const renderLocation = ({ item }: { item: ILocation }) => {
+    const initial = item.name ? item.name.charAt(0).toUpperCase() : 'L';
+    return (
+      <ITCard
+        style={styles.itemCard}
+        onPress={() => handleEdit(item)}
+        mode="elevated"
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.avatarContainer}>
+            <ITText style={styles.avatarText}>{initial}</ITText>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: item.active ? '#10B981' : '#EF4444' },
+              ]}
             />
           </View>
-        </View>
 
-        <View style={styles.infoSection}>
-          <View style={styles.nameRow}>
-            <Text style={styles.propertyName}>{item.name}</Text>
-            <View style={[styles.idBadge, { backgroundColor: '#F1F5F9' }]}>
-              <Text style={[styles.idText, { color: '#64748B' }]}>PUNTO</Text>
+          <View style={styles.headerInfo}>
+            <ITText
+              variant="titleMedium"
+              weight="700"
+              style={styles.locationName}
+              numberOfLines={1}
+            >
+              {item.name}
+            </ITText>
+            <View style={styles.headerRowBadge}>
+              <ITText
+                variant="labelSmall"
+                style={styles.clientText}
+                numberOfLines={1}
+              >
+                {(item as any).client?.name || 'S/C'}
+              </ITText>
             </View>
           </View>
 
-          <Text style={styles.ownerText} numberOfLines={1}>
-            Cliente: {(item as any).client?.name || 'N/A'}
-          </Text>
-
-          <View style={styles.detailsRow}>
-            <View style={styles.detailItem}>
-              <Icon source="map-outline" size={14} color="#64748B" />
-              <Text style={styles.detailText} numberOfLines={1}>
-                {(item as any).zone?.name || 'Sin zona'}
-              </Text>
-            </View>
-          </View>
+          <ITBadge
+            label={item.active ? 'Activo' : 'Inactivo'}
+            variant={item.active ? 'success' : 'error'}
+            size="small"
+            dot
+          />
         </View>
 
-        <View style={styles.actions}>
-          {isAdmin && (
-            <View style={styles.adminActions}>
-              <IconButton
-                icon="pencil-outline"
-                size={20}
-                onPress={() => handleEdit(item)}
-                iconColor="#64748B"
+        <View style={styles.cardBody}>
+          <View style={styles.infoItem}>
+            <Icon
+              source="map-marker-outline"
+              size={16}
+              color={theme.colors.slate500}
+            />
+            <ITText
+              variant="bodySmall"
+              style={styles.infoText}
+              numberOfLines={1}
+            >
+              {(item as any).zone?.name || 'Zona General'}
+            </ITText>
+          </View>
+          {item.reference && (
+            <View style={styles.infoItem}>
+              <Icon
+                source="information-outline"
+                size={16}
+                color={theme.colors.slate500}
               />
-              <IconButton
-                icon="trash-can-outline"
-                size={20}
-                onPress={() => handleDeletePress(item)}
-                iconColor="#ba1a1a"
-              />
+              <ITText
+                variant="bodySmall"
+                style={styles.infoText}
+                numberOfLines={1}
+              >
+                {item.reference}
+              </ITText>
             </View>
           )}
         </View>
-      </View>
-    </Card>
-  );
+
+        {isAdmin && (
+          <View style={styles.cardFooter}>
+            <ITTouchableOpacity
+              style={styles.footerButton}
+              onPress={() => handlePrintQR(item)}
+            >
+              <Icon source="qrcode" size={18} color={theme.colors.primary} />
+              <ITText style={styles.footerButtonText}>QR</ITText>
+            </ITTouchableOpacity>
+
+            <View style={styles.dividerVertical} />
+
+            <ITTouchableOpacity
+              style={styles.footerButton}
+              onPress={() => handleEdit(item)}
+            >
+              <Icon
+                source="pencil-outline"
+                size={18}
+                color={theme.colors.primary}
+              />
+              <ITText style={styles.footerButtonText}>Editar</ITText>
+            </ITTouchableOpacity>
+
+            <View style={styles.dividerVertical} />
+
+            <ITTouchableOpacity
+              style={styles.footerButton}
+              onPress={() => handleDeletePress(item)}
+            >
+              <Icon source="trash-can-outline" size={18} color="#EF4444" />
+              <ITText style={[styles.footerButtonText, { color: '#EF4444' }]}>
+                Eliminar
+              </ITText>
+            </ITTouchableOpacity>
+          </View>
+        )}
+      </ITCard>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.headerTitle}>Locaciones</Text>
-            <Text style={styles.headerSubtitle}>
-              {appliedClientId && clientName
-                ? `Filtrando: ${clientName}`
-                : zoneName
-                ? `Zona: ${zoneName}`
-                : `${total} locaciones registradas`}
-            </Text>
-          </View>
-          <IconButton
-            icon="filter-variant"
-            mode="contained"
-            containerColor={activeFiltersCount > 0 ? PRIMARY_COLOR : '#F1F5F9'}
-            iconColor={activeFiltersCount > 0 ? '#FFFFFF' : '#64748B'}
-            onPress={handleOpenFilters}
+      <ITScreenDatatableLayout
+        title="Ubicaciones (Puntos)"
+        totalItems={total}
+        loading={loading}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        onLoadMore={handleLoadMore}
+        loadingMore={loadingMore}
+        onFilterPress={handleOpenFilters}
+        showSearchBar={true}
+        searchQuery={search}
+        onSearchChange={setSearch}
+        searchBar={
+          <Searchbar
+            placeholder="Buscar por nombre..."
+            onChangeText={setSearch}
+            value={search}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={theme.colors.primary}
+            placeholderTextColor="#94A3B8"
+            elevation={0}
+          />
+        }
+        filterBadges={
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersRow}
+          >
+            <ITTouchableOpacity
+              onPress={() => setShowBulkModal(true)}
+              style={{ marginRight: 8 }}
+            >
+              <ITBadge
+                label="Impresión Masiva"
+                variant="primary"
+                icon="qrcode"
+              />
+            </ITTouchableOpacity>
+
+            <ITTouchableOpacity onPress={() => setAppliedClientId('')}>
+              <ITBadge
+                label="Todos"
+                variant={appliedClientId === '' ? 'primary' : 'surface'}
+                outline={appliedClientId !== ''}
+              />
+            </ITTouchableOpacity>
+            {clients.map(client => (
+              <ITTouchableOpacity
+                key={client.id}
+                onPress={() => setAppliedClientId(client.id)}
+              >
+                <ITBadge
+                  label={client.name}
+                  variant={
+                    appliedClientId === client.id ? 'primary' : 'surface'
+                  }
+                  outline={appliedClientId !== client.id}
+                />
+              </ITTouchableOpacity>
+            ))}
+          </ScrollView>
+        }
+        data={locations}
+        renderItem={renderLocation}
+        keyExtractor={item => item.id.toString()}
+        fab={
+          isAdmin ? (
+            <FAB
+              icon="plus"
+              onPress={handleCreate}
+              color="#FFFFFF"
+              style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+            />
+          ) : undefined
+        }
+      />
+
+      <BulkPrintModal
+        visible={showBulkModal}
+        onDismiss={() => setShowBulkModal(false)}
+        initialClientId={appliedClientId}
+      />
+
+      <ITScreensFiltersModal
+        visible={showFilters}
+        onDismiss={() => setShowFilters(false)}
+        onApply={handleApplyFilters}
+        onClear={handleClearFilters}
+      >
+        <View style={styles.filterGroup}>
+          <ITText
+            variant="labelSmall"
+            weight="bold"
+            color={theme.colors.slate500}
+            style={styles.filterLabel}
+          >
+            CLIENTE
+          </ITText>
+          <SearchComponent
+            placeholder="Seleccionar Cliente"
+            options={clientOptions}
+            value={tempClientId}
+            onSelect={val => {
+              setTempClientId(val);
+              setTempZoneId('');
+            }}
           />
         </View>
-        <Searchbar
-          placeholder="Buscar por nombre..."
-          onChangeText={setSearch}
-          value={search}
-          style={styles.searchBar}
-          inputStyle={styles.searchInput}
-          iconColor="#0F4C3A"
-          placeholderTextColor="#94A3B8"
-          elevation={0}
-        />
-      </View>
 
-      {!loading || refreshing ? (
-        <FlatList
-          data={locations}
-          keyExtractor={item => String(item.id)}
-          renderItem={renderItem}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              colors={[PRIMARY_COLOR]}
-              tintColor={PRIMARY_COLOR}
-            />
-          }
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={styles.footerLoader}>
-                <ActivityIndicator size="small" color={PRIMARY_COLOR} />
-              </View>
-            ) : null
-          }
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <IconButton
-                  icon={debouncedSearch ? 'magnify-off' : 'map-marker-off'}
-                  size={40}
-                  iconColor="#94A3B8"
+        <View style={styles.filterGroup}>
+          <ITText
+            variant="labelSmall"
+            weight="bold"
+            color={theme.colors.slate500}
+            style={styles.filterLabel}
+          >
+            ZONA
+          </ITText>
+          <SearchComponent
+            placeholder={
+              tempClientId ? 'Todas las zonas' : 'Selecciona cliente primero'
+            }
+            options={zones.map(z => ({ label: z.name, value: z.id }))}
+            value={tempZoneId}
+            onSelect={setTempZoneId}
+            disabled={!tempClientId}
+            label={''}
+          />
+        </View>
+
+        <View style={styles.filterGroup}>
+          <ITText
+            variant="labelSmall"
+            weight="bold"
+            color={theme.colors.slate500}
+            style={styles.filterLabel}
+          >
+            ESTADO
+          </ITText>
+          <View style={styles.statusFiltersRow}>
+            {[
+              { label: 'Todos', value: 'ALL' },
+              { label: 'Activos', value: 'ACTIVE' },
+              { label: 'Inactivos', value: 'INACTIVE' },
+            ].map(status => (
+              <ITTouchableOpacity
+                key={status.value}
+                onPress={() => setTempStatus(status.value as any)}
+                style={styles.statusBadge}
+              >
+                <ITBadge
+                  label={status.label}
+                  variant={tempStatus === status.value ? 'primary' : 'surface'}
+                  outline={tempStatus !== status.value}
                 />
-              </View>
-              <Text style={styles.emptyTitle}>
-                {debouncedSearch
-                  ? 'No se encontraron resultados'
-                  : 'Sin ubicaciones'}
-              </Text>
-              <Text style={styles.emptyText}>
-                {debouncedSearch
-                  ? 'Prueba con otros términos de búsqueda.'
-                  : 'Comienza agregando tu primera ubicación con el botón inferior.'}
-              </Text>
-            </View>
-          }
-        />
-      ) : (
-        <></>
-      )}
-
-      {isAdmin && (
-        <FAB
-          icon="plus"
-          style={[styles.fab, { bottom: insets.bottom + 24 }]}
-          onPress={handleCreate}
-          color="white"
-        />
-      )}
-
-      <Portal>
-        <Modal
-          visible={showFilters}
-          onDismiss={() => setShowFilters(false)}
-          contentContainerStyle={styles.modalFullScreen}
-        >
-          <View style={[styles.modalHeader, { paddingTop: insets.top + 20 }]}>
-            <View style={styles.modalHeaderTitle}>
-              <Icon source="filter-variant" size={24} color={PRIMARY_COLOR} />
-              <Text style={styles.modalTitle}>Filtros de Locaciones</Text>
-            </View>
-            <IconButton
-              icon="close"
-              size={24}
-              onPress={() => setShowFilters(false)}
-              iconColor="#94A3B8"
-            />
+              </ITTouchableOpacity>
+            ))}
           </View>
-
-          <ScrollView
-            style={styles.modalScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR CLIENTE</Text>
-              <SearchComponent
-                label="Cliente"
-                placeholder="Todos los clientes"
-                options={clientOptions}
-                value={tempClientId}
-                onSelect={val => {
-                  setTempClientId(val);
-                  setTempZoneId(''); // Clear zone if client changes
-                }}
-              />
-            </View>
-
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>POR ZONA</Text>
-              <SearchComponent
-                label="Zona"
-                placeholder={
-                  tempClientId
-                    ? 'Todas las zonas'
-                    : 'Selecciona un cliente primero'
-                }
-                options={zones.map(z => ({ label: z.name, value: z.id }))}
-                value={tempZoneId}
-                onSelect={setTempZoneId}
-                disabled={!tempClientId}
-              />
-            </View>
-          </ScrollView>
-
-          <View
-            style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
-          >
-            <Button
-              mode="outlined"
-              onPress={handleClearFilters}
-              style={styles.footerButton}
-              textColor="#64748B"
-            >
-              Limpiar
-            </Button>
-            <Button
-              mode="contained"
-              onPress={handleApplyFilters}
-              style={[styles.footerButton, { backgroundColor: PRIMARY_COLOR }]}
-            >
-              Aplicar Filtros
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
+        </View>
+      </ITScreensFiltersModal>
 
       <LocationFormModal
         visible={modalVisible}
@@ -575,7 +626,7 @@ export const LocationsScreen = ({ navigation, route }: any) => {
         title="Eliminar Ubicación"
         description={`¿Estás seguro de que deseas eliminar "${locationToDelete?.name}"? Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar"
-        type="danger"
+        type="alert"
         loading={isDeleting}
       />
     </View>
@@ -636,171 +687,137 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   itemCard: {
+    padding: 16,
+    marginBottom: 16,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    marginBottom: 12,
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  cardLayout: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-  },
-  avatarSection: {
-    position: 'relative',
-    marginRight: 12,
-  },
-  avatar: {
-    backgroundColor: '#F1F5F9',
-  },
-  statusBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  infoSection: {
-    flex: 1,
-    gap: 2,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  propertyName: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  ownerText: {
-    fontSize: 13,
-    color: '#94A3B8',
-    marginBottom: 4,
-  },
-  idBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  idText: {
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  detailsRow: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginBottom: 16,
   },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  detailText: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  actions: {
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
-  adminActions: {
-    flexDirection: 'column',
+  avatarText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.colors.primary,
+  },
+  statusDot: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  headerInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  locationName: {
+    color: '#1E293B',
+  },
+  headerRowBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  clientText: {
+    color: theme.colors.slate500,
+    flex: 1,
+  },
+  cardBody: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 12,
+    gap: 8,
+    marginBottom: 16,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoText: {
+    color: theme.colors.slate500,
+    flex: 1,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 12,
+    marginTop: 4,
+  },
+  footerButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  footerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  dividerVertical: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#F1F5F9',
+  },
+  filtersWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  filtersRow: {
+    gap: 8,
+    paddingRight: 12,
+  },
+  filterGroup: {
+    marginBottom: 24,
+  },
+  filterLabel: {
+    marginBottom: 12,
+    letterSpacing: 1,
+  },
+  statusFiltersRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  statusBadge: {
+    marginBottom: 4,
   },
   fab: {
     position: 'absolute',
     margin: 16,
     right: 0,
-    backgroundColor: '#0F4C3A',
-    borderRadius: 28,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 100,
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  emptyIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  modalFullScreen: {
-    backgroundColor: 'white',
-    flex: 1,
-    margin: 0,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  modalHeaderTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  modalScroll: {
-    padding: 24,
-  },
-  filterGroup: {
-    marginBottom: 32,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#94A3B8',
-    marginBottom: 12,
-    letterSpacing: 1,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  footerButton: {
-    flex: 1,
-    borderRadius: 14,
+    bottom: 0,
+    borderRadius: 20,
+    elevation: 4,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
 });

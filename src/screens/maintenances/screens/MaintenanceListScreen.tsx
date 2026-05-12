@@ -1,49 +1,29 @@
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import {
-  Avatar,
-  IconButton,
-  Portal,
-  Searchbar,
-  Icon,
-  FAB,
-} from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
+import { FAB, Icon, Searchbar } from 'react-native-paper';
+import { DatePickerModal } from 'react-native-paper-dates';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { UserRole } from '../../../core/types/IUser';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DatePickerModal } from 'react-native-paper-dates';
-import { SearchComponent } from '../../../shared/components/SearchComponent';
-import { getPaginatedMaintenances } from '../service/maintenance.service';
-import { getCatalog } from '../../../shared/service/catalog.service';
-import ModernStyles from '../../../shared/theme/app.styles';
-import { theme } from '../../../shared/theme/theme';
-import { CATEGORIES_INFO, COLORS } from '../../../shared/utils/constants';
-import {
-  ITScreenWrapper,
-  ITCard,
-  ITText,
-  ITButton,
-  LoaderComponent,
-} from '../../../shared/components';
 import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
+import {
+  ITBadge,
+  ITScreenDatatableLayout,
+  ITText,
+  ITTouchableOpacity,
+} from '../../../shared/components';
+import { ITScreensFiltersModal } from '../../../shared/components/ITScreensFiltersModal';
+import { SearchComponent } from '../../../shared/components/SearchComponent';
+import { getCatalog } from '../../../shared/service/catalog.service';
+import { getPaginatedMaintenances } from '../service/maintenance.service';
+import { theme } from '../../../shared/theme/theme';
 
 export const MaintenanceListScreen = () => {
-  const { navigateToScreen } = useAppNavigation();
   const insets = useSafeAreaInsets();
+  const { navigateToScreen } = useAppNavigation();
   const user = useSelector((state: RootState) => state.userState);
-
   const isFocused = useIsFocused();
 
   const [maintenances, setMaintenances] = useState<any[]>([]);
@@ -51,7 +31,6 @@ export const MaintenanceListScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Pagination and Totals
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -66,7 +45,6 @@ export const MaintenanceListScreen = () => {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Applied Filters
   const [appliedRange, setAppliedRange] = useState<{
     startDate: Date | undefined;
     endDate: Date | undefined;
@@ -77,7 +55,6 @@ export const MaintenanceListScreen = () => {
     'ALL',
   );
 
-  // Temp Filters (for Modal)
   const [tempRange, setTempRange] = useState<{
     startDate: Date | undefined;
     endDate: Date | undefined;
@@ -88,7 +65,6 @@ export const MaintenanceListScreen = () => {
 
   const [openDate, setOpenDate] = useState(false);
 
-  // Load Catalogs
   useEffect(() => {
     const fetchCatalogs = async () => {
       try {
@@ -127,18 +103,6 @@ export const MaintenanceListScreen = () => {
     fetchCatalogs();
   }, []);
 
-  const getCategoryInfo = (categoryId: string) => {
-    const cat = categories.find(c => c.value === categoryId);
-    return (
-      cat || {
-        label: 'Mantenimiento',
-        color: '#64748B',
-        icon: 'wrench',
-      }
-    );
-  };
-
-  // Debounce effect for search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -216,14 +180,6 @@ export const MaintenanceListScreen = () => {
     }
   };
 
-  const handleOpenFilters = () => {
-    setTempRange(appliedRange);
-    setTempGuardId(appliedGuardId);
-    setTempCategory(appliedCategory);
-    setTempClientId(appliedClientId);
-    setShowFilters(true);
-  };
-
   const handleApplyFilters = () => {
     setAppliedRange(tempRange);
     setAppliedGuardId(tempGuardId);
@@ -239,16 +195,18 @@ export const MaintenanceListScreen = () => {
     setTempClientId('ALL');
   };
 
-  const activeFiltersCount = [
-    appliedRange.startDate ? 1 : 0,
-    appliedGuardId !== 'ALL' ? 1 : 0,
-    appliedCategory !== 'ALL' ? 1 : 0,
-    appliedClientId !== 'ALL' ? 1 : 0,
-  ].reduce((a, b) => a + b, 0);
+  const getCategoryInfo = (categoryId: string) => {
+    const cat = categories.find(c => c.value === categoryId);
+    return cat || { label: 'Mantenimiento', color: '#64748B', icon: 'wrench' };
+  };
 
   const renderItem = ({ item }: { item: any }) => {
     const catInfo = getCategoryInfo(item.categoryId);
     const date = new Date(item.createdAt);
+    const formattedDate = date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+    });
     const timeStr = date.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
@@ -256,347 +214,219 @@ export const MaintenanceListScreen = () => {
     const isPending = item.status === 'PENDING' || !item.status;
 
     return (
-      <ITCard
-        style={[styles.card, isPending && styles.pendingCard]}
+      <ITTouchableOpacity
         onPress={() =>
           navigateToScreen('MAINTENANCE_STACK', 'MAINTENANCE_DETAIL', {
             maintenance: item,
           })
         }
       >
-        <View style={styles.cardLayout}>
-          <View style={styles.avatarSection}>
-            <Avatar.Text
-              size={56}
-              label={item.guard?.name?.charAt(0) || 'G'}
-              style={[
-                styles.avatar,
-                { backgroundColor: isPending ? '#ffffff' : '#F1F5F9' },
-              ]}
-              labelStyle={{
-                color: isPending ? COLORS.primary : '#64748B',
-                fontWeight: 'bold',
-              }}
-            />
-            <View
-              style={[
-                styles.statusIndicator,
-                { backgroundColor: isPending ? '#F59E0B' : '#10B981' },
-              ]}
-            >
-              <Icon
-                source={isPending ? 'alert-circle-outline' : 'check'}
-                size={10}
-                color="#fff"
-              />
-            </View>
-          </View>
-
-          <View style={styles.infoSection}>
-            <View style={styles.nameRow}>
-              <View
-                style={[
-                  styles.categoryBadge,
-                  { backgroundColor: catInfo.color + '15' },
-                ]}
-              >
+        <View style={[styles.card, isPending && styles.cardPending]}>
+          {/* Header: Icon + Status + Title */}
+          <View style={styles.cardHeader}>
+            <View style={styles.headerLeft}>
+              <View style={styles.iconContainer}>
                 <Icon
                   source={catInfo.icon || 'wrench'}
-                  size={12}
+                  size={22}
                   color={catInfo.color}
                 />
+              </View>
+              <View style={{ flex: 1 }}>
                 <ITText
-                  variant="labelSmall"
+                  variant="titleSmall"
                   weight="bold"
-                  style={{ color: catInfo.color, fontSize: 10 }}
+                  style={styles.cardTitle}
+                  numberOfLines={1}
                 >
-                  {catInfo.label?.toUpperCase() || ''}
+                  {item.title}
                 </ITText>
+                <View style={styles.headerMeta}>
+                  <View style={styles.metaChip}>
+                    <Icon source="clock-outline" size={10} color="#64748B" />
+                    <ITText variant="labelSmall" style={styles.metaChipText}>
+                      {timeStr}
+                    </ITText>
+                  </View>
+                  <View style={styles.metaChip}>
+                    <Icon source="calendar" size={10} color="#64748B" />
+                    <ITText variant="labelSmall" style={styles.metaChipText}>
+                      {formattedDate}
+                    </ITText>
+                  </View>
+                </View>
               </View>
             </View>
 
-            <ITText
-              variant="titleMedium"
-              weight="bold"
-              color={COLORS.textPrimary}
-              numberOfLines={1}
+            <ITBadge
+              label={isPending ? 'Pendiente' : 'Atendido'}
+              variant={isPending ? 'warning' : 'success'}
+              size="small"
+              dot={isPending}
+            />
+          </View>
+
+          {/* Body: Category chip */}
+          <View style={styles.cardBody}>
+            <View
+              style={[
+                styles.categoryChip,
+                { backgroundColor: catInfo.color + '10' },
+              ]}
             >
-              {item.title}
-            </ITText>
-
-            {item.client && (
-              <View style={styles.clientRow}>
-                <Icon
-                  source="office-building"
-                  size={14}
-                  color={COLORS.primary}
-                />
-                <ITText
-                  variant="labelSmall"
-                  weight="bold"
-                  color={COLORS.primary}
-                  numberOfLines={1}
-                  style={{ marginLeft: 4 }}
-                >
-                  {item.client.name}
-                </ITText>
-              </View>
-            )}
-
-            <View style={styles.detailsRow}>
-              <View style={styles.detailItem}>
-                <Icon source="account-outline" size={14} color="#64748B" />
-                <ITText
-                  variant="labelSmall"
-                  color="#64748B"
-                  numberOfLines={1}
-                  style={{ marginLeft: 4 }}
-                >
-                  {item.guard?.name}
-                </ITText>
-              </View>
-              <View style={[styles.detailItem, styles.ml12]}>
-                <Icon source="calendar-outline" size={14} color="#64748B" />
-                <ITText
-                  variant="labelSmall"
-                  color="#64748B"
-                  style={{ marginLeft: 4 }}
-                >
-                  {timeStr}
-                </ITText>
-              </View>
+              <Icon source={catInfo.icon} size={12} color={catInfo.color} />
+              <ITText
+                variant="labelSmall"
+                style={[styles.categoryChipText, { color: catInfo.color }]}
+              >
+                {catInfo.label}
+              </ITText>
             </View>
           </View>
 
-          <IconButton icon="chevron-right" iconColor="#CBD5E1" size={24} />
+          {/* Footer: Client & Guard info */}
+          <View style={styles.cardFooter}>
+            <View style={styles.footerItem}>
+              <View style={styles.footerIconBox}>
+                <Icon
+                  source="office-building"
+                  size={12}
+                  color={theme.colors.primary}
+                />
+              </View>
+              <ITText
+                variant="labelSmall"
+                style={styles.footerText}
+                numberOfLines={1}
+              >
+                {item.client?.name || 'Sin cliente'}
+              </ITText>
+            </View>
+
+            <View style={styles.footerSeparator} />
+
+            <View style={styles.footerItem}>
+              <View style={styles.footerIconBox}>
+                <Icon
+                  source="shield-account"
+                  size={12}
+                  color={theme.colors.primary}
+                />
+              </View>
+              <ITText
+                variant="labelSmall"
+                style={styles.footerText}
+                numberOfLines={1}
+              >
+                {item.guard?.name || 'Sin guardia'}
+              </ITText>
+            </View>
+          </View>
         </View>
-      </ITCard>
+      </ITTouchableOpacity>
     );
   };
 
   return (
-    <ITScreenWrapper
-      padding={false}
-      scrollable={false}
-      style={ModernStyles.screenContainer}
-    >
-      <LoaderComponent visible={loading} />
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <ITText variant="headlineSmall" weight="bold" color="#1E293B">
-              Mantenimientos
-            </ITText>
-            <ITText variant="labelMedium" color="#64748B">
-              {total} reportes registrados
-            </ITText>
-          </View>
-          <IconButton
-            icon="filter-variant"
-            mode="contained"
-            containerColor={activeFiltersCount > 0 ? COLORS.primary : '#F1F5F9'}
-            iconColor={activeFiltersCount > 0 ? '#FFFFFF' : '#64748B'}
-            onPress={handleOpenFilters}
+    <View style={styles.container}>
+      <ITScreenDatatableLayout
+        title="Mantenimientos"
+        totalItems={total}
+        loading={loading}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        onLoadMore={handleLoadMore}
+        loadingMore={loadingMore}
+        onFilterPress={() => setShowFilters(true)}
+        showSearchBar={true}
+        searchBar={
+          <Searchbar
+            placeholder="Buscar mantenimiento..."
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={theme.colors.primary}
+            placeholderTextColor="#94A3B8"
+            elevation={0}
           />
-        </View>
-        <Searchbar
-          placeholder="Buscar mantenimientos..."
-          onChangeText={setSearch}
-          value={search}
-          style={styles.searchBar}
-          inputStyle={styles.searchInput}
-          iconColor={COLORS.primary}
-          placeholderTextColor="#94A3B8"
-          elevation={0}
-        />
-      </View>
-
-      <FlatList
+        }
         data={maintenances}
         renderItem={renderItem}
         keyExtractor={item => item.id.toString()}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-          />
-        }
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={() =>
-          loadingMore ? (
-            <ActivityIndicator style={{ margin: 16 }} color={COLORS.primary} />
-          ) : null
-        }
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: insets.bottom + 100 },
-        ]}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <Icon source="toolbox-outline" size={64} color="#E2E8F0" />
-              <ITText
-                variant="bodyLarge"
-                color="#94A3B8"
-                style={{ marginTop: 12 }}
-              >
-                No se encontraron reportes
-              </ITText>
-              <ITButton
-                mode="text"
-                onPress={() => fetchMaintenances(1)}
-                label="Actualizar lista"
-              />
-            </View>
-          ) : null
+        fab={
+          user.role === UserRole.ADMIN && isFocused ? (
+            <FAB
+              icon="plus"
+              style={styles.fab}
+              onPress={() =>
+                navigateToScreen('MAINTENANCE_STACK', 'MAINTENANCE_REPORT')
+              }
+              color="#FFFFFF"
+            />
+          ) : undefined
         }
       />
 
-      {user.role === UserRole.ADMIN && isFocused && (
-        <Portal>
-          <FAB
-            icon="plus"
-            style={[styles.fab, { bottom: insets.bottom + 24 }]}
-            onPress={() =>
-              navigateToScreen('MAINTENANCE_STACK', 'MAINTENANCE_REPORT')
-            }
-            color="white"
+      <ITScreensFiltersModal
+        visible={showFilters}
+        onDismiss={() => setShowFilters(false)}
+        onApply={handleApplyFilters}
+        onClear={handleClearFilters}
+      >
+        <View style={styles.filterGroup}>
+          <ITText variant="labelLarge" weight="bold" style={styles.filterLabel}>
+            FECHA DE REPORTE
+          </ITText>
+          <ITTouchableOpacity
+            onPress={() => setOpenDate(true)}
+            style={styles.dateSelector}
+          >
+            <Icon
+              source="calendar-range"
+              size={20}
+              color={theme.colors.primary}
+            />
+            <ITText variant="bodyMedium" style={styles.dateSelectorText}>
+              {tempRange.startDate
+                ? `${tempRange.startDate.toLocaleDateString()} - ${
+                    tempRange.endDate?.toLocaleDateString() || ''
+                  }`
+                : 'Cualquier fecha'}
+            </ITText>
+          </ITTouchableOpacity>
+        </View>
+
+        <View style={styles.filterGroup}>
+          <SearchComponent
+            label="Cliente"
+            placeholder="Todos los clientes"
+            options={clients}
+            value={tempClientId}
+            onSelect={setTempClientId}
           />
-        </Portal>
-      )}
+        </View>
 
-      <Portal>
-        <Modal
-          visible={showFilters}
-          onDismiss={() => setShowFilters(false)}
-          contentContainerStyle={styles.modalFullScreen}
-        >
-          <View style={[styles.modalHeader, { paddingTop: insets.top + 20 }]}>
-            <View style={styles.modalHeaderTitle}>
-              <Icon source="filter-variant" size={24} color={COLORS.primary} />
-              <ITText variant="titleLarge" weight="bold">
-                Filtros
-              </ITText>
-            </View>
-            <IconButton
-              icon="close"
-              size={24}
-              onPress={() => setShowFilters(false)}
-              iconColor="#94A3B8"
-            />
-          </View>
+        <View style={styles.filterGroup}>
+          <SearchComponent
+            label="Guardia"
+            placeholder="Todos los guardias"
+            options={guards}
+            value={tempGuardId}
+            onSelect={setTempGuardId}
+          />
+        </View>
 
-          <ScrollView
-            style={styles.modalScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.filterGroup}>
-              <ITText
-                variant="labelLarge"
-                weight="bold"
-                color="#94A3B8"
-                style={styles.filterLabel}
-              >
-                POR FECHA
-              </ITText>
-              <TouchableOpacity
-                onPress={() => setOpenDate(true)}
-                style={styles.dateSelector}
-              >
-                <Icon
-                  source="calendar-range"
-                  size={20}
-                  color={COLORS.primary}
-                />
-                <ITText style={styles.dateValue}>
-                  {appliedRange.startDate
-                    ? `${appliedRange.startDate.toLocaleDateString()} - ${
-                        appliedRange.endDate?.toLocaleDateString() || ''
-                      }`
-                    : 'Todos los reportes'}
-                </ITText>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.filterGroup}>
-              <ITText
-                variant="labelLarge"
-                weight="bold"
-                color="#94A3B8"
-                style={styles.filterLabel}
-              >
-                POR GUARDIA
-              </ITText>
-              <SearchComponent
-                label="Guardia"
-                placeholder="Todos los guardias"
-                options={guards}
-                value={tempGuardId}
-                onSelect={setTempGuardId}
-              />
-            </View>
-
-            <View style={styles.filterGroup}>
-              <ITText
-                variant="labelLarge"
-                weight="bold"
-                color="#94A3B8"
-                style={styles.filterLabel}
-              >
-                POR CLIENTE
-              </ITText>
-              <SearchComponent
-                label="Cliente"
-                placeholder="Todos los clientes"
-                options={clients}
-                value={tempClientId}
-                onSelect={setTempClientId}
-              />
-            </View>
-
-            <View style={styles.filterGroup}>
-              <ITText
-                variant="labelLarge"
-                weight="bold"
-                color="#94A3B8"
-                style={styles.filterLabel}
-              >
-                POR CATEGORÍA
-              </ITText>
-              <SearchComponent
-                label="Categoría"
-                placeholder="Todas las categorías"
-                options={Object.keys(CATEGORIES_INFO).map(key => ({
-                  label:
-                    CATEGORIES_INFO[key as keyof typeof CATEGORIES_INFO].label,
-                  value: key,
-                }))}
-                value={tempCategory}
-                onSelect={setTempCategory}
-              />
-            </View>
-          </ScrollView>
-
-          <View
-            style={[styles.modalFooter, { paddingBottom: insets.bottom + 20 }]}
-          >
-            <ITButton
-              mode="outlined"
-              onPress={handleClearFilters}
-              style={styles.footerButton}
-              label="Limpiar"
-            />
-            <ITButton
-              mode="contained"
-              onPress={handleApplyFilters}
-              style={styles.footerButton}
-              label="Aplicar Filtros"
-            />
-          </View>
-        </Modal>
-      </Portal>
+        <View style={styles.filterGroup}>
+          <SearchComponent
+            label="Categoría"
+            placeholder="Todas las categorías"
+            options={categories}
+            value={tempCategory}
+            onSelect={setTempCategory}
+          />
+        </View>
+      </ITScreensFiltersModal>
 
       <DatePickerModal
         locale="es"
@@ -610,227 +440,163 @@ export const MaintenanceListScreen = () => {
           setTempRange({ startDate, endDate });
         }}
       />
-    </ITScreenWrapper>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 2,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
   searchBar: {
-    backgroundColor: '#F1F5F9',
-    borderRadius: 12,
-    height: 44,
-  },
-  searchInput: {
-    minHeight: 0,
-    fontSize: 15,
-  },
-  listContent: {
-    padding: 16,
-    gap: 12,
-  },
-  card: {
-    borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    height: 48,
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
-  pendingCard: {
-    backgroundColor: COLORS.pendingCard,
-    borderColor: COLORS.pendingBorder,
+  searchInput: {
+    minHeight: 0,
+    fontSize: 14,
+    color: '#0F172A',
   },
-  cardLayout: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
+  // Modern Card Styles
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginBottom: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 1,
   },
-  avatarSection: {
-    position: 'relative',
-    marginRight: 12,
+  cardPending: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FEF3C7',
   },
-  avatar: {
-    backgroundColor: '#F1F5F9',
-  },
-  statusIndicator: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  infoSection: {
-    flex: 1,
-    gap: 2,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  categoryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    gap: 4,
-  },
-  categoryText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  maintenanceTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  idBadge: {
-    backgroundColor: '#E2E8F0',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  idText: {
-    color: '#475569',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  detailsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  detailText: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  ml12: {
-    marginLeft: 12,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
-    gap: 12,
-  },
-  emptyText: {
-    color: '#94A3B8',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  modalFullScreen: {
-    backgroundColor: 'white',
-    flex: 1,
-    margin: 0,
-  },
-  modalHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
-  modalHeaderTitle: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+    flex: 1,
   },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1E293B',
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  modalScroll: {
-    padding: 24,
+  cardTitle: {
+    color: '#0F172A',
+    fontSize: 15,
+    letterSpacing: -0.3,
+    marginBottom: 4,
   },
+  headerMeta: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaChipText: {
+    color: '#64748B',
+    fontSize: 10,
+  },
+  cardBody: {
+    marginBottom: 12,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 6,
+  },
+  categoryChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    gap: 12,
+  },
+  footerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  footerIconBox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  footerText: {
+    color: '#475569',
+    fontSize: 11,
+    flex: 1,
+  },
+  footerSeparator: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#E2E8F0',
+  },
+  // Filter Styles
   filterGroup: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   filterLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
     color: '#94A3B8',
-    marginBottom: 12,
-    letterSpacing: 1,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    marginBottom: 8,
   },
   dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 16,
     backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  dateValue: {
-    fontSize: 14,
-    color: '#475569',
-    fontWeight: '500',
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  footerButton: {
-    flex: 1,
+    padding: 14,
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    gap: 12,
+  },
+  dateSelectorText: {
+    color: '#334155',
+    fontSize: 14,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: 20,
     right: 0,
-    backgroundColor: COLORS.primary,
-  },
-  clientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  clientText: {
-    fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: '700',
+    bottom: 0,
+    borderRadius: 16,
+    backgroundColor: theme.colors.primary,
+    elevation: 4,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
 });

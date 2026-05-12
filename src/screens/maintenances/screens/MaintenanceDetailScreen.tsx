@@ -1,41 +1,32 @@
 import { useRoute } from '@react-navigation/native';
 import React, { useState } from 'react';
-import {
-  Alert,
-  Dimensions,
-  Image,
-  Modal,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-  ScrollView,
-} from 'react-native';
-import { Avatar, IconButton, Icon } from 'react-native-paper';
-import Video from 'react-native-video';
+import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
+import { Icon } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
+import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
-  CATEGORIES_INFO as CATEGORIES,
-  COLORS,
-} from '../../../shared/utils/constants';
+  ITAlert,
+  ITBadge,
+  ITMediaPreviewSection,
+  ITScreenWrapper,
+  ITText,
+  ITTouchableOpacity,
+} from '../../../shared/components';
+import { theme } from '../../../shared/theme/theme';
+import { CATEGORIES_INFO as CATEGORIES } from '../../../shared/utils/constants';
 import {
   deleteMaintenance,
   resolveMaintenance,
 } from '../service/maintenance.service';
-import {
-  ITScreenWrapper,
-  ITCard,
-  ITText,
-  ITButton,
-  ITAlert,
-} from '../../../shared/components';
-import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 
 const { width } = Dimensions.get('window');
 
 export const MaintenanceDetailScreen = () => {
+  const insets = useSafeAreaInsets();
   const { goBack } = useAppNavigation();
   const route = useRoute<any>();
   const dispatch = useDispatch();
@@ -43,7 +34,6 @@ export const MaintenanceDetailScreen = () => {
 
   const [maintenance, setMaintenance] = useState(route.params.maintenance);
   const [resolving, setResolving] = useState(false);
-  const [fullMedia, setFullMedia] = useState<any>(null);
   const [showResolveAlert, setShowResolveAlert] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
@@ -51,14 +41,14 @@ export const MaintenanceDetailScreen = () => {
     if (category && typeof category === 'object') {
       return {
         label: category.name || category.value || 'General',
-        color: category.color || COLORS.textSecondary,
+        color: category.color || '#64748B',
         icon: category.icon || 'wrench',
       };
     }
     return (
       CATEGORIES[category as keyof typeof CATEGORIES] || {
         label: category || 'Mantenimiento',
-        color: COLORS.textSecondary,
+        color: '#64748B',
         icon: 'wrench',
       }
     );
@@ -73,22 +63,11 @@ export const MaintenanceDetailScreen = () => {
     if (res.success && res.data) {
       setMaintenance(res.data);
       dispatch(
-        showToast({
-          message: 'Mantenimiento atendido correctamente',
-          type: 'success',
-        }),
+        showToast({ message: 'Atendido correctamente', type: 'success' }),
       );
-      // Regresar a la lista después de atender
-      setTimeout(() => {
-        goBack();
-      }, 1500);
+      setTimeout(() => goBack(), 500);
     } else {
-      dispatch(
-        showToast({
-          message: 'No se pudo actualizar el estado',
-          type: 'error',
-        }),
-      );
+      dispatch(showToast({ message: 'Error al actualizar', type: 'error' }));
     }
   };
 
@@ -100,19 +79,11 @@ export const MaintenanceDetailScreen = () => {
 
     if (res.success) {
       dispatch(
-        showToast({
-          message: 'Mantenimiento eliminado correctamente',
-          type: 'success',
-        }),
+        showToast({ message: 'Eliminado correctamente', type: 'success' }),
       );
       goBack();
     } else {
-      dispatch(
-        showToast({
-          message: 'No se pudo eliminar el mantenimiento',
-          type: 'error',
-        }),
-      );
+      dispatch(showToast({ message: 'Error al eliminar', type: 'error' }));
     }
   };
 
@@ -120,9 +91,9 @@ export const MaintenanceDetailScreen = () => {
     const d = new Date(date);
     return {
       date: d.toLocaleDateString('es-ES', {
-        weekday: 'long',
+        weekday: 'short',
         year: 'numeric',
-        month: 'long',
+        month: 'short',
         day: 'numeric',
       }),
       time: d.toLocaleTimeString('es-ES', {
@@ -142,388 +113,339 @@ export const MaintenanceDetailScreen = () => {
       user.role === UserRole.SHIFT ||
       user.role === UserRole.MAINT);
 
-  const renderMediaItem = (media: any, index: number) => {
-    const isVideo = media?.type?.toUpperCase() === 'VIDEO';
-    return (
-      <TouchableOpacity
-        key={index}
-        style={styles.mediaCard}
-        onPress={() => setFullMedia(media)}
-        activeOpacity={0.9}
+  return (
+    <ITScreenWrapper padding={false} backgroundColor="#F8FAFC">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
       >
-        {isVideo ? (
-          <View style={styles.videoContainer}>
-            <Video
-              source={{ uri: media.url }}
-              style={styles.videoPreview}
-              resizeMode="cover"
-              paused={true}
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View style={styles.topRow}>
+            <ITBadge
+              label={isPending ? 'PENDIENTE' : 'ATENDIDO'}
+              variant={isPending ? 'error' : 'success'}
+              size="medium"
+              dot={isPending}
             />
-            <View style={styles.videoOverlay}>
-              <IconButton icon="play-circle" size={44} iconColor="#FFFFFF" />
+
+            <View style={styles.topActions}>
+              {canResolve && (
+                <ITTouchableOpacity
+                  style={styles.headerActionBtn}
+                  onPress={() => setShowResolveAlert(true)}
+                >
+                  <Icon source="check-circle" size={20} color="#10B981" />
+                </ITTouchableOpacity>
+              )}
+              {user.role === UserRole.ADMIN && (
+                <ITTouchableOpacity
+                  style={[styles.headerActionBtn, styles.deleteBtn]}
+                  onPress={() => setShowDeleteAlert(true)}
+                >
+                  <Icon source="delete" size={20} color="#EF4444" />
+                </ITTouchableOpacity>
+              )}
             </View>
           </View>
-        ) : (
-          <Image
-            source={{ uri: media.url }}
-            style={styles.imagePreview}
-            resizeMode="cover"
-          />
-        )}
-        <View style={styles.mediaTypeBadge}>
-          <Icon source={isVideo ? 'video' : 'camera'} size={12} color="#fff" />
-          <ITText variant="labelSmall" style={{ color: '#fff', marginLeft: 4 }}>
-            {isVideo ? 'VIDEO' : 'FOTO'}
-          </ITText>
-        </View>
-      </TouchableOpacity>
-    );
-  };
 
-  const FullScreenMedia = () => {
-    if (!fullMedia) return null;
-    const isVideo = fullMedia?.type?.toUpperCase() === 'VIDEO';
-
-    return (
-      <Modal visible={!!fullMedia} transparent={true} animationType="fade">
-        <View style={styles.fullScreenContainer}>
-          <IconButton
-            icon="close"
-            size={32}
-            iconColor="#FFFFFF"
-            style={styles.closeButton}
-            onPress={() => setFullMedia(null)}
-          />
-          {isVideo ? (
-            <Video
-              source={{ uri: fullMedia.url }}
-              style={styles.fullScreenVideo}
-              resizeMode="contain"
-              controls={true}
-            />
-          ) : (
-            <Image
-              source={{ uri: fullMedia.url }}
-              style={styles.fullScreenImage}
-              resizeMode="contain"
-            />
-          )}
-          <View style={styles.fullScreenFooter}>
-            <ITText variant="bodyMedium" style={{ color: '#fff' }}>
-              Evidencia de {categoryInfo.label}
-            </ITText>
-          </View>
-        </View>
-      </Modal>
-    );
-  };
-
-  return (
-    <ITScreenWrapper padding={false} scrollable={false}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor: isPending
-                  ? '#F59E0B20'
-                  : COLORS.emerald + '20',
-              },
-            ]}
-          >
-            <ITText
-              variant="labelLarge"
-              weight="bold"
-              style={{ color: isPending ? '#F59E0B' : COLORS.emerald }}
-            >
-              {isPending ? 'PENDIENTE' : 'ATENDIDO'}
-            </ITText>
-          </View>
-          <ITText variant="headlineMedium" weight="bold" style={styles.title}>
+          <ITText variant="headlineSmall" weight="bold" style={styles.title}>
             {maintenance.title}
           </ITText>
-          <View style={styles.metaRow}>
-            <Icon source="calendar" size={16} color={COLORS.textSecondary} />
+
+          <View style={styles.categoryInfoRow}>
+            <View
+              style={[
+                styles.categoryIconBox,
+                { backgroundColor: categoryInfo.color + '10' },
+              ]}
+            >
+              <Icon
+                source={categoryInfo.icon}
+                size={18}
+                color={categoryInfo.color}
+              />
+            </View>
             <ITText
               variant="bodyMedium"
-              color={COLORS.textSecondary}
-              style={styles.metaText}
+              weight="600"
+              style={{ color: categoryInfo.color }}
             >
-              {dateTime.date} a las {dateTime.time}
+              {categoryInfo.label}
             </ITText>
           </View>
         </View>
 
-        <ITCard style={styles.sectionCard}>
-          <ITText
-            variant="titleMedium"
-            weight="bold"
-            style={styles.sectionTitle}
-          >
-            Ubicación y Cliente
-          </ITText>
-          <View style={styles.infoRow}>
-            <Icon source="office-building" size={20} color={COLORS.primary} />
-            <View style={styles.infoContent}>
-              <ITText variant="labelSmall" color={COLORS.textSecondary}>
-                CLIENTE
+        {/* Meta Information */}
+        <View style={styles.metaSection}>
+          <View style={styles.metaCard}>
+            <View style={styles.metaItem}>
+              <View style={styles.metaIconBox}>
+                <Icon
+                  source="calendar"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+              </View>
+              <ITText variant="bodySmall" style={styles.metaText}>
+                {dateTime.date}
               </ITText>
-              <ITText variant="bodyLarge" weight="bold">
-                {maintenance.client?.name || 'N/A'}
+              <View style={styles.metaSeparator} />
+              <View style={styles.metaIconBox}>
+                <Icon
+                  source="clock-outline"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+              </View>
+              <ITText variant="bodySmall" style={styles.metaText}>
+                {dateTime.time}
+              </ITText>
+            </View>
+
+            <View style={styles.metaDivider} />
+
+            <View style={styles.metaItem}>
+              <View style={styles.metaIconBox}>
+                <Icon
+                  source="office-building"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+              </View>
+              <ITText variant="bodySmall" style={styles.metaText}>
+                {maintenance.client?.name || 'Sin cliente'}
               </ITText>
             </View>
           </View>
-        </ITCard>
+        </View>
 
-        <ITCard style={styles.sectionCard}>
-          <ITText
-            variant="titleMedium"
-            weight="bold"
-            style={styles.sectionTitle}
-          >
-            Reportado por
-          </ITText>
-          <View style={styles.guardRow}>
-            <Avatar.Text
-              size={48}
-              label={maintenance.guard?.name?.charAt(0) || 'G'}
-              style={{ backgroundColor: COLORS.primary }}
-            />
-            <View style={styles.guardInfo}>
-              <ITText variant="bodyLarge" weight="bold">
-                {maintenance.guard?.name}
-              </ITText>
-              <ITText variant="labelSmall" color={COLORS.textSecondary}>
-                GUARDIA DE SEGURIDAD
-              </ITText>
-            </View>
-          </View>
-        </ITCard>
-
-        <ITCard style={styles.sectionCard}>
-          <ITText
-            variant="titleMedium"
-            weight="bold"
-            style={styles.sectionTitle}
-          >
-            Descripción
-          </ITText>
-          <ITText variant="bodyLarge" style={styles.description}>
-            {maintenance.description || 'Sin descripción detallada.'}
-          </ITText>
-        </ITCard>
-
-        {maintenance.media && maintenance.media.length > 0 && (
-          <View style={styles.mediaSection}>
-            <ITText
-              variant="titleMedium"
-              weight="bold"
-              style={styles.mediaTitle}
-            >
-              Evidencia Multimedia
+        {/* Content Section */}
+        <View style={styles.contentSection}>
+          {/* Reported By */}
+          <View>
+            <ITText variant="labelSmall" style={styles.sectionLabel}>
+              REPORTADO POR
             </ITText>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.mediaList}
-            >
-              {maintenance.media.map((item: any, index: number) =>
-                renderMediaItem(item, index),
-              )}
-            </ScrollView>
+            <View style={styles.guardCard}>
+              <View style={styles.guardInfo}>
+                <View style={styles.guardAvatar}>
+                  <ITText style={styles.guardAvatarText}>
+                    {maintenance.guard?.name?.charAt(0) || 'G'}
+                  </ITText>
+                </View>
+                <View>
+                  <ITText
+                    variant="bodyLarge"
+                    weight="bold"
+                    style={styles.guardName}
+                  >
+                    {maintenance.guard?.name || 'Desconocido'}
+                  </ITText>
+                  <ITText variant="labelSmall" style={styles.guardRole}>
+                    Personal de Seguridad
+                  </ITText>
+                </View>
+              </View>
+            </View>
           </View>
-        )}
 
-        <View style={styles.actions}>
-          {canResolve && (
-            <ITButton
-              mode="contained"
-              onPress={() => setShowResolveAlert(true)}
-              loading={resolving}
-              style={styles.resolveButton}
-              icon="check-circle"
-              label="MARCAR COMO ATENDIDO"
-            />
-          )}
-          {user.role === UserRole.ADMIN && (
-            <ITButton
-              mode="outlined"
-              onPress={() => setShowDeleteAlert(true)}
-              style={styles.deleteButton}
-              icon="delete"
-              textColor={COLORS.white}
-              iconColor={COLORS.white}
-              label="ELIMINAR REPORTE"
-            />
-          )}
-          <View style={{ height: 80 }} />
+          {/* Description */}
+          <View>
+            <ITText
+              variant="labelSmall"
+              style={[styles.sectionLabel, { marginTop: 24 }]}
+            >
+              DETALLES DEL TRABAJO
+            </ITText>
+            <View style={styles.descriptionCard}>
+              <ITText variant="bodyMedium" style={styles.description}>
+                {maintenance.description || 'Sin descripción adicional.'}
+              </ITText>
+            </View>
+          </View>
+
+          {/* Media Section */}
+          <ITMediaPreviewSection media={maintenance.media} />
         </View>
       </ScrollView>
+
       <ITAlert
         visible={showResolveAlert}
-        title="Confirmar"
-        description="¿Marcar este mantenimiento como atendido?"
-        confirmLabel="Sí, atender"
+        title="Finalizar Mantenimiento"
+        description="¿Confirmas que el trabajo ha sido completado correctamente?"
+        confirmLabel="Confirmar"
         onDismiss={() => setShowResolveAlert(false)}
         onConfirm={onConfirmResolve}
         loading={resolving}
       />
+
       <ITAlert
         visible={showDeleteAlert}
         title="Eliminar Reporte"
-        description="¿Estás seguro de que deseas eliminar permanentemente este reporte?"
+        description="Esta acción es permanente. ¿Estás seguro de que deseas eliminar este reporte?"
         confirmLabel="Eliminar"
-        type="danger"
+        type="alert"
         onDismiss={() => setShowDeleteAlert(false)}
         onConfirm={onConfirmDelete}
         loading={resolving}
       />
-      <FullScreenMedia />
     </ITScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
   header: {
-    padding: 24,
-    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginBottom: 12,
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  topActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  deleteBtn: {
+    borderColor: '#FEE2E2',
+    backgroundColor: '#FEF2F2',
   },
   title: {
-    color: COLORS.textPrimary,
-    marginBottom: 8,
+    color: '#0F172A',
+    fontSize: 22,
+    letterSpacing: -0.3,
+    marginBottom: 12,
+    lineHeight: 28,
   },
-  metaRow: {
+  categoryInfoRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  categoryIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  metaSection: {
+    paddingHorizontal: 20,
+    marginTop: -16,
+  },
+  metaCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  metaIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   metaText: {
-    marginLeft: 8,
+    color: '#334155',
+    fontSize: 13,
   },
-  sectionCard: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    padding: 16,
-    borderRadius: 16,
+  metaSeparator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CBD5E1',
   },
-  sectionTitle: {
-    marginBottom: 12,
-    color: COLORS.textSecondary,
+  metaDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 12,
+  },
+  contentSection: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  sectionLabel: {
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '600',
     letterSpacing: 0.5,
+    marginBottom: 12,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  infoContent: {
-    marginLeft: 16,
-  },
-  guardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  guardCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   guardInfo: {
-    marginLeft: 16,
-  },
-  description: {
-    lineHeight: 24,
-    color: '#334155',
-  },
-  mediaSection: {
-    marginVertical: 16,
-  },
-  mediaTitle: {
-    marginLeft: 24,
-    marginBottom: 12,
-    color: COLORS.textSecondary,
-  },
-  mediaList: {
-    paddingLeft: 24,
-    paddingRight: 16,
-    gap: 12,
-  },
-  mediaCard: {
-    width: width * 0.7,
-    height: 200,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#F1F5F9',
-    position: 'relative',
-  },
-  imagePreview: {
-    width: '100%',
-    height: '100%',
-  },
-  videoContainer: {
-    width: '100%',
-    height: '100%',
-  },
-  videoPreview: {
-    width: '100%',
-    height: '100%',
-  },
-  videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mediaTypeBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  actions: {
-    padding: 24,
     gap: 12,
   },
-  resolveButton: {
-    borderRadius: 12,
-    paddingVertical: 4,
-  },
-  deleteButton: {
-    borderRadius: 12,
-    backgroundColor: COLORS.red,
-    borderColor: COLORS.red,
-  },
-  fullScreenContainer: {
-    flex: 1,
-    backgroundColor: '#000',
+  guardAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  fullScreenVideo: {
-    width: '100%',
-    height: '100%',
-  },
-  fullScreenImage: {
-    width: '100%',
-    height: '100%',
-  },
-  fullScreenFooter: {
-    position: 'absolute',
-    bottom: 40,
-    width: '100%',
     alignItems: 'center',
-    paddingHorizontal: 20,
+  },
+  guardAvatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.primary,
+  },
+  guardName: {
+    color: '#0F172A',
+    fontSize: 16,
+    letterSpacing: -0.3,
+    marginBottom: 2,
+  },
+  guardRole: {
+    color: '#64748B',
+    fontSize: 11,
+  },
+  descriptionCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  description: {
+    lineHeight: 22,
+    color: '#334155',
+    fontSize: 14,
   },
 });

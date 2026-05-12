@@ -1,41 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  View,
-  TouchableOpacity,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-} from 'react-native';
-import {
-  Button,
-  IconButton,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  Avatar,
-  Card,
-  Icon,
-  Surface,
-  Divider,
-} from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useDispatch } from 'react-redux';
-import { showToast } from '../../../core/store/slices/toast.slice';
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import {
+  ITButton,
+  ITInput,
+  ITText,
+  ITTouchableOpacity,
+} from '../../../shared/components';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
+import ModernStyles from '../../../shared/theme/app.styles';
 import { getClients } from '../../clients/service/client.service';
+import { getUsers } from '../../kardex/service/kardex.service';
 import { getLocations } from '../../locations/service/location.service';
 import { getPaginatedZones } from '../../zones/service/zone.service';
-import { getUsers } from '../../kardex/service/kardex.service';
 import {
   createRecurring,
-  updateRecurring,
   getRecurringById,
+  updateRecurring,
 } from '../service/recurring.service';
-import ModernStyles from '../../../shared/theme/app.styles';
 
-const PRIMARY_COLOR = '#065911';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDispatch } from 'react-redux';
+import { theme } from '../../../shared/theme/theme';
+import { Icon, Card, Divider, IconButton, Avatar } from 'react-native-paper';
+import { showToast } from '../../../core/store/slices/toast.slice';
 
 export const RecurringFormScreen = ({ navigation, route }: any) => {
   const insets = useSafeAreaInsets();
@@ -335,60 +332,76 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <Surface style={styles.headerCard} elevation={0}>
+        <View style={styles.headerCard}>
           <View style={styles.headerIconContainer}>
-            <Icon source="map-marker-path" size={32} color={PRIMARY_COLOR} />
+            <Icon
+              source="map-marker-path"
+              size={32}
+              color={theme.colors.primary}
+            />
           </View>
-          <Text style={styles.title}>
+          <ITText
+            variant="headlineSmall"
+            weight="bold"
+            color={theme.colors.primary}
+            textAlign="center"
+          >
             {isEditing ? 'Editar Ruta' : 'Nueva Ruta'}
-          </Text>
-          <Text style={styles.subtitle}>
+          </ITText>
+          <ITText
+            variant="bodySmall"
+            color={theme.colors.slate500}
+            textAlign="center"
+          >
             Configura el recorrido recurrente y las tareas de inspección
-          </Text>
-        </Surface>
+          </ITText>
+        </View>
 
         <Card style={styles.formCard} elevation={2}>
           <Card.Content>
             {/* Stepper */}
             <View style={styles.stepperContainer}>
-              {steps.map((step, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.stepItem}
-                  onPress={() => {
-                    if (idx <= currentStep) setCurrentStep(idx);
-                  }}
-                  disabled={idx > currentStep}
-                >
-                  <View
-                    style={[
-                      styles.stepCircle,
-                      idx <= currentStep && styles.stepCircleActive,
-                      idx < currentStep && styles.stepCircleCompleted,
-                    ]}
+              {steps.map((step, idx) => {
+                const isActive = idx <= currentStep;
+                const isCompleted = idx < currentStep;
+                return (
+                  <ITTouchableOpacity
+                    key={idx}
+                    style={styles.stepItem}
+                    onPress={() => {
+                      if (idx <= currentStep) setCurrentStep(idx);
+                    }}
+                    disabled={idx > currentStep}
                   >
-                    {idx < currentStep ? (
-                      <Icon source="check" size={16} color="#FFFFFF" />
-                    ) : (
-                      <Icon
-                        source={step.icon}
-                        size={16}
-                        color={idx <= currentStep ? '#FFFFFF' : '#94A3B8'}
-                      />
-                    )}
-                  </View>
-                  <Text
-                    style={[
-                      styles.stepLabel,
-                      idx <= currentStep && styles.stepLabelActive,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {step.title}
-                  </Text>
-                  {idx < steps.length - 1 && <View style={styles.stepLine} />}
-                </TouchableOpacity>
-              ))}
+                    <View
+                      style={[
+                        styles.stepCircle,
+                        isActive && styles.stepCircleActive,
+                        isCompleted && styles.stepCircleCompleted,
+                      ]}
+                    >
+                      {isCompleted ? (
+                        <Icon source="check" size={16} color="#FFFFFF" />
+                      ) : (
+                        <Icon
+                          source={step.icon}
+                          size={16}
+                          color={isActive ? '#FFFFFF' : '#94A3B8'}
+                        />
+                      )}
+                    </View>
+                    <ITText
+                      variant="labelSmall"
+                      weight={isActive ? 'bold' : 'medium'}
+                      color={isActive ? theme.colors.primary : '#94A3B8'}
+                      numberOfLines={1}
+                    >
+                      {step.title}
+                    </ITText>
+                    {idx < steps.length - 1 && <View style={styles.stepLine} />}
+                  </ITTouchableOpacity>
+                );
+              })}
             </View>
 
             <Divider style={styles.divider} />
@@ -397,22 +410,18 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
             {currentStep === 0 && (
               <View>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Nombre de la ruta</Text>
-                  <TextInput
-                    mode="outlined"
+                  <ITInput
+                    label="Nombre de la ruta"
                     placeholder="Ej: Ronda Perimetral Nocturna"
                     value={title}
                     onChangeText={setTitle}
-                    left={<TextInput.Icon icon="alphabetical" />}
-                    outlineStyle={styles.inputOutline}
-                    activeOutlineColor={PRIMARY_COLOR}
+                    leftIcon="alphabetical"
                   />
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Cliente Operativo</Text>
                   <SearchComponent
-                    label="Cliente"
+                    label="Cliente Operativo"
                     placeholder="Selecciona cliente..."
                     options={clients.map(c => ({ label: c.name, value: c.id }))}
                     value={selectedClientId}
@@ -431,7 +440,14 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
             {currentStep === 1 && (
               <View>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Vincular Puntos</Text>
+                  <ITText
+                    variant="labelMedium"
+                    weight="bold"
+                    color={theme.colors.slate700}
+                    style={{ marginBottom: 12 }}
+                  >
+                    Vincular Puntos
+                  </ITText>
                   <View style={styles.filtersWrapper}>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <View style={{ flex: 1 }}>
@@ -451,7 +467,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                         icon="plus-box-multiple"
                         mode="contained"
                         containerColor="#D1FAE5"
-                        iconColor={PRIMARY_COLOR}
+                        iconColor={theme.colors.primary}
                         onPress={handleAddAllFromZone}
                         disabled={!selectedZoneId}
                         style={{ marginTop: 24, borderRadius: 12 }}
@@ -500,7 +516,13 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                             onPress={() => handleAddTask(idx)}
                             style={{ marginRight: 10 }}
                           >
-                            <Text style={styles.addTaskBtn}>+ TAREA</Text>
+                            <ITText
+                              variant="labelSmall"
+                              weight="black"
+                              color={theme.colors.primary}
+                            >
+                              + TAREA
+                            </ITText>
                           </TouchableOpacity>
                           <IconButton
                             icon="trash-can-outline"
@@ -573,7 +595,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                           String(g.clientId) === String(selectedClientId),
                       )
                       .map(guard => (
-                        <TouchableOpacity
+                        <ITTouchableOpacity
                           key={guard.id}
                           onPress={() => toggleGuard(guard.id)}
                           style={[
@@ -589,7 +611,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                             }`}
                             color={
                               selectedGuards.includes(guard.id)
-                                ? PRIMARY_COLOR
+                                ? theme.colors.primary
                                 : '#64748B'
                             }
                             style={{
@@ -598,20 +620,23 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                                 : '#F1F5F9',
                             }}
                           />
-                          <Text
-                            style={[
-                              styles.roleCardText,
-                              selectedGuards.includes(guard.id) &&
-                                styles.roleCardTextActive,
-                            ]}
+                          <ITText
+                            variant="labelSmall"
+                            weight="bold"
+                            color={
+                              selectedGuards.includes(guard.id)
+                                ? '#fff'
+                                : '#475569'
+                            }
+                            style={{ flex: 1 }}
                             numberOfLines={1}
                           >
                             {guard.name} {guard.lastName}
-                          </Text>
+                          </ITText>
                           {selectedGuards.includes(guard.id) && (
                             <Icon source="check" size={16} color="#fff" />
                           )}
-                        </TouchableOpacity>
+                        </ITTouchableOpacity>
                       ))}
                   </View>
                 </View>
@@ -676,48 +701,44 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
 
             <View style={styles.navigationButtons}>
               {currentStep > 0 && (
-                <Button
+                <ITButton
                   mode="outlined"
                   onPress={() => setCurrentStep(prev => prev - 1)}
                   style={styles.navButton}
-                  textColor="#64748B"
                 >
                   Atrás
-                </Button>
+                </ITButton>
               )}
 
               {currentStep < steps.length - 1 ? (
-                <Button
+                <ITButton
                   mode="contained"
                   onPress={validateCurrentStep}
                   style={[styles.navButton, styles.nextButton]}
-                  buttonColor={PRIMARY_COLOR}
                 >
                   Continuar
-                </Button>
+                </ITButton>
               ) : (
-                <Button
+                <ITButton
                   mode="contained"
                   onPress={handleSave}
                   loading={loading}
                   disabled={loading}
                   style={[styles.navButton, styles.submitButton]}
-                  buttonColor={PRIMARY_COLOR}
                 >
                   {isEditing ? 'Actualizar' : 'Finalizar'}
-                </Button>
+                </ITButton>
               )}
             </View>
 
-            <Button
+            <ITButton
               mode="text"
               onPress={() => navigation.goBack()}
               disabled={loading}
-              textColor="#94A3B8"
               style={styles.cancelButton}
             >
               Cancelar
-            </Button>
+            </ITButton>
           </Card.Content>
         </Card>
       </ScrollView>
@@ -731,9 +752,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   headerCard: {
-    backgroundColor: 'transparent',
-    marginBottom: 20,
+    marginBottom: 24,
     alignItems: 'center',
+    paddingTop: 10,
   },
   headerIconContainer: {
     width: 64,
@@ -742,23 +763,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1FAE5',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: PRIMARY_COLOR,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
+    marginBottom: 16,
   },
   formCard: {
     borderRadius: 24,
     backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
   },
   stepperContainer: {
     flexDirection: 'row',
@@ -778,23 +788,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
     zIndex: 2,
   },
   stepCircleActive: {
-    backgroundColor: PRIMARY_COLOR,
+    backgroundColor: theme.colors.primary,
   },
   stepCircleCompleted: {
     backgroundColor: '#10B981',
-  },
-  stepLabel: {
-    fontSize: 11,
-    color: '#94A3B8',
-    textAlign: 'center',
-  },
-  stepLabelActive: {
-    color: PRIMARY_COLOR,
-    fontWeight: '600',
   },
   stepLine: {
     position: 'absolute',
@@ -810,16 +811,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   inputGroup: {
-    marginBottom: 18,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1E293B',
-    marginBottom: 10,
-  },
-  inputOutline: {
-    borderRadius: 12,
+    marginBottom: 20,
   },
   guardsGrid: {
     flexDirection: 'row',
@@ -830,7 +822,7 @@ const styles = StyleSheet.create({
     width: '48%',
     backgroundColor: '#F8FAFC',
     borderRadius: 12,
-    padding: 10,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -838,67 +830,25 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   roleCardActive: {
-    backgroundColor: PRIMARY_COLOR,
-    borderColor: PRIMARY_COLOR,
-  },
-  roleCardText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#475569',
-    flex: 1,
-  },
-  roleCardTextActive: {
-    color: '#FFFFFF',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   filtersWrapper: {
     backgroundColor: '#F8FAFC',
-    padding: 12,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#F1F5F9',
-  },
-  locMiniCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 8,
-    paddingLeft: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    gap: 12,
-  },
-  locIndexSmall: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  locIndexTextSmall: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#94A3B8',
-  },
-  locNameSmall: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#334155',
   },
   emptyCard: {
     alignItems: 'center',
-    padding: 20,
+    padding: 30,
     backgroundColor: '#F8FAFC',
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderStyle: 'dashed',
-    gap: 8,
+    gap: 12,
   },
   emptyText: {
     fontSize: 12,
@@ -907,27 +857,27 @@ const styles = StyleSheet.create({
   taskLocationGroup: {
     marginBottom: 20,
     backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
   taskLocationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 16,
   },
   locIndexSmallActive: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: PRIMARY_COLOR,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   locIndexTextActive: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#fff',
   },
@@ -937,16 +887,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1E293B',
   },
-  addTaskBtn: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: PRIMARY_COLOR,
-  },
   taskInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 14,
     marginBottom: 8,
     paddingLeft: 12,
     borderWidth: 1,
@@ -956,29 +901,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
     fontSize: 13,
-    height: 40,
-  },
-  noTasksInfo: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    paddingVertical: 10,
+    height: 44,
   },
   navigationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
+    marginTop: 8,
   },
   navButton: {
     flex: 1,
-    borderRadius: 12,
   },
   nextButton: {
-    elevation: 2,
+    backgroundColor: theme.colors.primary,
   },
   submitButton: {
-    elevation: 4,
+    backgroundColor: theme.colors.primary,
   },
   cancelButton: {
     marginTop: 12,

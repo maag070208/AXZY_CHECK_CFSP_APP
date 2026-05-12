@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Icon, IconButton, Text } from 'react-native-paper';
+import { Icon, Text, ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppNavigation } from '../hooks/useAppNavigation';
 import { useAppDispatch, useAppSelector } from '../../core/store/hooks';
 import { logout } from '../../core/store/slices/user.slice';
+import { logout as logoutApi } from '../../screens/auth/services/AuthService';
 import { RootState } from '../../core/store/redux.config';
+import { getCurrentRound } from '../../screens/home/service/round.service';
+import { ITAlert } from '../../shared/components';
 import { theme } from '../../shared/theme/theme';
 
 /* ======================================================
@@ -42,7 +45,7 @@ const MENU_ITEMS: MenuItem[] = [
   },
   {
     label: 'Guardias',
-    icon: 'account-group',
+    icon: 'shield-check',
     route: 'GUARDS_STACK',
     screen: 'GUARD_LIST',
     roles: ['ADMIN', 'SHIFT'],
@@ -62,7 +65,7 @@ const MENU_ITEMS: MenuItem[] = [
     roles: ['ADMIN'],
   },
   {
-    label: 'Kardex',
+    label: 'Historial',
     icon: 'history',
     route: 'Tabs',
     screen: 'Kardex',
@@ -77,21 +80,21 @@ const MENU_ITEMS: MenuItem[] = [
   },
   {
     label: 'Mantenimiento',
-    icon: 'toolbox-outline',
+    icon: 'wrench-outline',
     route: 'MAINTENANCE_STACK',
     screen: 'MAINTENANCE_LIST',
     roles: ['ADMIN', 'MAINT'],
   },
   {
-    label: 'Hist. Recorridos',
-    icon: 'clipboard-text-clock',
+    label: 'Recorridos',
+    icon: 'map-marker-distance',
     route: 'ROUNDS_STACK',
     screen: 'ROUNDS_LIST',
     roles: ['ADMIN', 'SHIFT'],
   },
   {
     label: 'Horarios',
-    icon: 'clock-outline',
+    icon: 'calendar-clock',
     route: 'SCHEDULES_STACK',
     screen: 'SCHEDULES_LIST',
     roles: ['ADMIN'],
@@ -105,14 +108,14 @@ const MENU_ITEMS: MenuItem[] = [
   },
   {
     label: 'Zonas',
-    icon: 'map-clock-outline',
+    icon: 'layers-outline',
     route: 'ZONES_STACK',
     screen: 'ZONES_MAIN',
     roles: ['ADMIN'],
   },
   {
     label: 'Locaciones',
-    icon: 'map-marker-radius-outline',
+    icon: 'map-marker-outline',
     route: 'LOCATIONS_STACK',
     screen: 'LOCATIONS_MAIN',
     roles: ['ADMIN', 'SHIFT'],
@@ -128,15 +131,55 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
   const { resetToModule } = useAppNavigation();
 
   const userState = useAppSelector((state: RootState) => state.userState);
-
   const userRole = userState.role;
+
+  const [logoutAlertVisible, setLogoutAlertVisible] = useState(false);
+  const [isCheckingRound, setIsCheckingRound] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<string>('Inicio');
 
   const filteredMenuItems = MENU_ITEMS.filter(item =>
     item.roles.includes(userRole as any),
   );
 
+  const handleLogout = async () => {
+    try {
+      await logoutApi();
+    } catch (e) {
+      console.log('Error al cerrar sesión en API', e);
+    } finally {
+      dispatch(logout());
+    }
+  };
+
+  const onLogoutPress = async () => {
+    if (userRole === 'GUARD') {
+      setIsCheckingRound(true);
+      try {
+        const roundRes = await getCurrentRound();
+        if (roundRes.success && roundRes.data) {
+          setLogoutAlertVisible(true);
+          setIsCheckingRound(false);
+          return;
+        }
+      } catch (error) {
+        // Assume no active round or error fetching, proceed to logout
+      }
+      setIsCheckingRound(false);
+    }
+    await handleLogout();
+  };
+
+  const handleNavigation = (item: MenuItem) => {
+    setSelectedItem(item.label);
+    const params =
+      item.label === 'Contactos'
+        ? { residentId: Number(userState.id) }
+        : undefined;
+    resetToModule(item.route as any, item.screen, params);
+  };
+
   return (
-    <View style={[styles.container]}>
+    <View style={styles.container}>
       {/* ================= HEADER ================= */}
       <View style={styles.header}>
         <View style={styles.avatarContainer}>
@@ -145,77 +188,91 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
           </Text>
         </View>
 
-        <View style={{ flex: 1 }}>
-          <Text variant="titleMedium" style={styles.userName}>
+        <View style={styles.userInfo}>
+          <Text variant="titleMedium" style={styles.userName} numberOfLines={1}>
             {userState.fullName || 'Usuario'}
           </Text>
-          <Text variant="bodySmall" style={styles.userRole}>
-            {ROLE_LABELS[userState.role || ''] || userState.role}
-          </Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.userRole}>
+              {ROLE_LABELS[userState.role || ''] || userState.role}
+            </Text>
+          </View>
         </View>
 
-        <IconButton
-          icon="pencil"
-          size={20}
-          iconColor={theme.colors.primary}
+        <TouchableOpacity
+          style={styles.editButton}
           onPress={() => navigation.navigate('PROFILE_SCREEN')}
-        />
+        >
+          <Icon source="pencil" size={18} color={theme.colors.primary} />
+        </TouchableOpacity>
       </View>
-
-      <View style={styles.divider} />
 
       {/* ================= MENU ================= */}
       <ScrollView
         style={styles.menuContainer}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={styles.menuContent}
+        showsVerticalScrollIndicator={false}
       >
-        {filteredMenuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.menuItem}
-            onPress={() => {
-              const params =
-                item.label === 'Contactos'
-                  ? { residentId: Number(userState.id) }
-                  : undefined;
-              resetToModule(item.route as any, item.screen, params);
-            }}
-          >
-            <View style={styles.iconBox}>
-              <Icon source={item.icon} size={22} color="#065911" />
-            </View>
+        {filteredMenuItems.map((item, index) => {
+          const isSelected = selectedItem === item.label;
+          return (
+            <TouchableOpacity
+              key={index}
+              style={[styles.menuItem, isSelected && styles.menuItemSelected]}
+              onPress={() => handleNavigation(item)}
+            >
+              <View
+                style={[styles.iconBox, isSelected && styles.iconBoxSelected]}
+              >
+                <Icon
+                  source={item.icon}
+                  size={20}
+                  color={isSelected ? theme.colors.primary : '#64748B'}
+                />
+              </View>
 
-            <Text style={styles.menuLabel}>{item.label}</Text>
+              <Text
+                style={[
+                  styles.menuLabel,
+                  isSelected && styles.menuLabelSelected,
+                ]}
+              >
+                {item.label}
+              </Text>
 
-            <Icon source="chevron-right" size={16} color="#cbd5e1" />
-          </TouchableOpacity>
-        ))}
+              {isSelected && <View style={styles.activeIndicator} />}
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* ================= FOOTER ================= */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         <TouchableOpacity
           style={styles.logoutBtn}
-          onPress={async () => {
-            try {
-              const {
-                logout: logoutApi,
-              } = require('../../screens/auth/services/AuthService');
-              if (userState.id) {
-                await logoutApi(userState.id);
-              }
-            } catch (e) {
-            } finally {
-              dispatch(logout());
-            }
-          }}
+          onPress={onLogoutPress}
+          disabled={isCheckingRound}
         >
-          <Icon source="logout" size={20} color="#ef4444" />
+          {isCheckingRound ? (
+            <ActivityIndicator size={18} color="#EF4444" />
+          ) : (
+            <Icon source="logout" size={18} color="#EF4444" />
+          )}
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
 
-        <Text style={styles.versionText}>v1.0.22</Text>
+        <Text style={styles.versionText}>Versión 1.0.22</Text>
       </View>
+
+      <ITAlert
+        visible={logoutAlertVisible}
+        title="Ronda Activa"
+        description="Tienes que finalizar tu ronda activa antes de cerrar sesión."
+        type="warning"
+        confirmLabel="Entendido"
+        onConfirm={() => setLogoutAlertVisible(false)}
+        onDismiss={() => setLogoutAlertVisible(false)}
+      />
     </View>
   );
 };
@@ -223,95 +280,141 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
 export default DrawerContent;
 
 /* ======================================================
-   STYLES
+   STYLES MODERNOS
 ====================================================== */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    padding: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.secondaryContainer,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#0f172a',
+    color: theme.colors.primary,
+  },
+  userInfo: {
+    flex: 1,
+    gap: 4,
   },
   userName: {
     fontWeight: '700',
-    color: '#0f172a',
+    fontSize: 16,
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  roleBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
   },
   userRole: {
-    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#64748B',
     textTransform: 'capitalize',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#f1f5f9',
-    marginHorizontal: 24,
-    marginBottom: 16,
+  editButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   menuContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+  },
+  menuContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 12,
     marginBottom: 4,
+    position: 'relative',
+  },
+  menuItemSelected: {
+    backgroundColor: '#EEF2FF',
   },
   iconBox: {
-    width: 32,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  iconBoxSelected: {
+    backgroundColor: '#E0E7FF',
   },
   menuLabel: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: '#334155',
+    letterSpacing: -0.2,
+  },
+  menuLabelSelected: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  activeIndicator: {
+    width: 3,
+    height: 20,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 2,
   },
   footer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-    paddingTop: 24,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 20,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 16,
-    backgroundColor: '#fef2f2',
-    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 14,
     justifyContent: 'center',
   },
   logoutText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#ef4444',
+    color: '#EF4444',
   },
   versionText: {
     textAlign: 'center',
-    fontSize: 12,
-    color: '#cbd5e1',
+    fontSize: 11,
+    color: '#CBD5E1',
     marginTop: 16,
+    marginBottom: 8,
   },
 });

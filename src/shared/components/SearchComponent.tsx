@@ -33,7 +33,7 @@ interface Props {
   placeholder?: string;
   disabled?: boolean;
   error?: string | boolean; // Can be a string message or boolean
-  helperText?: string; 
+  helperText?: string;
   testID?: string;
   searchPlaceholder?: string;
   mode?: 'flat' | 'outlined';
@@ -55,7 +55,8 @@ export const SearchComponent = ({
   const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
   const [query, setQuery] = useState('');
-  const [filteredOptions, setFilteredOptions] = useState<SearchOption[]>(options);
+  const [filteredOptions, setFilteredOptions] =
+    useState<SearchOption[]>(options);
 
   // Find selected label
   const selectedOption = options.find(o => String(o.value) === String(value));
@@ -72,7 +73,7 @@ export const SearchComponent = ({
     } else {
       const lower = text.toLowerCase();
       const filtered = options.filter(opt =>
-        opt.label.toLowerCase().includes(lower)
+        opt.label.toLowerCase().includes(lower),
       );
       setFilteredOptions(filtered);
     }
@@ -94,7 +95,6 @@ export const SearchComponent = ({
       <TouchableOpacity
         onPress={() => !disabled && setModalVisible(true)}
         disabled={disabled}
-        activeOpacity={0.7}
       >
         <View pointerEvents="none">
           <TextInput
@@ -111,18 +111,16 @@ export const SearchComponent = ({
           />
         </View>
       </TouchableOpacity>
-      
-      {(hasError && errorMsg) ? (
+
+      {hasError && errorMsg ? (
         <HelperText type="error" visible={hasError}>
           {errorMsg}
         </HelperText>
       ) : null}
 
       {/* Helper Text if no error */}
-      {(!hasError && helperText) ? (
-         <HelperText type="info">
-           {helperText}
-         </HelperText>
+      {!hasError && helperText ? (
+        <HelperText type="info">{helperText}</HelperText>
       ) : null}
 
       {/* Selection Modal */}
@@ -133,10 +131,15 @@ export const SearchComponent = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <KeyboardAvoidingView
-           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-           style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalContainer}
         >
-          <View style={[styles.modalHeader, { paddingTop: Platform.OS === 'android' ? 16 : 0 }]}>
+          <View
+            style={[
+              styles.modalHeader,
+              { paddingTop: Platform.OS === 'android' ? 16 : 0 },
+            ]}
+          >
             <Text style={styles.modalTitle}>{label}</Text>
             <IconButton
               icon="close"
@@ -152,7 +155,7 @@ export const SearchComponent = ({
               value={query}
               style={styles.searchBar}
               inputStyle={styles.searchInput}
-              autoFocus={false} 
+              autoFocus={false}
               iconColor="#1E293B"
               placeholderTextColor="#94A3B8"
             />
@@ -162,23 +165,40 @@ export const SearchComponent = ({
             data={filteredOptions}
             keyExtractor={(item, index) => String(item.value) + index}
             renderItem={({ item }) => {
-                const isSelected = String(item.value) === String(value);
-                return (
-                  <TouchableRipple onPress={() => handleSelect(item)}>
-                    <View style={[styles.optionItem, isSelected && styles.optionSelected]}>
-                        <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>
-                            {item.label}
-                        </Text>
-                        {isSelected && <Icon source="check" size={20} color="#0f172a" />}
-                    </View>
-                  </TouchableRipple>
-                );
+              const isSelected = String(item.value) === String(value);
+              return (
+                <TouchableRipple onPress={() => handleSelect(item)}>
+                  <View
+                    style={[
+                      styles.optionItem,
+                      isSelected && styles.optionSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.optionLabel,
+                        isSelected && styles.optionLabelSelected,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                    {isSelected && (
+                      <Icon source="check" size={20} color="#0f172a" />
+                    )}
+                  </View>
+                </TouchableRipple>
+              );
             }}
-            contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 20 }]}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: insets.bottom + 20 },
+            ]}
             ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>No se encontraron resultados</Text>
-                </View>
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  No se encontraron resultados
+                </Text>
+              </View>
             }
           />
         </KeyboardAvoidingView>
@@ -223,7 +243,7 @@ const styles = StyleSheet.create({
     height: 48,
   },
   searchInput: {
-    minHeight: 0, 
+    minHeight: 0,
     color: '#1E293B',
     fontSize: 16,
   },

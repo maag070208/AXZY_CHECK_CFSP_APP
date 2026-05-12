@@ -51,7 +51,6 @@ const MainNavigation = () => {
 
   return (
     <>
-      <LoaderComponent />
       <NavigationContainer onStateChange={validateToken}>
         {isSignedIn ? <DrawerNavigator /> : <LoginScreen />}
       </NavigationContainer>

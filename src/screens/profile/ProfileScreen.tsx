@@ -8,29 +8,24 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {
-  Divider,
-  Icon,
-  Switch,
-} from 'react-native-paper';
+import { Divider, Icon, Switch } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
-import { useAppSelector } from '../../core/store/hooks';
 import {
   changePassword,
   updateUserProfile,
 } from '../../core/services/UserService';
+import { useAppSelector } from '../../core/store/hooks';
 import { showToast } from '../../core/store/slices/toast.slice';
-import { 
-  ITScreenWrapper, 
-  ITText, 
-  ITInput, 
-  ITButton, 
+import {
+  ITButton,
   ITCard,
-  LoaderComponent
+  ITInput,
+  ITScreenWrapper,
+  ITText,
 } from '../../shared/components';
-import { COLORS } from '../../shared/utils/constants';
 import { theme } from '../../shared/theme/theme';
+import { COLORS } from '../../shared/utils/constants';
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
@@ -137,7 +132,6 @@ export const ProfileScreen = () => {
 
   return (
     <ITScreenWrapper padding={false} style={styles.container}>
-      <LoaderComponent visible={loading} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -152,8 +146,14 @@ export const ProfileScreen = () => {
         >
           {/* HEADER SECTION */}
           <View style={styles.headerCard}>
-            <ITText variant="headlineMedium" weight="bold" style={styles.title}>{user.fullName}</ITText>
-            <ITText variant="bodyLarge" color={theme.colors.onSurfaceVariant} style={styles.subtitle}>
+            <ITText variant="headlineMedium" weight="bold" style={styles.title}>
+              {user.fullName}
+            </ITText>
+            <ITText
+              variant="bodyLarge"
+              color={theme.colors.onSurfaceVariant}
+              style={styles.subtitle}
+            >
               {ROLE_LABELS[user.role || ''] || user.role}
             </ITText>
           </View>
@@ -162,134 +162,148 @@ export const ProfileScreen = () => {
           <ITCard style={styles.formCard}>
             {/* Stepper */}
             <View style={styles.stepperContainer}>
-            {steps.map((step, idx) => (
+              {steps.map((step, idx) => (
                 <TouchableOpacity
-                key={idx}
-                style={styles.stepItem}
-                onPress={() => setCurrentStep(idx)}
+                  key={idx}
+                  style={styles.stepItem}
+                  onPress={() => setCurrentStep(idx)}
                 >
-                <View
+                  <View
                     style={[
-                    styles.stepCircle,
-                    idx === currentStep && styles.stepCircleActive,
-                    idx < currentStep && styles.stepCircleCompleted,
+                      styles.stepCircle,
+                      idx === currentStep && styles.stepCircleActive,
+                      idx < currentStep && styles.stepCircleCompleted,
                     ]}
-                >
+                  >
                     {idx < currentStep ? (
-                    <Icon source="check" size={16} color="#FFFFFF" />
+                      <Icon source="check" size={16} color="#FFFFFF" />
                     ) : (
-                    <Icon
+                      <Icon
                         source={step.icon}
                         size={16}
                         color={idx === currentStep ? '#FFFFFF' : '#94A3B8'}
-                    />
+                      />
                     )}
-                </View>
-                <ITText
+                  </View>
+                  <ITText
                     variant="labelSmall"
-                    weight={idx === currentStep ? "bold" : "regular"}
+                    weight={idx === currentStep ? 'bold' : 'regular'}
                     color={idx === currentStep ? COLORS.emerald : '#94A3B8'}
-                >
+                  >
                     {step.title}
-                </ITText>
-                {idx < steps.length - 1 && <View style={styles.stepLine} />}
+                  </ITText>
+                  {idx < steps.length - 1 && <View style={styles.stepLine} />}
                 </TouchableOpacity>
-            ))}
+              ))}
             </View>
 
             <Divider style={styles.divider} />
 
             {/* STEP 0: PERFIL */}
             {currentStep === 0 && (
-            <View>
+              <View>
                 <ITInput
-                    label="Nombre(s)"
-                    placeholder="Tu nombre"
-                    value={name}
-                    onChangeText={setName}
-                    leftIcon="account"
+                  label="Nombre(s)"
+                  placeholder="Tu nombre"
+                  value={name}
+                  onChangeText={setName}
+                  leftIcon="account"
                 />
                 <View style={{ height: 16 }} />
                 <ITInput
-                    label="Apellidos"
-                    placeholder="Tus apellidos"
-                    value={lastName}
-                    onChangeText={setLastName}
-                    leftIcon="account-details"
+                  label="Apellidos"
+                  placeholder="Tus apellidos"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  leftIcon="account-details"
                 />
-                
+
                 <View style={styles.infoRow}>
-                <Icon
+                  <Icon
                     source="shield-account-outline"
                     size={20}
                     color={COLORS.emerald}
-                />
-                <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant}>
+                  />
+                  <ITText
+                    variant="bodyMedium"
+                    color={theme.colors.onSurfaceVariant}
+                  >
                     Rol: {ROLE_LABELS[user.role || ''] || user.role}
-                </ITText>
+                  </ITText>
                 </View>
-            </View>
+              </View>
             )}
 
             {/* STEP 1: SEGURIDAD */}
             {currentStep === 1 && (
-            <View>
+              <View>
                 <ITInput
-                    label="Contraseña Actual"
-                    placeholder="••••••••"
-                    value={oldPassword}
-                    onChangeText={setOldPassword}
-                    secureTextEntry={!showPassword}
-                    leftIcon="lock-outline"
+                  label="Contraseña Actual"
+                  placeholder="••••••••"
+                  value={oldPassword}
+                  onChangeText={setOldPassword}
+                  secureTextEntry={!showPassword}
+                  leftIcon="lock-outline"
                 />
                 <View style={{ height: 16 }} />
                 <ITInput
-                    label="Nueva Contraseña"
-                    placeholder="Mínimo 6 caracteres"
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    secureTextEntry={!showPassword}
-                    leftIcon="lock-plus-outline"
+                  label="Nueva Contraseña"
+                  placeholder="Mínimo 6 caracteres"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showPassword}
+                  leftIcon="lock-plus-outline"
                 />
                 <View style={{ height: 16 }} />
                 <ITInput
-                    label="Confirmar Contraseña"
-                    placeholder="Repite la contraseña"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry={!showPassword}
-                    leftIcon="lock-check-outline"
+                  label="Confirmar Contraseña"
+                  placeholder="Repite la contraseña"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showPassword}
+                  leftIcon="lock-check-outline"
                 />
-                
+
                 <View style={styles.switchRow}>
-                <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant}>Mostrar caracteres</ITText>
-                <Switch
+                  <ITText
+                    variant="bodyMedium"
+                    color={theme.colors.onSurfaceVariant}
+                  >
+                    Mostrar caracteres
+                  </ITText>
+                  <Switch
                     value={showPassword}
                     onValueChange={setShowPassword}
                     color={COLORS.emerald}
-                />
+                  />
                 </View>
-            </View>
+              </View>
             )}
 
             <Divider style={styles.divider} />
 
             {/* NAVIGATION BUTTONS */}
             <View style={styles.navigationButtons}>
-            <ITButton
-                label={currentStep === 0 ? 'Guardar Cambios' : 'Actualizar Contraseña'}
-                onPress={currentStep === 0 ? handleUpdateDetails : handleChangePassword}
+              <ITButton
+                label={
+                  currentStep === 0
+                    ? 'Guardar Cambios'
+                    : 'Actualizar Contraseña'
+                }
+                onPress={
+                  currentStep === 0 ? handleUpdateDetails : handleChangePassword
+                }
                 loading={loading}
                 backgroundColor={COLORS.emerald}
-            />
+              />
             </View>
 
             <ITButton
-            label="Cerrar Perfil"
-            mode="text"
-            onPress={() => navigation.goBack()}
-            textColor="#94A3B8"
-            style={styles.backButton}
+              label="Cerrar Perfil"
+              mode="text"
+              onPress={() => navigation.goBack()}
+              textColor="#94A3B8"
+              style={styles.backButton}
             />
           </ITCard>
         </ScrollView>

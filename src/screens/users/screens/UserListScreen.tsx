@@ -1,37 +1,19 @@
-import {
-  useFocusEffect,
-  useIsFocused,
-  useNavigation,
-} from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import {
-  Chip,
-  FAB,
-  Portal,
-  Searchbar,
-  Dialog,
-  Button,
-} from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Dialog, FAB, Portal, Searchbar } from 'react-native-paper';
 import { useDispatch } from 'react-redux';
-import { showLoader } from '../../../core/store/slices/loader.slice';
 import { showToast } from '../../../core/store/slices/toast.slice';
+import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
-  ITScreenWrapper,
-  ITText,
-  ITInput,
-  ITButton,
   ITAlert,
+  ITBadge,
+  ITButton,
+  ITInput,
+  ITScreenDatatableLayout,
+  ITText,
+  ITTouchableOpacity,
 } from '../../../shared/components';
-import { LoaderComponent } from '../../../shared/components/LoaderComponent';
 import { getCatalog } from '../../../shared/service/catalog.service';
 import { theme } from '../../../shared/theme/theme';
 import {
@@ -43,8 +25,7 @@ import { IRoleOption, IUser } from '../../users/service/user.types';
 import { UserListItem } from '../components/UserListItem';
 
 export const UserListScreen = () => {
-  const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
+  const { navigateToScreen } = useAppNavigation();
   const dispatch = useDispatch();
   const isFocused = useIsFocused();
 
@@ -107,7 +88,6 @@ export const UserListScreen = () => {
         if (pageNum === 1) {
           if (!isRefreshing) {
             setLoading(true);
-            dispatch(showLoader(true));
           }
         } else {
           setLoadingMore(true);
@@ -143,10 +123,9 @@ export const UserListScreen = () => {
         setLoading(false);
         setRefreshing(false);
         setLoadingMore(false);
-        dispatch(showLoader(false));
       }
     },
-    [debouncedSearch, selectedRole, dispatch],
+    [debouncedSearch, selectedRole],
   );
 
   useFocusEffect(
@@ -158,7 +137,6 @@ export const UserListScreen = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([loadCatalogs(), fetchUsers(1, true)]);
-    setRefreshing(false);
   };
 
   const handleLoadMore = () => {
@@ -168,7 +146,7 @@ export const UserListScreen = () => {
   };
 
   const handleEdit = (user: IUser) => {
-    navigation.navigate('USER_FORM', { user });
+    navigateToScreen('USERS_STACK', 'USER_FORM', { user });
   };
 
   const handleDeletePress = (id: string) => {
@@ -228,7 +206,7 @@ export const UserListScreen = () => {
     }
   };
 
-  const renderItem = ({ item }: { item: IUser }) => (
+  const renderUser = ({ item }: { item: IUser }) => (
     <UserListItem
       item={item}
       onPress={handleEdit}
@@ -238,136 +216,78 @@ export const UserListScreen = () => {
   );
 
   return (
-    <ITScreenWrapper
-      padding={false}
-      scrollable={false}
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: theme.colors.surface,
-            borderBottomColor: theme.colors.outlineVariant,
-          },
-        ]}
-      >
-        <View style={styles.headerTitleRow}>
-          <ITText variant="headlineSmall" weight="bold">
-            Directorio
-          </ITText>
-          <View
-            style={[
-              styles.countBadge,
-              { backgroundColor: theme.colors.surfaceVariant },
-            ]}
+    <View style={styles.container}>
+      <ITScreenDatatableLayout
+        title="Directorio Personal"
+        totalItems={total}
+        loading={loading}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        onLoadMore={handleLoadMore}
+        loadingMore={loadingMore}
+        showSearchBar={true}
+        searchBar={
+          <Searchbar
+            placeholder="Buscar personal..."
+            onChangeText={setSearch}
+            value={search}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            iconColor={theme.colors.primary}
+            placeholderTextColor="#94A3B8"
+            elevation={0}
+          />
+        }
+        filterBadges={
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersRow}
           >
-            <ITText
-              variant="labelSmall"
-              weight="bold"
-              color={theme.colors.outline}
-            >
-              {total}
-            </ITText>
-          </View>
-        </View>
-
-        <Searchbar
-          placeholder="Buscar por nombre..."
-          onChangeText={setSearch}
-          value={search}
-          style={[
-            styles.searchBar,
-            { backgroundColor: theme.colors.surfaceVariant },
-          ]}
-          inputStyle={styles.searchInput}
-          iconColor={theme.colors.onSurfaceVariant}
-          placeholderTextColor={theme.colors.onSurfaceVariant}
-          elevation={0}
-          mode="bar"
-        />
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersRow}
-        >
-          {roleOptions.map(role => (
-            <Chip
-              key={role.label}
-              selected={selectedRole === role.value}
-              onPress={() => setSelectedRole(role.value)}
-              style={[
-                styles.filterChip,
-                {
-                  backgroundColor:
-                    selectedRole === role.value
-                      ? theme.colors.primary
-                      : theme.colors.surfaceVariant,
-                },
-              ]}
-              textStyle={[
-                styles.chipText,
-                {
-                  color:
-                    selectedRole === role.value
-                      ? theme.colors.onPrimary
-                      : theme.colors.outline,
-                },
-              ]}
-              showSelectedCheck={false}
-            >
-              {role.label}
-            </Chip>
-          ))}
-        </ScrollView>
-      </View>
-
-      <View style={{ flex: 1 }}>
-        <FlatList
-          data={users}
-          renderItem={renderItem}
-          keyExtractor={item => item.id}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: insets.bottom + 100 },
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={theme.colors.primary}
-              colors={[theme.colors.primary]}
+            {roleOptions.map(role => (
+              <ITTouchableOpacity
+                key={role.label}
+                onPress={() => setSelectedRole(role.value)}
+              >
+                <ITBadge
+                  label={role.label}
+                  variant={selectedRole === role.value ? 'primary' : 'surface'}
+                  outline={selectedRole !== role.value}
+                />
+              </ITTouchableOpacity>
+            ))}
+          </ScrollView>
+        }
+        data={users}
+        renderItem={renderUser}
+        keyExtractor={item => item.id}
+        fab={
+          isFocused ? (
+            <FAB
+              icon="plus"
+              style={styles.fab}
+              color="#FFFFFF"
+              onPress={() => navigateToScreen('USERS_STACK', 'USER_FORM')}
             />
-          }
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={() =>
-            loadingMore ? (
-              <ActivityIndicator
-                style={{ margin: 16 }}
-                color={theme.colors.primary}
-              />
-            ) : null
-          }
-        />
-      </View>
+          ) : undefined
+        }
+      />
 
       {/* RESET PASSWORD DIALOG */}
       <Portal>
         <Dialog
           visible={showResetModal}
           onDismiss={() => !reseting && setShowResetModal(false)}
-          style={{ borderRadius: 28, backgroundColor: theme.colors.surface }}
+          style={{ borderRadius: 28, backgroundColor: '#FFFFFF' }}
         >
           <Dialog.Title>
             <ITText variant="headlineSmall" weight="bold">
-              Cambiar Contraseña
+              Seguridad
             </ITText>
           </Dialog.Title>
           <Dialog.Content style={{ gap: 8 }}>
-            <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant}>
-              Ingresa la nueva contraseña para {selectedUser?.name}.
+            <ITText variant="bodyMedium" color={theme.colors.slate500}>
+              Establecer nueva contraseña para {selectedUser?.name}.
             </ITText>
             <View style={{ marginTop: 16 }}>
               <ITInput
@@ -388,17 +308,18 @@ export const UserListScreen = () => {
           >
             <ITButton
               label="Cancelar"
-              mode="text"
+              mode="outlined"
               onPress={() => setShowResetModal(false)}
               disabled={reseting}
               style={{ flex: 1 }}
+              textColor={theme.colors.slate500}
             />
             <ITButton
               label="Actualizar"
               onPress={handleResetPassword}
               loading={reseting}
               disabled={reseting || newPassword.length < 6}
-              style={{ flex: 2 }}
+              style={{ flex: 2, backgroundColor: theme.colors.primary }}
             />
           </Dialog.Actions>
         </Dialog>
@@ -411,85 +332,43 @@ export const UserListScreen = () => {
         title="Eliminar Usuario"
         description="¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer."
         confirmLabel="Eliminar"
-        type="danger"
+        type="alert"
         loading={deleting}
       />
-
-      {isFocused && (
-        <Portal>
-          <FAB
-            icon="plus"
-            style={[
-              styles.fab,
-              {
-                bottom: insets.bottom + 24,
-                backgroundColor: theme.colors.primary,
-              },
-            ]}
-            color={theme.colors.onPrimary}
-            onPress={() => navigation.navigate('USER_FORM')}
-          />
-        </Portal>
-      )}
-      <LoaderComponent />
-    </ITScreenWrapper>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  countBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
   searchBar: {
-    borderRadius: 24,
-    height: 44,
-    marginBottom: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   searchInput: {
-    fontSize: 14,
     minHeight: 0,
-    alignSelf: 'center',
+    fontSize: 14,
+    color: '#0F172A',
   },
   filtersRow: {
     paddingVertical: 4,
     gap: 10,
-  },
-  filterChip: {
-    borderWidth: 0,
-    borderRadius: 12,
-    height: 32,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  listContent: {
-    padding: 16,
-    minHeight: '100%',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
+    paddingRight: 20,
   },
   fab: {
     position: 'absolute',
-    margin: 16,
+    margin: 20,
     right: 0,
-    borderRadius: 28,
+    bottom: 0,
+    borderRadius: 16,
+    backgroundColor: theme.colors.primary,
+    elevation: 4,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
 });

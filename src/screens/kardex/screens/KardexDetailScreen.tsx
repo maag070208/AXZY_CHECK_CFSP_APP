@@ -1,40 +1,38 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image, 
-  Linking, 
-  Platform, 
-  StatusBar,
-  ImageStyle
-} from 'react-native';
-import { 
-  Divider,
-  Icon,
-  ActivityIndicator
-} from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import Video from 'react-native-video';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Image,
+  ImageStyle,
+  Linking,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+import { ActivityIndicator, Icon } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Video from 'react-native-video';
 
-import { getKardexById, IKardexEntry } from '../service/kardex.service';
-import { updateAssignmentStatus, getAllAssignments } from '../../assignments/service/assignment.service';
 import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
-import { PreviewMedia } from '../../../shared/components/PreviewMedia';
-import { 
-  ITScreenWrapper, 
-  ITText, 
-  ITCard, 
-  ITButton, 
-  LoaderComponent 
+import {
+  ITButton,
+  ITCard,
+  ITScreenWrapper,
+  ITText,
 } from '../../../shared/components';
+import { PreviewMedia } from '../../../shared/components/PreviewMedia';
 import { theme } from '../../../shared/theme/theme';
 import { COLORS } from '../../../shared/utils/constants';
+import {
+  getAllAssignments,
+  updateAssignmentStatus,
+} from '../../assignments/service/assignment.service';
+import { getKardexById, IKardexEntry } from '../service/kardex.service';
 
 // Configurar dayjs en español
 dayjs.locale('es');
@@ -67,16 +65,22 @@ export const KardexDetailScreen = ({ route }: any) => {
         setTasks(item.assignment.tasks);
       } else if (item.assignmentId) {
         fetchAssignmentTasks(item.assignmentId);
-      } else if (item.notes && item.notes.includes('--- LISTA DE VERIFICACIÓN ---')) {
+      } else if (
+        item.notes &&
+        item.notes.includes('--- LISTA DE VERIFICACIÓN ---')
+      ) {
         try {
           const parts = item.notes.split('--- LISTA DE VERIFICACIÓN ---');
           const checklistStr = parts[1];
           if (checklistStr) {
-            const parsedTasks = checklistStr.trim().split('\n').map((line, idx) => {
-              const completed = line.trim().startsWith('[x]');
-              const description = line.replace(/^\[.\]\s*/, '').trim();
-              return { id: idx, description, completed, reqPhoto: false };
-            });
+            const parsedTasks = checklistStr
+              .trim()
+              .split('\n')
+              .map((line, idx) => {
+                const completed = line.trim().startsWith('[x]');
+                const description = line.replace(/^\[.\]\s*/, '').trim();
+                return { id: idx, description, completed, reqPhoto: false };
+              });
             setTasks(parsedTasks);
           }
         } catch (e) {
@@ -107,7 +111,7 @@ export const KardexDetailScreen = ({ route }: any) => {
         setTasks(res.data[0].tasks || []);
       }
     } catch (e) {
-      console.error("Error loading tasks", e);
+      console.error('Error loading tasks', e);
     }
   };
 
@@ -117,7 +121,7 @@ export const KardexDetailScreen = ({ route }: any) => {
     const label = `Reporte #${item.id}`;
     const url = Platform.select({
       ios: `maps:0,0?q=${label}@${latLng}`,
-      android: `geo:0,0?q=${latLng}(${label})`
+      android: `geo:0,0?q=${latLng}(${label})`,
     });
     if (url) Linking.openURL(url);
   }, [item]);
@@ -126,12 +130,15 @@ export const KardexDetailScreen = ({ route }: any) => {
     if (!item || !item.assignmentId) return;
     setConfirming(true);
     try {
-      const res = await updateAssignmentStatus(item.assignmentId, 'REVIEWED' as any);
+      const res = await updateAssignmentStatus(
+        item.assignmentId,
+        'REVIEWED' as any,
+      );
       if (res.success) {
         navigation.goBack();
       }
     } catch (e) {
-      console.error("Error confirming report:", e);
+      console.error('Error confirming report:', e);
     } finally {
       setConfirming(false);
     }
@@ -150,33 +157,51 @@ export const KardexDetailScreen = ({ route }: any) => {
         <View style={styles.checklistContainer}>
           {headerText ? (
             <View style={styles.mainNotes}>
-              <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant}>{headerText}</ITText>
+              <ITText
+                variant="bodyMedium"
+                color={theme.colors.onSurfaceVariant}
+              >
+                {headerText}
+              </ITText>
             </View>
           ) : null}
-          
+
           <ITCard style={styles.checklistCard}>
             <View style={styles.checklistHeader}>
-              <Icon source="clipboard-check-outline" size={18} color={COLORS.primary} />
-              <ITText variant="labelSmall" weight="900" color={COLORS.primary} style={styles.checklistTitle}>
+              <Icon
+                source="clipboard-check-outline"
+                size={18}
+                color={COLORS.primary}
+              />
+              <ITText
+                variant="labelSmall"
+                weight="900"
+                color={COLORS.primary}
+                style={styles.checklistTitle}
+              >
                 LISTA DE VERIFICACIÓN
               </ITText>
             </View>
-            
+
             {lines.map((line, idx) => {
               const isCompleted = line.includes('[x]');
               const text = line.replace('[x]', '').replace('[ ]', '').trim();
               return (
                 <View key={idx} style={styles.checklistItem}>
-                  <Icon 
-                    source={isCompleted ? 'checkbox-marked' : 'checkbox-blank-outline'} 
-                    size={20} 
-                    color={isCompleted ? COLORS.emerald : theme.colors.outlineVariant} 
+                  <Icon
+                    source={
+                      isCompleted ? 'checkbox-marked' : 'checkbox-blank-outline'
+                    }
+                    size={20}
+                    color={
+                      isCompleted ? COLORS.emerald : theme.colors.outlineVariant
+                    }
                   />
-                  <ITText 
-                    variant="bodyMedium" 
+                  <ITText
+                    variant="bodyMedium"
                     style={[
-                        styles.checklistText,
-                        isCompleted && styles.checklistTextCompleted
+                      styles.checklistText,
+                      isCompleted && styles.checklistTextCompleted,
                     ]}
                   >
                     {text}
@@ -191,42 +216,54 @@ export const KardexDetailScreen = ({ route }: any) => {
 
     return (
       <View style={styles.mainNotes}>
-        <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant}>{notes}</ITText>
+        <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant}>
+          {notes}
+        </ITText>
       </View>
     );
   }, []);
 
   const renderMedia = useCallback(() => {
-    if (!item?.media?.length) return (
-      <View style={styles.emptyMedia}>
-        <Icon source="image-off-outline" size={40} color={theme.colors.outline} />
-        <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant} style={styles.emptyMediaText}>
-          Sin evidencia multimedia
-        </ITText>
-      </View>
-    );
+    if (!item?.media?.length)
+      return (
+        <View style={styles.emptyMedia}>
+          <Icon
+            source="image-off-outline"
+            size={40}
+            color={theme.colors.outline}
+          />
+          <ITText
+            variant="bodyMedium"
+            color={theme.colors.onSurfaceVariant}
+            style={styles.emptyMediaText}
+          >
+            Sin evidencia multimedia
+          </ITText>
+        </View>
+      );
 
     return (
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
         style={styles.mediaGallery}
         contentContainerStyle={styles.mediaGalleryContent}
       >
         {item.media.map((m, idx) => {
           const isVid = m.type === 'VIDEO';
-          const url = m.url.startsWith('http') ? m.url : API_CONSTANTS.BASE_URL.replace('/api/v1', '') + m.url;
+          const url = m.url.startsWith('http')
+            ? m.url
+            : API_CONSTANTS.BASE_URL.replace('/api/v1', '') + m.url;
 
           return (
-            <TouchableOpacity 
-              key={idx} 
+            <TouchableOpacity
+              key={idx}
               style={styles.mediaItem}
               onPress={() => {
                 setPreviewUrl(url);
                 setPreviewType(isVid ? 'VIDEO' : 'IMAGE');
                 setPreviewVisible(true);
               }}
-              activeOpacity={0.7}
             >
               {isVid ? (
                 <Video
@@ -237,10 +274,17 @@ export const KardexDetailScreen = ({ route }: any) => {
                   muted={true}
                 />
               ) : (
-                <Image source={{ uri: url }} style={styles.mediaImage as ImageStyle} />
+                <Image
+                  source={{ uri: url }}
+                  style={styles.mediaImage as ImageStyle}
+                />
               )}
               <View style={styles.mediaBadge}>
-                <Icon source={isVid ? 'video' : 'camera'} size={14} color="#fff" />
+                <Icon
+                  source={isVid ? 'video' : 'camera'}
+                  size={14}
+                  color="#fff"
+                />
               </View>
             </TouchableOpacity>
           );
@@ -253,8 +297,12 @@ export const KardexDetailScreen = ({ route }: any) => {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <ITText variant="bodyMedium" color={theme.colors.onSurfaceVariant} style={styles.loadingText}>
-            Cargando detalle del reporte...
+        <ITText
+          variant="bodyMedium"
+          color={theme.colors.onSurfaceVariant}
+          style={styles.loadingText}
+        >
+          Cargando detalle del reporte...
         </ITText>
       </View>
     );
@@ -264,56 +312,95 @@ export const KardexDetailScreen = ({ route }: any) => {
 
   return (
     <ITScreenWrapper padding={false} style={styles.container}>
-      <LoaderComponent visible={confirming} />
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
-      <ScrollView 
+
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
         {/* Header Section */}
         <View style={[styles.modernHeader, { paddingTop: insets.top + 16 }]}>
-           <View style={styles.headerTopRow}>
-              <View style={styles.headerTitles}>
-                <View style={styles.titleRow}>
-                  <ITText variant="headlineSmall" weight="bold" style={styles.headerTitle}>
-                    Detalle de Actividad
+          <View style={styles.headerTopRow}>
+            <View style={styles.headerTitles}>
+              <View style={styles.titleRow}>
+                <ITText
+                  variant="headlineSmall"
+                  weight="bold"
+                  style={styles.headerTitle}
+                >
+                  Detalle de Actividad
+                </ITText>
+                <View style={styles.idBadge}>
+                  <ITText
+                    variant="labelSmall"
+                    weight="bold"
+                    color={theme.colors.onSurfaceVariant}
+                  >
+                    #{item.id.split('-')[0]}...
                   </ITText>
-                  <View style={styles.idBadge}>
-                    <ITText variant="labelSmall" weight="bold" color={theme.colors.onSurfaceVariant}>
-                        #{item.id.split('-')[0]}...
-                    </ITText>
-                  </View>
                 </View>
-                <ITText variant="bodySmall" color={theme.colors.onSurfaceVariant} style={styles.headerSubtitle}>
-                  Registrado el {dayjs(item.timestamp).format('DD [de] MMMM, YYYY [a las] HH:mm a')}
+              </View>
+              <ITText
+                variant="bodySmall"
+                color={theme.colors.onSurfaceVariant}
+                style={styles.headerSubtitle}
+              >
+                Registrado el{' '}
+                {dayjs(item.timestamp).format(
+                  'DD [de] MMMM, YYYY [a las] HH:mm a',
+                )}
+              </ITText>
+            </View>
+          </View>
+
+          <View style={styles.headerMetaContainer}>
+            <View style={styles.metaItem}>
+              <View style={[styles.metaIconBg, { backgroundColor: '#EEF2FF' }]}>
+                <Icon source="account" size={18} color={theme.colors.primary} />
+              </View>
+              <View style={styles.metaTextContainer}>
+                <ITText
+                  variant="labelSmall"
+                  weight="bold"
+                  color={theme.colors.outline}
+                  style={styles.metaLabel}
+                >
+                  REALIZADO POR
+                </ITText>
+                <ITText
+                  variant="bodyMedium"
+                  weight="bold"
+                  style={styles.metaValue}
+                >
+                  {item.user.name} {item.user.lastName}
                 </ITText>
               </View>
-           </View>
+            </View>
 
-           <View style={styles.headerMetaContainer}>
-              <View style={styles.metaItem}>
-                <View style={[styles.metaIconBg, { backgroundColor: '#EEF2FF' }]}>
-                  <Icon source="account" size={18} color="#6366F1" />
-                </View>
-                <View style={styles.metaTextContainer}>
-                  <ITText variant="labelSmall" weight="bold" color={theme.colors.outline} style={styles.metaLabel}>REALIZADO POR</ITText>
-                  <ITText variant="bodyMedium" weight="bold" style={styles.metaValue}>{item.user.name} {item.user.lastName}</ITText>
-                </View>
+            <View style={styles.metaItem}>
+              <View style={[styles.metaIconBg, { backgroundColor: '#ECFDF5' }]}>
+                <Icon source="map-marker" size={18} color={COLORS.emerald} />
               </View>
-              
-              <View style={styles.metaItem}>
-                <View style={[styles.metaIconBg, { backgroundColor: '#ECFDF5' }]}>
-                  <Icon source="map-marker" size={18} color={COLORS.emerald} />
-                </View>
-                <View style={styles.metaTextContainer}>
-                  <ITText variant="labelSmall" weight="bold" color={theme.colors.outline} style={styles.metaLabel}>UBICACIÓN</ITText>
-                  <ITText variant="bodyMedium" weight="bold" style={styles.metaValue} numberOfLines={2}>
-                    {item.location.name}
-                  </ITText>
-                </View>
+              <View style={styles.metaTextContainer}>
+                <ITText
+                  variant="labelSmall"
+                  weight="bold"
+                  color={theme.colors.outline}
+                  style={styles.metaLabel}
+                >
+                  UBICACIÓN
+                </ITText>
+                <ITText
+                  variant="bodyMedium"
+                  weight="bold"
+                  style={styles.metaValue}
+                  numberOfLines={2}
+                >
+                  {item.location.name}
+                </ITText>
               </View>
-           </View>
+            </View>
+          </View>
         </View>
 
         {/* Section: Scan Location */}
@@ -321,16 +408,31 @@ export const KardexDetailScreen = ({ route }: any) => {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <View style={styles.titleIndicator} />
-              <ITText variant="titleMedium" weight="bold">Ubicación de Escaneo</ITText>
+              <ITText variant="titleMedium" weight="bold">
+                Ubicación de Escaneo
+              </ITText>
             </View>
             {item.latitude && item.longitude && (
-              <TouchableOpacity style={styles.mapAction} onPress={handleOpenMap}>
-                <Icon source="google-maps" size={16} color="#6366F1" />
-                <ITText variant="labelSmall" weight="bold" color="#6366F1">Abrir GPS</ITText>
+              <TouchableOpacity
+                style={styles.mapAction}
+                onPress={handleOpenMap}
+              >
+                <Icon
+                  source="google-maps"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <ITText
+                  variant="labelSmall"
+                  weight="bold"
+                  color={theme.colors.primary}
+                >
+                  Abrir GPS
+                </ITText>
               </TouchableOpacity>
             )}
           </View>
-          
+
           {item.latitude && item.longitude ? (
             <View style={styles.mapPreviewContainer}>
               <MapView
@@ -349,19 +451,28 @@ export const KardexDetailScreen = ({ route }: any) => {
                     latitude: item.latitude,
                     longitude: item.longitude,
                   }}
-                  pinColor="#6366F1"
+                  pinColor={theme.colors.primary}
                 />
               </MapView>
               <View style={styles.mapCoordsBadge}>
-                <ITText variant="labelSmall" color={theme.colors.onSurfaceVariant}>
-                   GPS: {item.latitude.toFixed(6)}, {item.longitude.toFixed(6)}
+                <ITText
+                  variant="labelSmall"
+                  color={theme.colors.onSurfaceVariant}
+                >
+                  GPS: {item.latitude.toFixed(6)}, {item.longitude.toFixed(6)}
                 </ITText>
               </View>
             </View>
           ) : (
             <View style={styles.emptyMap}>
-               <Icon source="map-marker-off" size={32} color={theme.colors.outlineVariant} />
-               <ITText variant="bodySmall" color={theme.colors.outline}>Sin coordenadas registradas</ITText>
+              <Icon
+                source="map-marker-off"
+                size={32}
+                color={theme.colors.outlineVariant}
+              />
+              <ITText variant="bodySmall" color={theme.colors.outline}>
+                Sin coordenadas registradas
+              </ITText>
             </View>
           )}
         </ITCard>
@@ -370,12 +481,21 @@ export const KardexDetailScreen = ({ route }: any) => {
         <ITCard style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
-              <View style={[styles.titleIndicator, { backgroundColor: '#8B5CF6' }]} />
-              <ITText variant="titleMedium" weight="bold">Evidencia Multimedia</ITText>
+              <View
+                style={[
+                  styles.titleIndicator,
+                  { backgroundColor: theme.colors.primary },
+                ]}
+              />
+              <ITText variant="titleMedium" weight="bold">
+                Evidencia Multimedia
+              </ITText>
             </View>
             {item.media && item.media.length > 0 && (
               <View style={styles.countBadge}>
-                <ITText variant="labelSmall" weight="bold" color="#7C3AED">{item.media.length} elementos</ITText>
+                <ITText variant="labelSmall" weight="bold" color="#7C3AED">
+                  {item.media.length} elementos
+                </ITText>
               </View>
             )}
           </View>
@@ -386,55 +506,82 @@ export const KardexDetailScreen = ({ route }: any) => {
         <ITCard style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
-              <View style={[styles.titleIndicator, { backgroundColor: COLORS.emerald }]} />
-              <ITText variant="titleMedium" weight="bold">Observaciones</ITText>
+              <View
+                style={[
+                  styles.titleIndicator,
+                  { backgroundColor: COLORS.emerald },
+                ]}
+              />
+              <ITText variant="titleMedium" weight="bold">
+                Observaciones
+              </ITText>
             </View>
             <View style={[styles.countBadge, { backgroundColor: '#ECFDF5' }]}>
-               <ITText variant="labelSmall" weight="bold" color={COLORS.emerald}>
-                 {tasks.length > 0 ? `${tasks.length} tareas` : 'Notas'}
-               </ITText>
+              <ITText variant="labelSmall" weight="bold" color={COLORS.emerald}>
+                {tasks.length > 0 ? `${tasks.length} tareas` : 'Notas'}
+              </ITText>
             </View>
           </View>
-          
+
           <View style={styles.checklistContainer}>
             {renderNotes(item.notes)}
 
-            {tasks.length > 0 && !item.notes?.includes('--- LISTA DE VERIFICACIÓN ---') && (
-              <ITCard style={styles.checklistCard}>
-                <View style={styles.checklistHeader}>
-                  <Icon source="clipboard-check-outline" size={18} color="#6366F1" />
-                  <ITText variant="labelSmall" weight="900" color="#6366F1" style={styles.checklistTitle}>TAREAS DEL SERVICIO</ITText>
-                </View>
-                
-                {tasks.map((task, idx) => (
-                  <View key={idx} style={styles.checklistItem}>
-                    <Icon 
-                      source={task.completed ? 'checkbox-marked' : 'checkbox-blank-outline'} 
-                      size={20} 
-                      color={task.completed ? COLORS.emerald : theme.colors.outlineVariant} 
+            {tasks.length > 0 &&
+              !item.notes?.includes('--- LISTA DE VERIFICACIÓN ---') && (
+                <ITCard style={styles.checklistCard}>
+                  <View style={styles.checklistHeader}>
+                    <Icon
+                      source="clipboard-check-outline"
+                      size={18}
+                      color={theme.colors.primary}
                     />
-                    <ITText 
-                      variant="bodyMedium" 
-                      style={[
-                        styles.checklistText,
-                        task.completed && styles.checklistTextCompleted
-                      ]}
+                    <ITText
+                      variant="labelSmall"
+                      weight="900"
+                      color={theme.colors.primary}
+                      style={styles.checklistTitle}
                     >
-                      {task.description}
+                      TAREAS DEL SERVICIO
                     </ITText>
                   </View>
-                ))}
-              </ITCard>
-            )}
+
+                  {tasks.map((task, idx) => (
+                    <View key={idx} style={styles.checklistItem}>
+                      <Icon
+                        source={
+                          task.completed
+                            ? 'checkbox-marked'
+                            : 'checkbox-blank-outline'
+                        }
+                        size={20}
+                        color={
+                          task.completed
+                            ? COLORS.emerald
+                            : theme.colors.outlineVariant
+                        }
+                      />
+                      <ITText
+                        variant="bodyMedium"
+                        style={[
+                          styles.checklistText,
+                          task.completed && styles.checklistTextCompleted,
+                        ]}
+                      >
+                        {task.description}
+                      </ITText>
+                    </View>
+                  ))}
+                </ITCard>
+              )}
           </View>
         </ITCard>
 
         {/* Action Button */}
         {item.assignmentId && item.assignment?.status === 'UNDER_REVIEW' && (
           <View style={styles.actionSection}>
-            <ITButton 
+            <ITButton
               label="Validar y Confirmar Reporte"
-              onPress={handleConfirmReport} 
+              onPress={handleConfirmReport}
               loading={confirming}
               icon="check-circle"
               backgroundColor={COLORS.emerald}
@@ -553,7 +700,7 @@ const styles = StyleSheet.create({
   titleIndicator: {
     width: 4,
     height: 16,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.colors.primary,
     borderRadius: 2,
   },
   mapAction: {

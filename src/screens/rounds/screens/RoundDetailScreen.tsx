@@ -10,25 +10,28 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { ActivityIndicator, Icon, Text } from 'react-native-paper';
+import { ActivityIndicator, Icon } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Video from 'react-native-video';
-
 import { useSelector } from 'react-redux';
 import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
+import {
+  ITBadge,
+  ITButton,
+  ITCard,
+  ITText,
+  ITTouchableOpacity,
+} from '../../../shared/components';
 import { PreviewMedia } from '../../../shared/components/PreviewMedia';
+import { theme } from '../../../shared/theme/theme';
 import { getRoundDetail, IRoundDetail } from '../service/rounds.service';
 
-// Configurar dayjs en español
 dayjs.locale('es');
-
 const { width } = Dimensions.get('window');
 
-// Tipos para mejorar la legibilidad
 interface TimelineNode {
   type: 'START' | 'POINT' | 'END';
   label: string;
@@ -66,31 +69,12 @@ export const RoundDetailScreen = ({ route }: any) => {
   const [loading, setLoading] = useState(true);
   const [expandedEvents, setExpandedEvents] = useState<Set<number>>(new Set());
 
-  // Media Preview State
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewType, setPreviewType] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
-
   const [sharing, setSharing] = useState(false);
 
   const token = useSelector((state: any) => state.userState.token);
-
-  const handleSharePDF = async () => {
-    if (!data || sharing) return;
-    setSharing(true);
-    try {
-      const url = `${API_CONSTANTS.BASE_URL}/rounds/${id}/report?token=${token}`;
-      await Linking.openURL(url);
-    } catch (error) {
-      console.error('Error opening PDF:', error);
-    } finally {
-      setSharing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [id]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -106,14 +90,28 @@ export const RoundDetailScreen = ({ route }: any) => {
     }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, [id]);
+
+  const handleSharePDF = async () => {
+    if (!data || sharing) return;
+    setSharing(true);
+    try {
+      const url = `${API_CONSTANTS.BASE_URL}/rounds/${id}/report?token=${token}`;
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error('Error opening PDF:', error);
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const toggleEventExpanded = useCallback((index: number) => {
     setExpandedEvents(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
+      if (newSet.has(index)) newSet.delete(index);
+      else newSet.add(index);
       return newSet;
     });
   }, []);
@@ -142,14 +140,8 @@ export const RoundDetailScreen = ({ route }: any) => {
 
     const visitedLocations = new Set<string>();
     let validScansCount = 0;
-
     const mapNodes: TimelineNode[] = [
-      {
-        type: 'START',
-        label: 'Inicio',
-        status: 'START',
-        timeDiff: null,
-      },
+      { type: 'START', label: 'Inicio', status: 'START', timeDiff: null },
     ];
 
     let previousTime = start;
@@ -185,7 +177,7 @@ export const RoundDetailScreen = ({ route }: any) => {
     });
 
     const expectedLocs =
-      data.round.recurringConfiguration?.recurringLocations?.map(
+      (data.round as any).recurringConfiguration?.recurringLocations?.map(
         (rl: any) => rl.location,
       ) ||
       data.round.client?.locations ||
@@ -279,7 +271,9 @@ export const RoundDetailScreen = ({ route }: any) => {
         <View style={styles.checklistContainer}>
           {headerText ? (
             <View style={styles.webNotesBox}>
-              <Text style={styles.webNotesText}>{headerText}</Text>
+              <ITText variant="bodySmall" color="#475569">
+                {headerText}
+              </ITText>
             </View>
           ) : null}
 
@@ -288,11 +282,17 @@ export const RoundDetailScreen = ({ route }: any) => {
               <Icon
                 source="clipboard-check-outline"
                 size={18}
-                color="#6366F1"
+                color={theme.colors.primary}
               />
-              <Text style={styles.checklistTitle}>LISTA DE VERIFICACIÓN</Text>
+              <ITText
+                variant="labelSmall"
+                weight="bold"
+                color={theme.colors.primary}
+                style={styles.checklistTitle}
+              >
+                LISTA DE VERIFICACIÓN
+              </ITText>
             </View>
-            <View style={styles.checklistDivider} />
             {lines.map((line, idx) => {
               const isCompleted = line.includes('[x]');
               const text = line.replace('[x]', '').replace('[ ]', '').trim();
@@ -303,16 +303,17 @@ export const RoundDetailScreen = ({ route }: any) => {
                       isCompleted ? 'checkbox-marked' : 'checkbox-blank-outline'
                     }
                     size={20}
-                    color={isCompleted ? '#10B981' : '#D1D5DB'}
+                    color={isCompleted ? '#10B981' : '#CBD5E1'}
                   />
-                  <Text
+                  <ITText
+                    variant="bodyMedium"
                     style={[
                       styles.checklistText,
                       isCompleted && styles.checklistTextCompleted,
                     ]}
                   >
                     {text}
-                  </Text>
+                  </ITText>
                 </View>
               );
             })}
@@ -323,7 +324,9 @@ export const RoundDetailScreen = ({ route }: any) => {
 
     return (
       <View style={styles.webNotesBox}>
-        <Text style={styles.webNotesText}>{notes}</Text>
+        <ITText variant="bodySmall" color="#475569">
+          {notes}
+        </ITText>
       </View>
     );
   }, []);
@@ -339,13 +342,23 @@ export const RoundDetailScreen = ({ route }: any) => {
         contentContainerStyle={styles.mediaGalleryContent}
       >
         {mediaArray.map((m: any, idx: number) => {
-          const isVid = m.type === 'VIDEO';
-          const url = m.url.startsWith('http')
-            ? m.url
-            : API_CONSTANTS.BASE_URL.replace('/api/v1', '') + m.url;
+          if (!m) return null;
+
+          const rawUrl = typeof m === 'string' ? m : m.url;
+          if (!rawUrl) return null;
+
+          const isVid =
+            typeof m === 'string'
+              ? rawUrl.toLowerCase().match(/\.(mp4|mov|avi|quicktime)$/) !==
+                null
+              : m.type === 'VIDEO';
+
+          const url = rawUrl.startsWith('http')
+            ? rawUrl
+            : API_CONSTANTS.BASE_URL.replace('/api/v1', '') + rawUrl;
 
           return (
-            <TouchableOpacity
+            <ITTouchableOpacity
               key={idx}
               style={styles.mediaItem}
               onPress={() => {
@@ -353,7 +366,6 @@ export const RoundDetailScreen = ({ route }: any) => {
                 setPreviewType(isVid ? 'VIDEO' : 'IMAGE');
                 setPreviewVisible(true);
               }}
-              activeOpacity={0.7}
             >
               {isVid ? (
                 <Video
@@ -375,7 +387,7 @@ export const RoundDetailScreen = ({ route }: any) => {
                   <Icon source="play" size={16} color="#FFFFFF" />
                 </View>
               )}
-            </TouchableOpacity>
+            </ITTouchableOpacity>
           );
         })}
       </ScrollView>
@@ -387,22 +399,30 @@ export const RoundDetailScreen = ({ route }: any) => {
 
     return (
       <View style={styles.tasksContainer}>
-        <Text style={styles.tasksTitle}>Tareas asociadas:</Text>
+        <ITText
+          variant="labelSmall"
+          weight="bold"
+          color="#94A3B8"
+          style={styles.tasksTitle}
+        >
+          TAREAS ASOCIADAS
+        </ITText>
         {tasks.map((task, idx) => (
           <View key={idx} style={styles.taskItem}>
             <Icon
               source={task.completed ? 'check-circle' : 'circle-outline'}
-              size={20}
-              color={task.completed ? '#10B981' : '#D1D5DB'}
+              size={18}
+              color={task.completed ? '#10B981' : '#CBD5E1'}
             />
-            <Text
+            <ITText
+              variant="bodySmall"
               style={[
                 styles.taskText,
                 task.completed && styles.taskTextCompleted,
               ]}
             >
               {task.description}
-            </Text>
+            </ITText>
           </View>
         ))}
       </View>
@@ -415,14 +435,14 @@ export const RoundDetailScreen = ({ route }: any) => {
       { color: string; bgColor: string; icon: string; label: string }
     > = {
       START: {
-        color: '#3B82F6',
-        bgColor: '#EFF6FF',
+        color: theme.colors.primary,
+        bgColor: '#EEF2FF',
         icon: 'play',
         label: 'Inicio',
       },
       END: {
-        color: '#1F2937',
-        bgColor: '#F3F4F6',
+        color: '#0F172A',
+        bgColor: '#F1F5F9',
         icon: 'flag-checkered',
         label: 'Fin',
       },
@@ -433,26 +453,26 @@ export const RoundDetailScreen = ({ route }: any) => {
         label: 'Completado',
       },
       DUPLICATE: {
-        color: '#EF4444',
-        bgColor: '#FEF2F2',
+        color: '#F43F5E',
+        bgColor: '#FFF1F2',
         icon: 'alert',
         label: 'Repetido',
       },
       INCOMPLETE: {
         color: '#F59E0B',
-        bgColor: '#FEF3C7',
+        bgColor: '#FFFBEB',
         icon: 'alert',
         label: 'Incompleto',
       },
       MISSING: {
-        color: '#EF4444',
-        bgColor: '#FEF2F2',
+        color: '#F43F5E',
+        bgColor: '#FFF1F2',
         icon: 'map-marker-question',
         label: 'Faltante',
       },
       PENDING: {
-        color: '#9CA3AF',
-        bgColor: '#F3F4F6',
+        color: '#94A3B8',
+        bgColor: '#F8FAFC',
         icon: 'clock-outline',
         label: 'Pendiente',
       },
@@ -460,26 +480,41 @@ export const RoundDetailScreen = ({ route }: any) => {
     return configs[status] || configs.INCOMPLETE;
   };
 
+  const getEventConfig = (type: string) => {
+    const configs: Record<
+      string,
+      { icon: string; color: string; bgColor: string }
+    > = {
+      START: { icon: 'play', color: theme.colors.primary, bgColor: '#EEF2FF' },
+      SCAN: {
+        icon: 'qrcode-scan',
+        color: theme.colors.primary,
+        bgColor: '#F5F3FF',
+      },
+      INCIDENT: { icon: 'alert-octagon', color: '#F43F5E', bgColor: '#FFF1F2' },
+      END: { icon: 'flag-checkered', color: '#10B981', bgColor: '#ECFDF5' },
+    };
+    return (
+      configs[type] || {
+        icon: 'circle-small',
+        color: '#64748B',
+        bgColor: '#F1F5F9',
+      }
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Cargando detalles de la ronda...</Text>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <ITText variant="bodySmall" color="#64748B" style={{ marginTop: 12 }}>
+          Cargando detalles de la ronda...
+        </ITText>
       </View>
     );
   }
 
-  if (!data) {
-    return (
-      <View style={styles.center}>
-        <Icon source="map-marker-off" size={48} color="#9CA3AF" />
-        <Text style={styles.errorText}>No se encontró la ronda</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
-          <Text style={styles.retryButtonText}>Reintentar</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  if (!data) return null;
 
   const routeTitle = data.round.client?.name || 'Ronda General';
 
@@ -488,55 +523,49 @@ export const RoundDetailScreen = ({ route }: any) => {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Header Estilo Web Modal */}
-        <View style={[styles.modernHeader, { paddingTop: insets.top + 10 }]}>
+        {/* Modern Header */}
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <View style={styles.headerTopRow}>
-            <View style={styles.headerTitles}>
-              <View
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
-              >
-                <Text style={styles.headerTitle}>{routeTitle}</Text>
-              </View>
-              <Text style={styles.headerSubtitle}>
+            <View style={styles.headerInfo}>
+              <ITText variant="headlineSmall" weight="bold" color="#0F172A">
+                {routeTitle}
+              </ITText>
+              <ITText variant="bodySmall" color="#64748B" weight="medium">
                 Iniciado el{' '}
                 {dayjs(data.round.startTime).format('DD [de] MMMM, YYYY')}
-              </Text>
+              </ITText>
             </View>
-
-            <TouchableOpacity
-              style={[styles.shareBtn, sharing && { opacity: 0.6 }]}
+            <ITButton
+              label="Reporte"
+              mode="tonal"
+              icon="file-pdf-box"
               onPress={handleSharePDF}
+              loading={sharing}
               disabled={sharing}
-            >
-              {sharing ? (
-                <ActivityIndicator size="small" color="#3B82F6" />
-              ) : (
-                <View style={styles.shareBtnContent}>
-                  <Icon source="file-pdf-box" size={20} color="#3B82F6" />
-                  <Text style={styles.shareBtnText}>Reporte</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+              style={styles.pdfBtn}
+            />
           </View>
 
           <View style={styles.headerMetaRow}>
-            <View style={styles.metaItem}>
-              <View style={[styles.metaIconBg, { backgroundColor: '#EEF2FF' }]}>
-                <Icon source="account" size={18} color="#6366F1" />
+            <View style={styles.metaCard}>
+              <View style={[styles.metaIcon, { backgroundColor: '#EEF2FF' }]}>
+                <Icon source="account" size={20} color={theme.colors.primary} />
               </View>
               <View>
-                <Text style={styles.metaLabel}>GUARDIA</Text>
-                <Text style={styles.metaValue}>
+                <ITText variant="labelSmall" weight="bold" color="#94A3B8">
+                  GUARDIA
+                </ITText>
+                <ITText variant="titleSmall" weight="bold" color="#334155">
                   {data.round.guard.name} {data.round.guard.lastName}
-                </Text>
+                </ITText>
               </View>
             </View>
-            <View style={styles.metaItem}>
+            <View style={styles.metaCard}>
               <View
                 style={[
-                  styles.metaIconBg,
+                  styles.metaIcon,
                   {
                     backgroundColor:
                       data.round.status === 'COMPLETED' ? '#ECFDF5' : '#FFFBEB',
@@ -549,106 +578,125 @@ export const RoundDetailScreen = ({ route }: any) => {
                       ? 'check-decagram'
                       : 'timer-outline'
                   }
-                  size={18}
+                  size={20}
                   color={
                     data.round.status === 'COMPLETED' ? '#10B981' : '#D97706'
                   }
                 />
               </View>
               <View>
-                <Text style={styles.metaLabel}>ESTADO</Text>
-                <Text
-                  style={[
-                    styles.metaValue,
-                    {
-                      color:
-                        data.round.status === 'COMPLETED'
-                          ? '#10B981'
-                          : '#D97706',
-                    },
-                  ]}
+                <ITText variant="labelSmall" weight="bold" color="#94A3B8">
+                  ESTADO
+                </ITText>
+                <ITText
+                  variant="titleSmall"
+                  weight="bold"
+                  color={
+                    data.round.status === 'COMPLETED' ? '#10B981' : '#D97706'
+                  }
                 >
                   {data.round.status === 'COMPLETED'
                     ? 'FINALIZADA'
                     : 'EN CURSO'}
-                </Text>
+                </ITText>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Metrics Dashboard */}
+        {/* Metrics Grid */}
         {metrics && (
-          <View style={styles.webMetricsRow}>
-            <View style={styles.webMetricCard}>
-              <View
-                style={[styles.metricIconBox, { backgroundColor: '#F0F9FF' }]}
-              >
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricItem}>
+              <View style={[styles.metricIcon, { backgroundColor: '#F0F9FF' }]}>
                 <Icon source="clock-fast" size={20} color="#0EA5E9" />
               </View>
-              <Text style={styles.webMetricLabel}>DURACIÓN</Text>
-              <Text style={styles.webMetricValue}>{metrics.duration}</Text>
+              <ITText variant="labelSmall" weight="bold" color="#94A3B8">
+                DURACIÓN
+              </ITText>
+              <ITText variant="titleMedium" weight="bold" color="#1E293B">
+                {metrics.duration}
+              </ITText>
             </View>
-            <View style={styles.webMetricCard}>
-              <View
-                style={[styles.metricIconBox, { backgroundColor: '#F5F3FF' }]}
-              >
-                <Icon source="qrcode-scan" size={20} color="#8B5CF6" />
+            <View style={styles.metricItem}>
+              <View style={[styles.metricIcon, { backgroundColor: '#F5F3FF' }]}>
+                <Icon
+                  source="qrcode-scan"
+                  size={20}
+                  color={theme.colors.primary}
+                />
               </View>
-              <Text style={styles.webMetricLabel}>PUNTOS</Text>
-              <Text style={styles.webMetricValue}>
+              <ITText variant="labelSmall" weight="bold" color="#94A3B8">
+                PUNTOS
+              </ITText>
+              <ITText variant="titleMedium" weight="bold" color="#1E293B">
                 {metrics.totalScans}{' '}
-                <Text style={styles.webMetricSubValue}>
-                  /{' '}
-                  {metrics.expectedScans > 0
-                    ? metrics.expectedScans
-                    : metrics.totalRawScans}
-                </Text>
-              </Text>
+                <ITText variant="bodySmall" color="#94A3B8">
+                  / {metrics.expectedScans || metrics.totalRawScans}
+                </ITText>
+              </ITText>
             </View>
-            <View style={styles.webMetricCard}>
-              <View
-                style={[styles.metricIconBox, { backgroundColor: '#FEFCE8' }]}
-              >
+            <View style={styles.metricItem}>
+              <View style={[styles.metricIcon, { backgroundColor: '#FEFCE8' }]}>
                 <Icon source="lightning-bolt" size={20} color="#EAB308" />
               </View>
-              <Text style={styles.webMetricLabel}>PROMEDIO</Text>
-              <Text style={styles.webMetricValue}>{metrics.avgTime}</Text>
+              <ITText variant="labelSmall" weight="bold" color="#94A3B8">
+                PROMEDIO
+              </ITText>
+              <ITText variant="titleMedium" weight="bold" color="#1E293B">
+                {metrics.avgTime}
+              </ITText>
             </View>
           </View>
         )}
 
-        {/* Route Map Visualization */}
+        {/* Route Visualization */}
         {metrics && metrics.mapNodes.length > 0 && (
-          <View style={styles.sectionCard}>
+          <ITCard style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <View style={styles.titleIndicator} />
-                <Text style={styles.sectionTitle}>Ruta Recorrida</Text>
+              <View style={styles.sectionTitle}>
+                <View style={styles.indicator} />
+                <ITText variant="titleMedium" weight="bold" color="#0F172A">
+                  Ruta Recorrida
+                </ITText>
               </View>
-              <TouchableOpacity
+              <ITTouchableOpacity
                 onPress={handleOpenMap}
                 style={styles.mapAction}
               >
-                <Icon source="map-legend" size={16} color="#6366F1" />
-                <Text style={styles.mapActionText}>Ver trazo</Text>
-              </TouchableOpacity>
+                <Icon
+                  source="map-legend"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <ITText
+                  variant="labelSmall"
+                  weight="bold"
+                  color={theme.colors.primary}
+                >
+                  VER TRAZO
+                </ITText>
+              </ITTouchableOpacity>
             </View>
 
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.routeScrollContent}
+              contentContainerStyle={styles.routeRow}
             >
               {metrics.mapNodes.map((node, idx) => {
                 const config = getStatusConfig(node.status);
                 return (
                   <View key={idx} style={styles.routeNodeContainer}>
                     {idx > 0 && (
-                      <View style={styles.connectorContainer}>
-                        <Text style={styles.connectorTime}>
+                      <View style={styles.connector}>
+                        <ITText
+                          variant="labelSmall"
+                          color="#94A3B8"
+                          style={styles.connectorTime}
+                        >
                           {node.timeDiff}
-                        </Text>
+                        </ITText>
                         <View style={styles.connectorLine} />
                       </View>
                     )}
@@ -665,34 +713,47 @@ export const RoundDetailScreen = ({ route }: any) => {
                           color={config.color}
                         />
                       </View>
-                      <Text style={styles.nodeLabel} numberOfLines={2}>
+                      <ITText
+                        variant="labelSmall"
+                        weight="bold"
+                        color="#64748B"
+                        textAlign="center"
+                        numberOfLines={2}
+                      >
                         {node.label}
-                      </Text>
+                      </ITText>
                     </View>
                   </View>
                 );
               })}
             </ScrollView>
-          </View>
+          </ITCard>
         )}
 
-        {/* Timeline Section */}
+        {/* Timeline */}
         <View style={styles.timelineSection}>
           <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
+            <View style={styles.sectionTitle}>
               <View
-                style={[styles.titleIndicator, { backgroundColor: '#6366F1' }]}
+                style={[
+                  styles.indicator,
+                  { backgroundColor: theme.colors.primary },
+                ]}
               />
-              <Text style={styles.sectionTitle}>Línea de Tiempo</Text>
+              <ITText variant="titleMedium" weight="bold" color="#0F172A">
+                Línea de Tiempo
+              </ITText>
             </View>
-            <Text style={styles.eventCount}>
-              {data.timeline.length} eventos
-            </Text>
+            <ITBadge
+              label={`${data.timeline.length} eventos`}
+              variant="surface"
+              size="small"
+            />
           </View>
 
           {data.timeline.map((event, idx) => {
             const isExpanded = expandedEvents.has(idx);
-            const eventConfig = getEventConfig(event.type);
+            const config = getEventConfig(event.type);
             const hasDetails =
               event.type === 'SCAN' || event.type === 'INCIDENT';
 
@@ -702,65 +763,63 @@ export const RoundDetailScreen = ({ route }: any) => {
                   <View
                     style={[
                       styles.timelinePoint,
-                      { backgroundColor: eventConfig.color },
+                      { backgroundColor: config.color },
                     ]}
                   >
-                    <Icon source={eventConfig.icon} size={14} color="#fff" />
+                    <Icon source={config.icon} size={14} color="#fff" />
                   </View>
                   {idx < data.timeline.length - 1 && (
                     <View style={styles.timelineLink} />
                   )}
                 </View>
 
-                <TouchableOpacity
+                <ITTouchableOpacity
                   style={[
                     styles.eventCard,
                     isExpanded && styles.eventCardExpanded,
                   ]}
                   onPress={() => hasDetails && toggleEventExpanded(idx)}
-                  activeOpacity={hasDetails ? 0.7 : 1}
                   disabled={!hasDetails}
                 >
                   <View style={styles.eventHeader}>
-                    <View style={styles.eventInfo}>
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 8,
-                        }}
-                      >
-                        <Text style={styles.eventTime}>
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.eventMeta}>
+                        <ITText
+                          variant="labelSmall"
+                          weight="bold"
+                          color="#94A3B8"
+                        >
                           {dayjs(event.timestamp).format('HH:mm')}
-                        </Text>
+                        </ITText>
                         <View
                           style={[
-                            styles.eventTypeBadge,
-                            { backgroundColor: eventConfig.bgColor },
+                            styles.eventBadge,
+                            { backgroundColor: config.bgColor },
                           ]}
                         >
-                          <Text
-                            style={[
-                              styles.eventTypeText,
-                              { color: eventConfig.color },
-                            ]}
+                          <ITText
+                            variant="labelSmall"
+                            weight="black"
+                            color={config.color}
                           >
                             {event.type}
-                          </Text>
+                          </ITText>
                         </View>
                       </View>
-                      <Text
-                        style={styles.eventTitle}
-                        numberOfLines={isExpanded ? 0 : 1}
+                      <ITText
+                        variant="titleSmall"
+                        weight="bold"
+                        color="#334155"
+                        style={{ marginTop: 4 }}
                       >
                         {event.description}
-                      </Text>
+                      </ITText>
                     </View>
                     {hasDetails && (
                       <Icon
                         source={isExpanded ? 'chevron-up' : 'chevron-down'}
                         size={20}
-                        color="#94A3B8"
+                        color="#CBD5E1"
                       />
                     )}
                   </View>
@@ -768,12 +827,11 @@ export const RoundDetailScreen = ({ route }: any) => {
                   {isExpanded && (
                     <View style={styles.eventDetails}>
                       {event.type === 'SCAN' && event.data?.location && (
-                        <View style={styles.scanDetails}>
-                          {/* Map Preview per Event */}
+                        <View style={styles.detailBox}>
                           {event.data.latitude && event.data.longitude && (
-                            <View style={styles.miniMapContainer}>
+                            <View style={styles.miniMap}>
                               <MapView
-                                style={styles.miniMap}
+                                style={{ flex: 1 }}
                                 initialRegion={{
                                   latitude: Number(event.data.latitude),
                                   longitude: Number(event.data.longitude),
@@ -788,112 +846,66 @@ export const RoundDetailScreen = ({ route }: any) => {
                                     latitude: Number(event.data.latitude),
                                     longitude: Number(event.data.longitude),
                                   }}
-                                  pinColor={eventConfig.color}
+                                  pinColor={config.color}
                                 />
                               </MapView>
-                              <View style={styles.miniMapBadge}>
-                                <Icon
-                                  source="crosshairs-gps"
-                                  size={10}
-                                  color="#64748B"
-                                />
-                                <Text style={styles.miniMapCoords}>
-                                  {Number(event.data.latitude).toFixed(5)},{' '}
-                                  {Number(event.data.longitude).toFixed(5)}
-                                </Text>
-                              </View>
                             </View>
                           )}
-
                           <View style={styles.locationBanner}>
                             <Icon
                               source="office-building"
                               size={16}
-                              color="#6366F1"
+                              color={theme.colors.primary}
                             />
-                            <Text style={styles.locationText}>
+                            <ITText
+                              variant="bodySmall"
+                              weight="bold"
+                              color="#1E293B"
+                            >
                               {event.data.location.name}
-                            </Text>
+                            </ITText>
                           </View>
-
                           {renderNotes(event.data.notes)}
-
                           {renderTasks(event.data.assignment?.tasks)}
                           {renderMedia(event.data.media)}
                         </View>
                       )}
 
                       {event.type === 'INCIDENT' && (
-                        <View style={styles.incidentDetails}>
-                          <View style={styles.incidentHeaderBox}>
+                        <View style={styles.detailBox}>
+                          <View style={styles.incidentHeader}>
                             <Icon
                               source="alert-octagon"
                               size={20}
-                              color="#EF4444"
+                              color="#F43F5E"
                             />
-                            <Text style={styles.incidentCategory}>
-                              {event.data?.category}
-                            </Text>
-                          </View>
-
-                          {/* Map Preview for Incident */}
-                          {event.data?.latitude && event.data?.longitude && (
-                            <View
-                              style={[
-                                styles.miniMapContainer,
-                                { marginTop: 12 },
-                              ]}
+                            <ITText
+                              variant="bodyMedium"
+                              weight="bold"
+                              color="#F43F5E"
                             >
-                              <MapView
-                                style={styles.miniMap}
-                                initialRegion={{
-                                  latitude: Number(event.data.latitude),
-                                  longitude: Number(event.data.longitude),
-                                  latitudeDelta: 0.002,
-                                  longitudeDelta: 0.002,
-                                }}
-                                scrollEnabled={false}
-                                zoomEnabled={false}
-                              >
-                                <Marker
-                                  coordinate={{
-                                    latitude: Number(event.data.latitude),
-                                    longitude: Number(event.data.longitude),
-                                  }}
-                                  pinColor="#EF4444"
-                                />
-                              </MapView>
-                            </View>
-                          )}
-
+                              {event.data?.category}
+                            </ITText>
+                          </View>
                           {event.data?.description && (
-                            <View style={styles.incidentDescBox}>
-                              <Text style={styles.incidentDescText}>
-                                {event.data.description}
-                              </Text>
-                            </View>
+                            <ITText
+                              variant="bodySmall"
+                              color="#475569"
+                              style={styles.incidentDesc}
+                            >
+                              {event.data.description}
+                            </ITText>
                           )}
-
                           {renderNotes(event.data.notes)}
-
                           {renderMedia(event.data?.media)}
                         </View>
                       )}
                     </View>
                   )}
-                </TouchableOpacity>
+                </ITTouchableOpacity>
               </View>
             );
           })}
-
-          {data.timeline.length === 0 && (
-            <View style={styles.emptyState}>
-              <Icon source="calendar-blank" size={48} color="#E2E8F0" />
-              <Text style={styles.emptyStateText}>
-                No se registraron eventos en este recorrido
-              </Text>
-            </View>
-          )}
         </View>
 
         <View style={{ height: 40 }} />
@@ -909,64 +921,11 @@ export const RoundDetailScreen = ({ route }: any) => {
   );
 };
 
-// Helper function for event configuration
-const getEventConfig = (type: string) => {
-  const configs: Record<
-    string,
-    { icon: string; color: string; bgColor: string }
-  > = {
-    START: { icon: 'play', color: '#3B82F6', bgColor: '#EFF6FF' },
-    SCAN: { icon: 'qrcode-scan', color: '#8B5CF6', bgColor: '#F5F3FF' },
-    INCIDENT: { icon: 'alert', color: '#EF4444', bgColor: '#FEF2F2' },
-    END: { icon: 'flag-checkered', color: '#10B981', bgColor: '#ECFDF5' },
-  };
-  return (
-    configs[type] || {
-      icon: 'circle-small',
-      color: '#6B7280',
-      bgColor: '#F3F4F6',
-    }
-  );
-};
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  contentContainer: {
-    paddingBottom: 40,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 12,
-    color: '#64748B',
-    fontSize: 14,
-  },
-  errorText: {
-    marginTop: 12,
-    color: '#64748B',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#6366F1',
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  modernHeader: {
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  scrollContent: { paddingBottom: 40 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: {
     backgroundColor: '#fff',
     paddingHorizontal: 24,
     paddingBottom: 24,
@@ -975,79 +934,38 @@ const styles = StyleSheet.create({
   },
   headerTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
   },
-  closeButtonCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F8FAFC',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitles: {
+  headerInfo: { flex: 1, marginRight: 16 },
+  pdfBtn: { borderRadius: 12 },
+  headerMetaRow: { flexDirection: 'row', gap: 16 },
+  metaCard: {
     flex: 1,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  idBadge: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  idText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#64748B',
-  },
-  headerMetaRow: {
-    flexDirection: 'row',
-    gap: 20,
-    marginTop: 4,
-  },
-  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 16,
     gap: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  metaIconBg: {
+  metaIcon: {
     width: 36,
     height: 36,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  metaLabel: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: '#94A3B8',
-    letterSpacing: 0.5,
-  },
-  metaValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  webMetricsRow: {
+  metricsGrid: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     marginTop: 16,
-    gap: 12,
+    gap: 10,
   },
-  webMetricCard: {
+  metricItem: {
     flex: 1,
     backgroundColor: '#fff',
     padding: 12,
@@ -1056,7 +974,7 @@ const styles = StyleSheet.create({
     borderColor: '#F1F5F9',
     alignItems: 'center',
   },
-  metricIconBox: {
+  metricIcon: {
     width: 32,
     height: 32,
     borderRadius: 8,
@@ -1064,31 +982,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  webMetricLabel: {
-    fontSize: 8,
-    fontWeight: '900',
-    color: '#94A3B8',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  webMetricValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  webMetricSubValue: {
-    fontSize: 10,
-    color: '#94A3B8',
-    fontWeight: '400',
-  },
   sectionCard: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 20,
     padding: 20,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1096,21 +994,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  titleIndicator: {
+  sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  indicator: {
     width: 4,
     height: 16,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.colors.primary,
     borderRadius: 2,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#1E293B',
   },
   mapAction: {
     flexDirection: 'row',
@@ -1121,19 +1010,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 6,
   },
-  mapActionText: {
-    fontSize: 11,
-    color: '#6366F1',
-    fontWeight: 'bold',
-  },
-  routeScrollContent: {
-    paddingVertical: 10,
-  },
-  routeNodeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  connectorContainer: {
+  routeRow: { paddingVertical: 10 },
+  routeNodeContainer: { flexDirection: 'row', alignItems: 'center' },
+  connector: {
     width: 40,
     alignItems: 'center',
     position: 'relative',
@@ -1142,7 +1021,6 @@ const styles = StyleSheet.create({
   },
   connectorTime: {
     fontSize: 8,
-    color: '#94A3B8',
     fontWeight: 'bold',
     backgroundColor: '#fff',
     paddingHorizontal: 4,
@@ -1150,15 +1028,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -5,
   },
-  connectorLine: {
-    width: '100%',
-    height: 2,
-    backgroundColor: '#E2E8F0',
-  },
-  routeNode: {
-    width: 80,
-    alignItems: 'center',
-  },
+  connectorLine: { width: '100%', height: 2, backgroundColor: '#E2E8F0' },
+  routeNode: { width: 80, alignItems: 'center' },
   nodeCircle: {
     width: 36,
     height: 36,
@@ -1169,33 +1040,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  nodeLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#64748B',
-    textAlign: 'center',
-  },
-  timelineSection: {
-    paddingHorizontal: 16,
-    marginTop: 24,
-  },
-  eventCount: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#94A3B8',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  timelineSidebar: {
-    width: 30,
-    alignItems: 'center',
-  },
+  timelineSection: { paddingHorizontal: 16, marginTop: 24 },
+  timelineItem: { flexDirection: 'row', marginBottom: 12 },
+  timelineSidebar: { width: 30, alignItems: 'center' },
   timelinePoint: {
     width: 24,
     height: 24,
@@ -1220,72 +1067,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
-  eventCardExpanded: {
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
-  },
+  eventCardExpanded: { borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' },
   eventHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  eventInfo: {
-    flex: 1,
-  },
-  eventTime: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#94A3B8',
-  },
-  eventTypeBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  eventTypeText: {
-    fontSize: 9,
-    fontWeight: '900',
-  },
-  eventTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#334155',
-    marginTop: 4,
-  },
-  eventDetails: {
-    marginTop: 16,
-    gap: 12,
-  },
-  scanDetails: {
-    gap: 12,
-  },
-  miniMapContainer: {
+  eventMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  eventBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  eventDetails: { marginTop: 16, gap: 12 },
+  detailBox: { gap: 12 },
+  miniMap: {
     height: 140,
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    position: 'relative',
-  },
-  miniMap: {
-    flex: 1,
-  },
-  miniMapBadge: {
-    position: 'absolute',
-    bottom: 8,
-    left: 8,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  miniMapCoords: {
-    fontSize: 9,
-    color: '#64748B',
-    fontWeight: 'bold',
   },
   locationBanner: {
     flexDirection: 'row',
@@ -1297,60 +1094,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
-  locationText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  checklistContainer: {
-    gap: 12,
-  },
+  checklistContainer: { gap: 12 },
   checklistCard: {
     backgroundColor: '#fff',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 15,
-    elevation: 5,
   },
   checklistHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     backgroundColor: '#F8FAFC',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  checklistTitle: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#6366F1',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  checklistDivider: {
-    display: 'none',
-  },
+  checklistTitle: { letterSpacing: 1 },
   checklistItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F8FAFC',
   },
-  checklistText: {
-    fontSize: 14,
-    color: '#334155',
-    fontWeight: '500',
-  },
+  checklistText: { flex: 1 },
   checklistTextCompleted: {
     color: '#94A3B8',
     textDecorationLine: 'line-through',
@@ -1362,81 +1132,41 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#F59E0B33',
   },
-  webNotesText: {
-    fontSize: 13,
-    color: '#475569',
-    lineHeight: 18,
-  },
   tasksContainer: {
     backgroundColor: '#fff',
     padding: 12,
     borderRadius: 10,
     gap: 8,
   },
-  tasksTitle: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#94A3B8',
-    marginBottom: 4,
-  },
-  taskItem: {
+  tasksTitle: { letterSpacing: 0.5 },
+  taskItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  taskText: { flex: 1 },
+  taskTextCompleted: { color: '#94A3B8', textDecorationLine: 'line-through' },
+  incidentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  taskText: {
-    fontSize: 13,
-    color: '#475569',
-  },
-  taskTextCompleted: {
-    color: '#94A3B8',
-    textDecorationLine: 'line-through',
-  },
-  incidentDetails: {
-    gap: 12,
-  },
-  incidentHeaderBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: '#FFF1F2',
     padding: 12,
     borderRadius: 10,
   },
-  incidentCategory: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#B91C1C',
-  },
-  incidentDescBox: {
+  incidentDesc: {
     backgroundColor: '#fff',
     padding: 12,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#FEE2E2',
   },
-  incidentDescText: {
-    fontSize: 13,
-    color: '#7F1D1D',
-    lineHeight: 18,
-  },
-  mediaGallery: {
-    marginTop: 8,
-  },
-  mediaGalleryContent: {
-    gap: 8,
-  },
+  mediaGallery: { marginTop: 8 },
+  mediaGalleryContent: { gap: 8 },
   mediaItem: {
     width: 120,
     height: 90,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#F1F5F9',
   },
-  mediaImage: {
-    width: '100%',
-    height: '100%',
-  },
+  mediaImage: { width: '100%', height: '100%' },
   videoBadge: {
     position: 'absolute',
     top: 6,
@@ -1444,41 +1174,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     padding: 4,
     borderRadius: 6,
-  },
-  emptyState: {
-    paddingVertical: 60,
-    alignItems: 'center',
-    gap: 16,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-  shareBtn: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  shareBtnContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  shareBtnText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#64748B',
   },
 });
 

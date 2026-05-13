@@ -48,7 +48,7 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'shield-check',
     route: 'GUARDS_STACK',
     screen: 'GUARD_LIST',
-    roles: ['ADMIN', 'SHIFT'],
+    roles: ['ADMIN', 'SHIFT', 'RESDN'],
   },
   {
     label: 'Mis Asignaciones',
@@ -76,21 +76,21 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'alert-circle-outline',
     route: 'INCIDENTS_STACK',
     screen: 'INCIDENT_LIST',
-    roles: ['ADMIN', 'SHIFT'],
+    roles: ['ADMIN', 'SHIFT', 'RESDN'],
   },
   {
     label: 'Mantenimiento',
     icon: 'wrench-outline',
     route: 'MAINTENANCE_STACK',
     screen: 'MAINTENANCE_LIST',
-    roles: ['ADMIN', 'MAINT'],
+    roles: ['ADMIN', 'MAINT', 'RESDN'],
   },
   {
     label: 'Recorridos',
     icon: 'map-marker-distance',
     route: 'ROUNDS_STACK',
     screen: 'ROUNDS_LIST',
-    roles: ['ADMIN', 'SHIFT'],
+    roles: ['ADMIN', 'SHIFT', 'RESDN'],
   },
   {
     label: 'Horarios',

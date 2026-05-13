@@ -22,11 +22,13 @@ import {
   IRound,
 } from '../service/rounds.service';
 import { theme } from '../../../shared/theme/theme';
+import { UserRole } from '../../../core/types/IUser';
 
 export const RoundsListScreen = ({ navigation, route }: any) => {
   const dispatch = useDispatch();
   const routeClientId = route.params?.clientId;
-  const token = useSelector((state: any) => state.userState.token);
+  const user = useSelector((state: any) => state.userState);
+  const token = user.token;
 
   const [rounds, setRounds] = useState<IRound[]>([]);
   const [loading, setLoading] = useState(false);
@@ -266,7 +268,7 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
           </View>
 
           <View style={styles.cardFooter}>
-            {isInProgress ? (
+            {isInProgress && user.role !== UserRole.RESDN ? (
               <ITTouchableOpacity
                 style={[styles.footerAction, styles.stopBtn]}
                 onPress={() => {
@@ -280,7 +282,7 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
                   DETENER
                 </ITText>
               </ITTouchableOpacity>
-            ) : (
+            ) : !isInProgress ? (
               <ITTouchableOpacity
                 style={[styles.footerAction, styles.pdfBtn]}
                 onPress={() => handleSharePDF(item.id)}
@@ -290,7 +292,7 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
                   VER REPORTE
                 </ITText>
               </ITTouchableOpacity>
-            )}
+            ) : null}
             <View style={styles.detailsBtn}>
               <ITText
                 variant="labelSmall"

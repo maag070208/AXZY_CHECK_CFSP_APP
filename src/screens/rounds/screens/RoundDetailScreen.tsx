@@ -139,7 +139,7 @@ export const RoundDetailScreen = ({ route }: any) => {
       );
 
     const visitedLocations = new Set<string>();
-    let validScansCount = 0;
+    const coveredLocations = new Set<string>();
     const mapNodes: TimelineNode[] = [
       { type: 'START', label: 'Inicio', status: 'START', timeDiff: null },
     ];
@@ -161,10 +161,18 @@ export const RoundDetailScreen = ({ route }: any) => {
         Array.isArray(scan.data.media) &&
         scan.data.media.length > 0;
 
-      let status: TimelineNode['status'] = 'SUCCESS';
-      if (isDuplicate) status = 'DUPLICATE';
-      else if (!hasEvidence) status = 'INCOMPLETE';
-      else validScansCount++;
+      let status: TimelineNode['status'] = hasEvidence ? 'SUCCESS' : 'INCOMPLETE';
+      
+      if (isDuplicate && hasEvidence) {
+        const alreadyHadSuccess = mapNodes.some(
+          n => n.label === scan.data?.location?.name && n.status === 'SUCCESS'
+        );
+        if (alreadyHadSuccess) status = 'DUPLICATE';
+      }
+
+      if (status === 'SUCCESS') {
+        coveredLocations.add(locId);
+      }
 
       mapNodes.push({
         type: 'POINT',
@@ -175,6 +183,8 @@ export const RoundDetailScreen = ({ route }: any) => {
 
       previousTime = current;
     });
+
+    const validScansCount = coveredLocations.size;
 
     const expectedLocs =
       (data.round as any).recurringConfiguration?.recurringLocations?.map(

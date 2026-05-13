@@ -98,7 +98,7 @@ export const GuardListScreen = () => {
         const roleFilter: any = {};
         if (selectedRole) {
           roleFilter.name = selectedRole;
-        } else if (user.role === UserRole.ADMIN) {
+        } else if (user.role === UserRole.ADMIN || user.role === UserRole.RESDN) {
           roleFilter.name = { in: ['GUARD', 'SHIFT', 'MAINT'] };
         } else {
           roleFilter.name = { in: ['GUARD'] };
@@ -295,35 +295,37 @@ export const GuardListScreen = () => {
           </View>
         </View>
 
-        <View style={styles.cardFooter}>
-          <ITTouchableOpacity
-            style={styles.footerButton}
-            onPress={() => {
-              setChangingGuard(item);
-              setShowScheduleModal(true);
-            }}
-          >
-            <Icon
-              source="calendar-clock"
-              size={18}
-              color={theme.colors.primary}
-            />
-            <ITText style={styles.footerButtonText}>Horario</ITText>
-          </ITTouchableOpacity>
+        {user.role !== UserRole.RESDN && (
+          <View style={styles.cardFooter}>
+            <ITTouchableOpacity
+              style={styles.footerButton}
+              onPress={() => {
+                setChangingGuard(item);
+                setShowScheduleModal(true);
+              }}
+            >
+              <Icon
+                source="calendar-clock"
+                size={18}
+                color={theme.colors.primary}
+              />
+              <ITText style={styles.footerButtonText}>Horario</ITText>
+            </ITTouchableOpacity>
 
-          <View style={styles.dividerVertical} />
+            <View style={styles.dividerVertical} />
 
-          <ITTouchableOpacity
-            style={styles.footerButton}
-            onPress={() => {
-              setChangingGuard(item);
-              setShowClientModal(true);
-            }}
-          >
-            <Icon source="domain" size={18} color={theme.colors.primary} />
-            <ITText style={styles.footerButtonText}>Cliente</ITText>
-          </ITTouchableOpacity>
-        </View>
+            <ITTouchableOpacity
+              style={styles.footerButton}
+              onPress={() => {
+                setChangingGuard(item);
+                setShowClientModal(true);
+              }}
+            >
+              <Icon source="domain" size={18} color={theme.colors.primary} />
+              <ITText style={styles.footerButtonText}>Cliente</ITText>
+            </ITTouchableOpacity>
+          </View>
+        )}
       </ITCard>
     );
   };

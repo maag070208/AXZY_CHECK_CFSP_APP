@@ -221,7 +221,7 @@ export const HomeScreen = () => {
       stack: 'GUARDS_STACK',
       screen: 'GUARD_LIST',
       color: theme.colors.primary,
-      roles: [UserRole.ADMIN],
+      roles: [UserRole.ADMIN, UserRole.RESDN],
     },
     {
       id: 'incidents',
@@ -230,7 +230,7 @@ export const HomeScreen = () => {
       stack: 'INCIDENTS_STACK',
       screen: 'INCIDENT_LIST',
       color: '#EF4444',
-      roles: [UserRole.ADMIN],
+      roles: [UserRole.ADMIN, UserRole.RESDN],
       badge: pendingIncidents,
     },
     {
@@ -240,7 +240,7 @@ export const HomeScreen = () => {
       stack: 'MAINTENANCE_STACK',
       screen: 'MAINTENANCE_LIST',
       color: '#F59E0B',
-      roles: [UserRole.ADMIN],
+      roles: [UserRole.ADMIN, UserRole.RESDN],
       badge: pendingMaintenance,
     },
     {

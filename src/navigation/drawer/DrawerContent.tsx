@@ -261,7 +261,7 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
 
-        <Text style={styles.versionText}>Versión 1.0.22</Text>
+        <Text style={styles.versionText}>Versión 1.0.26</Text>
       </View>
 
       <ITAlert

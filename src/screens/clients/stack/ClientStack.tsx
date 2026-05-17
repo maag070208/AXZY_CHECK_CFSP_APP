@@ -1,12 +1,12 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { ClientListScreen } from '../screens/ClientListScreen';
-import { ClientFormScreen } from '../screens/ClientFormScreen';
 import { HeaderBack } from '../../../navigation/header/HeaderBack';
+import { UserFormScreen } from '../../users/screens/UserFormScreen';
 import { ClientDetailScreen } from '../screens/ClientDetailScreen';
+import { ClientGuardsScreen } from '../screens/ClientGuardsScreen';
+import { ClientListScreen } from '../screens/ClientListScreen';
 import { ClientLocationsScreen } from '../screens/ClientLocationsScreen';
 import { ClientZonesScreen } from '../screens/ClientZonesScreen';
-import { ClientGuardsScreen } from '../screens/ClientGuardsScreen';
 import { CreateClientScreen } from '../screens/CreateClientScreen';
 
 export type ClientStackParamList = {
@@ -16,6 +16,7 @@ export type ClientStackParamList = {
   CLIENT_LOCATIONS: { clientId: string };
   CLIENT_ZONES: { clientId: string };
   CLIENT_GUARDS: { clientId: string };
+  CLIENT_USER_FORM: { clientId?: string; allowedRoles?: string[]; user?: any };
 };
 
 const Stack = createNativeStackNavigator<ClientStackParamList>();
@@ -96,6 +97,19 @@ export const ClientStack = () => {
             <HeaderBack
               navigation={navigation}
               title="Guardias Asignados"
+              back={true}
+            />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="CLIENT_USER_FORM"
+        component={UserFormScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <HeaderBack
+              navigation={navigation}
+              title="Formulario de Guardia"
               back={true}
             />
           ),

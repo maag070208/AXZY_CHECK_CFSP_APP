@@ -1,5 +1,8 @@
 import { get, post, put, remove } from '../../../core/axios';
-import { DataTableFetchParams, DataTableResponse } from '../../../core/types/DataTableTypes';
+import {
+  DataTableFetchParams,
+  DataTableResponse,
+} from '../../../core/types/DataTableTypes';
 import {
   IClient,
   IClientCreate,
@@ -15,13 +18,11 @@ export const getClients = async (): Promise<TResultListClient> => {
 
 export const getClientsDatatable = async (
   params: DataTableFetchParams,
-): Promise<TResultDatatableClient> => {
+): Promise<any> => {
   return await post<DataTableResponse<IClient>>('/clients/datatable', params);
 };
 
-export const getClientById = async (
-  id: string,
-): Promise<TResultClient> => {
+export const getClientById = async (id: string): Promise<TResultClient> => {
   return await get<IClient>(`/clients/${id}`);
 };
 

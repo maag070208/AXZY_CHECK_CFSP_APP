@@ -22,7 +22,12 @@ import {
 import { createUser, updateUser } from '../../users/service/user.service';
 import { UserFormStepper } from '../components/UserFormStepper';
 import { CreateUserDTO, IUser, UpdateUserDTO } from '../service/user.types';
-import { ROLE_CLIENT } from '../../../core/constants/constants';
+import {
+  ROLE_CLIENT,
+  ROLE_GUARD,
+  ROLE_MAINTENANCE,
+  ROLE_SHIFT,
+} from '../../../core/constants/constants';
 
 const UserSchema = Yup.object().shape({
   name: Yup.string().required('El nombre es requerido'),
@@ -49,25 +54,54 @@ export const UserFormScreen = () => {
   const dispatch = useDispatch();
 
   const user = route.params?.user as IUser | undefined;
+  const allowedRoles = route.params?.allowedRoles as string[] | undefined;
+  const preselectedClientId = route.params?.clientId;
   const isEdit = !!user;
 
   const [saving, setSaving] = useState(false);
   const [schedules, setSchedules] = useState<ISchedule[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
 
   useEffect(() => {
     getSchedules().then(res => {
       if (res.success && res.data) setSchedules(res.data);
     });
     getCatalog('role').then(res => {
-      if (res.success && res.data) setRoles(res.data);
+      if (res.success && res.data) {
+        let filteredRoles = res.data;
+        if (allowedRoles && allowedRoles.length > 0) {
+          filteredRoles = res.data.filter((r: any) =>
+            allowedRoles.includes(r.name),
+          );
+        }
+        setRoles(filteredRoles);
+      }
     });
-  }, []);
+    getCatalog('client').then(res => {
+      if (res.success && res.data) setClients(res.data);
+    });
+  }, [allowedRoles]);
 
   const handleSubmit = async (values: any) => {
     setSaving(true);
     // Remove 'role' string before sending to API to avoid confusion
     const { role, ...payload } = values;
+
+    console.log(role);
+
+    // Sanitize clientId: If not operational, it should be null
+    const isOperational =
+      role === ROLE_GUARD || role === ROLE_SHIFT || role === ROLE_MAINTENANCE;
+
+    console.log(isOperational);
+
+    if (!isOperational) {
+      payload.clientId = null;
+      payload.scheduleId = null;
+    }
+
+    console.log(payload);
 
     try {
       const res = isEdit
@@ -144,7 +178,8 @@ export const UserFormScreen = () => {
                 ? typeof user.role === 'object'
                   ? user.role.name
                   : user.role
-                : 'GUARD',
+                : '',
+              clientId: user?.client?.id || preselectedClientId || '',
               scheduleId: user?.schedule?.id || '',
               active: user?.active ?? true,
             }}
@@ -158,6 +193,7 @@ export const UserFormScreen = () => {
                 {...formikProps}
                 roles={roles.filter(r => r.name !== ROLE_CLIENT)}
                 schedules={schedules}
+                clients={clients}
                 saving={saving}
                 onSubmit={formikProps.handleSubmit}
                 isEdit={isEdit}

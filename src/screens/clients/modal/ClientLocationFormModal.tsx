@@ -19,6 +19,7 @@ import {
   ITText,
   SearchComponent,
 } from '../../../shared/components';
+import { getClientById, getClients } from '../../clients/service/client.service';
 import {
   createLocation,
   updateLocation,
@@ -28,6 +29,7 @@ import { getZonesByClient } from '../../zones/service/zone.service';
 
 import { theme } from '../../../shared/theme/theme';
 import { IZone } from '../../zones/type/zone.types';
+import { IClient } from '../../clients/type/client.types';
 
 interface ClientLocationFormModalProps {
   visible: boolean;
@@ -61,6 +63,7 @@ export const ClientLocationFormModal = ({
 
   const [loading, setLoading] = useState(false);
   const [zones, setZones] = useState<IZone[]>([]);
+  const [client, setClient] = useState<IClient | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -79,8 +82,21 @@ export const ClientLocationFormModal = ({
       });
       setErrors({});
       fetchZones();
+      fetchClient();
     }
   }, [visible, editLocation, clientId]);
+
+  const fetchClient = async () => {
+    if (!clientId) return;
+    try {
+      const res = await getClientById(clientId);
+      if (res.success && res.data) {
+        setClient(res.data);
+      }
+    } catch (error) {
+      console.log('Error fetching client', error);
+    }
+  };
 
   const fetchZones = async () => {
     try {
@@ -119,8 +135,16 @@ export const ClientLocationFormModal = ({
 
     setLoading(true);
     try {
+      const selectedZone = zones.find(z => z.id === form.zoneId);
+      
+      const composedName = editLocation 
+        ? form.name 
+        : `${client?.name || 'S/C'}-${selectedZone?.name || 'S/Z'}-${form.name}`;
+
       const payload = {
         ...form,
+        name: composedName,
+        zoneName: selectedZone?.name || '',
         clientId,
       };
 

@@ -124,8 +124,25 @@ export const LocationFormModal = ({
                 if (values.clientId) loadZones(values.clientId);
               }, [values.clientId]);
 
+              const getPayload = () => {
+                const client = clients.find(c => c.id === values.clientId);
+                const zone = zones.find(z => z.id === values.zoneId);
+                
+                // Componer el nombre como en la web: Cliente-Zona-Nombre
+                const composedName = initialData 
+                  ? values.name 
+                  : `${client?.name || 'S/C'}-${zone?.name || 'S/Z'}-${values.name}`;
+
+                return {
+                  ...values,
+                  name: composedName,
+                  zoneName: zone?.name || ''
+                };
+              };
+
               const handleSaveAndNew = async () => {
-                const success = await onSubmit(values, true);
+                const payload = getPayload();
+                const success = await onSubmit(payload as any, true);
                 if (success) {
                   setShowSuccess(true);
                   setFieldValue('name', '');
@@ -137,7 +154,8 @@ export const LocationFormModal = ({
               };
 
               const handleNormalSubmit = async () => {
-                const success = await onSubmit(values, false);
+                const payload = getPayload();
+                const success = await onSubmit(payload as any, false);
                 if (success) {
                   onDismiss();
                 }

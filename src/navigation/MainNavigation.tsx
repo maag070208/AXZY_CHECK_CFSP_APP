@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from '../core/store/hooks';
 import { logout } from '../core/store/slices/user.slice';
 import { IAuthToken } from '../core/types/IUser';
 import LoginScreen from '../screens/auth/screens/LoginScreen';
-import { LoaderComponent } from '../shared/components/LoaderComponent';
+import { PermissionsValidator } from '../shared/components';
 import DrawerNavigator from './drawer/DrawerNavigator';
 
 const MainNavigation = () => {
@@ -52,7 +52,13 @@ const MainNavigation = () => {
   return (
     <>
       <NavigationContainer onStateChange={validateToken}>
-        {isSignedIn ? <DrawerNavigator /> : <LoginScreen />}
+        {isSignedIn ? (
+          <PermissionsValidator>
+            <DrawerNavigator />
+          </PermissionsValidator>
+        ) : (
+          <LoginScreen />
+        )}
       </NavigationContainer>
     </>
   );

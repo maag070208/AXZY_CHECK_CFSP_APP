@@ -51,10 +51,10 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
 
   // Form State
   const [title, setTitle] = useState('');
-  const [selectedClientId, setSelectedClientId] = useState<number | string>('');
-  const [selectedZoneId, setSelectedZoneId] = useState<number | string>('');
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [addedLocations, setAddedLocations] = useState<any[]>([]);
-  const [selectedGuards, setSelectedGuards] = useState<number[]>([]);
+  const [selectedGuards, setSelectedGuards] = useState<string[]>([]);
 
   // Catalog State
   const [clients, setClients] = useState<any[]>([]);
@@ -92,7 +92,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
       if (isEditing) {
         const fullRes = await getRecurringById(editConfig.id);
         if (fullRes && fullRes.success && fullRes.data) {
-          const data = fullRes.data;
+          const data = fullRes.data as any;
           setTitle(data.title);
           setSelectedGuards((data.guards || []).map((g: any) => g.id));
 
@@ -148,7 +148,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
     }
   };
 
-  const handleAddLocation = (locId: number) => {
+  const handleAddLocation = (locId: string) => {
     if (addedLocations.find(l => l.locationId === locId)) {
       dispatch(
         showToast({ message: 'Ubicación ya agregada', type: 'warning' }),
@@ -230,7 +230,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
     setAddedLocations(copy);
   };
 
-  const toggleGuard = (guardId: number) => {
+  const toggleGuard = (guardId: string) => {
     setSelectedGuards(prev =>
       prev.includes(guardId)
         ? prev.filter(id => id !== guardId)
@@ -244,9 +244,13 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
       const payload = {
         title,
         clientId: selectedClientId || undefined,
-        locations: addedLocations,
+        locations: addedLocations.map(l => ({
+          locationId: l.locationId,
+          tasks: l.tasks,
+        })),
         guardIds: selectedGuards,
       };
+      console.log(payload);
 
       const res = isEditing
         ? await updateRecurring(editConfig.id, payload)
@@ -256,10 +260,21 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
         dispatch(showToast({ message: 'Ruta guardada', type: 'success' }));
         navigation.goBack();
       } else {
-        dispatch(showToast({ message: 'Error al guardar', type: 'error' }));
+        dispatch(
+          showToast({
+            message: res.messages?.[0] || 'Error al guardar',
+            type: 'error',
+          }),
+        );
       }
-    } catch (error) {
-      dispatch(showToast({ message: 'Error de conexión', type: 'error' }));
+    } catch (error: any) {
+      const result = error as any;
+      dispatch(
+        showToast({
+          message: result?.messages?.[0] || 'Ocurrió un error en la solicitud',
+          type: 'error',
+        }),
+      );
     } finally {
       setLoading(false);
     }
@@ -302,7 +317,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
   if (fetching) {
     return (
       <View style={styles.loadingFull}>
-        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={styles.loadingText}>Sincronizando información...</Text>
       </View>
     );
@@ -344,15 +359,10 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
             variant="headlineSmall"
             weight="bold"
             color={theme.colors.primary}
-            textAlign="center"
           >
             {isEditing ? 'Editar Ruta' : 'Nueva Ruta'}
           </ITText>
-          <ITText
-            variant="bodySmall"
-            color={theme.colors.slate500}
-            textAlign="center"
-          >
+          <ITText variant="bodySmall" color={theme.colors.slate500}>
             Configura el recorrido recurrente y las tareas de inspección
           </ITText>
         </View>
@@ -426,7 +436,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                     options={clients.map(c => ({ label: c.name, value: c.id }))}
                     value={selectedClientId}
                     onSelect={val => {
-                      setSelectedClientId(val);
+                      setSelectedClientId(String(val));
                       setSelectedZoneId('');
                       setAddedLocations([]);
                       setSelectedGuards([]);
@@ -459,7 +469,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                             value: z.id,
                           }))}
                           value={selectedZoneId}
-                          onSelect={setSelectedZoneId}
+                          onSelect={val => setSelectedZoneId(String(val))}
                           disabled={!selectedClientId}
                         />
                       </View>
@@ -492,9 +502,14 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                 <Divider style={styles.divider} />
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>
+                  <ITText
+                    variant="labelMedium"
+                    weight="bold"
+                    color={theme.colors.slate700}
+                    style={{ marginBottom: 12 }}
+                  >
                     Hoja de Ruta ({addedLocations.length})
-                  </Text>
+                  </ITText>
                   {addedLocations.map((loc, idx) => (
                     <View
                       key={`${loc.locationId}-${idx}`}
@@ -518,7 +533,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                           >
                             <ITText
                               variant="labelSmall"
-                              weight="black"
+                              weight="bold"
                               color={theme.colors.primary}
                             >
                               + TAREA
@@ -537,14 +552,12 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                       {loc.tasks.map((task: any, tIdx: number) => (
                         <View key={tIdx} style={styles.taskInputRow}>
                           <TextInput
-                            mode="flat"
                             placeholder="Describa la consigna..."
                             value={task.description}
                             onChangeText={text =>
                               handleTaskChange(idx, tIdx, text)
                             }
                             style={styles.taskFlatInput}
-                            dense
                           />
                           <IconButton
                             icon="close"
@@ -576,7 +589,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                     <Icon
                       source="shield-account"
                       size={24}
-                      color={PRIMARY_COLOR}
+                      color={theme.colors.primary}
                     />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.infoBoxTitle}>
@@ -650,7 +663,7 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                   <Icon
                     source="calendar-clock"
                     size={40}
-                    color={PRIMARY_COLOR}
+                    color={theme.colors.primary}
                   />
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={styles.summaryTitle}>{title}</Text>

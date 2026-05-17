@@ -36,6 +36,10 @@ export const getAllAssignments = async (
   return await get<IAssignment[]>(`/assignments${query}`);
 };
 
+export const getPaginatedAssignments = async (params: any): Promise<TResult<any>> => {
+  return await post<any>('/assignments/datatable', params);
+};
+
 export const updateAssignmentStatus = async (
   id: string,
   status: AssignmentStatus,

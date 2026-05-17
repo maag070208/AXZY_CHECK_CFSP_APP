@@ -1,4 +1,8 @@
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import {
+  useFocusEffect,
+  useIsFocused,
+  useNavigation,
+} from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,6 +15,7 @@ import {
 import {
   Dialog,
   Divider,
+  FAB,
   Icon,
   IconButton,
   List,
@@ -21,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
+import { OPERATIONAL_ROLES } from '../../../core/constants/constants';
 import { showLoader } from '../../../core/store/slices/loader.slice';
 import { UserRole } from '../../../core/types/IUser';
 import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
@@ -170,7 +176,10 @@ export const GuardListScreen = () => {
   const { navigateToScreen } = useAppNavigation();
 
   const handleDetail = (guard: any) => {
-    // navigateToScreen('GUARDS_STACK', 'GUARD_DETAIL', { guard });
+    navigateToScreen('GUARDS_STACK', 'GUARD_FORM', {
+      user: guard,
+      allowedRoles: OPERATIONAL_ROLES,
+    });
   };
 
   const handleApplyFilters = () => {
@@ -317,6 +326,24 @@ export const GuardListScreen = () => {
             <ITTouchableOpacity
               style={styles.footerButton}
               onPress={() => {
+                navigateToScreen('GUARDS_STACK', 'GUARD_ASSIGNMENTS', {
+                  guard: item,
+                });
+              }}
+            >
+              <Icon
+                source="clipboard-list-outline"
+                size={18}
+                color={theme.colors.primary}
+              />
+              <ITText style={styles.footerButtonText}>Tareas</ITText>
+            </ITTouchableOpacity>
+
+            <View style={styles.dividerVertical} />
+
+            <ITTouchableOpacity
+              style={styles.footerButton}
+              onPress={() => {
                 setChangingGuard(item);
                 setShowClientModal(true);
               }}
@@ -329,6 +356,8 @@ export const GuardListScreen = () => {
       </ITCard>
     );
   };
+
+  const isFocused = useIsFocused();
 
   return (
     <View style={styles.container}>
@@ -358,6 +387,20 @@ export const GuardListScreen = () => {
         data={guards}
         renderItem={renderGuard}
         keyExtractor={item => item.id.toString()}
+        fab={
+          isFocused ? (
+            <FAB
+              icon="plus"
+              style={styles.fab}
+              color="#FFFFFF"
+              onPress={() =>
+                navigateToScreen('GUARDS_STACK', 'GUARD_FORM', {
+                  allowedRoles: OPERATIONAL_ROLES,
+                })
+              }
+            />
+          ) : undefined
+        }
       />
 
       {/* REASSIGNMENT MODALS */}
@@ -738,5 +781,13 @@ const styles = StyleSheet.create({
     padding: 24,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
+  },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 16,
   },
 });

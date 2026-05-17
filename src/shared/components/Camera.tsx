@@ -21,9 +21,9 @@ import {
   useCameraFormat,
   useCodeScanner,
 } from 'react-native-vision-camera';
+import { theme } from '../theme/theme';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const PRIMARY_COLOR = '#1f8a3a';
 
 interface CameraComponentProps {
   mode?: 'photo' | 'scan';
@@ -206,7 +206,7 @@ const CameraComponent = ({
             <View style={styles.outerRing}>
               <View style={styles.innerCircle}>
                 {isLoading ? (
-                  <ActivityIndicator color={PRIMARY_COLOR} />
+                  <ActivityIndicator color={theme.colors.primary} />
                 ) : (
                   <View style={styles.dot} />
                 )}
@@ -279,7 +279,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.3)',
     marginVertical: 4,
   },
-  techTextSmall: { color: PRIMARY_COLOR, fontSize: 9, fontWeight: 'bold' },
+  techTextSmall: {
+    color: theme.colors.primary,
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
 
   centerOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -297,7 +301,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: PRIMARY_COLOR,
+    backgroundColor: theme.colors.primary,
   },
 
   scannerGuide: {
@@ -310,7 +314,7 @@ const styles = StyleSheet.create({
   },
   scannerLine: {
     height: 2,
-    backgroundColor: PRIMARY_COLOR,
+    backgroundColor: theme.colors.primary,
     width: '100%',
     opacity: 0.5,
   },
@@ -351,12 +355,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PRIMARY_COLOR },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.primary,
+  },
 
   // Preview Professional
   previewHeader: { marginTop: 40, marginBottom: 20 },
   previewTag: {
-    color: PRIMARY_COLOR,
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 2,
@@ -387,7 +396,11 @@ const styles = StyleSheet.create({
     gap: 15,
     alignItems: 'center',
   },
-  mainButton: { flex: 1, backgroundColor: PRIMARY_COLOR, borderRadius: 14 },
+  mainButton: {
+    flex: 1,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 14,
+  },
   buttonContent: { height: 56 },
   secondaryCircleButton: {
     width: 56,

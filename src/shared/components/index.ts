@@ -12,6 +12,7 @@ export * from './ITScreenWrapper';
 // Existing components
 export * from './Camera';
 export * from './ITAlert';
+export * from './ITDialog';
 export * from './ITCategorySelector';
 export * from './ITTypeSelector';
 export * from './ITMediaPicker';
@@ -25,3 +26,4 @@ export * from './ITSkeletonSearch';
 export * from './ITScreenDatatableLayout';
 export * from './ITTouchableOpacity';
 export * from './ITMediaPreviewSection';
+export * from './PermissionsValidator';

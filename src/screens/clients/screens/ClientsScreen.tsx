@@ -1,36 +1,38 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from 'react-native';
 import {
   ActivityIndicator,
   Avatar,
   Card,
+  FAB,
   Icon,
   IconButton,
   Searchbar,
   Text,
-  FAB,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  getPaginatedClients,
-  deleteClient,
-} from '../service/client.service';
+import { deleteClient, getClientsDatatable } from '../service/client.service';
 import { IClient } from '../type/client.types';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
-
-const PRIMARY_COLOR = '#0F4C3A';
+import { theme } from '../../../shared/theme/theme';
 
 export const ClientsScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.userState);
   const isAdmin = user.role === UserRole.ADMIN;
-  
+
   const [clients, setClients] = useState<IClient[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,8 +41,8 @@ export const ClientsScreen = ({ navigation }: any) => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -55,42 +57,42 @@ export const ClientsScreen = ({ navigation }: any) => {
 
   const fetchData = async (pageNum: number, isRefreshing = false) => {
     if (pageNum === 1) {
-        if (!isRefreshing) setLoading(true);
+      if (!isRefreshing) setLoading(true);
     } else {
-        setLoadingMore(true);
+      setLoadingMore(true);
     }
 
     const params = {
-        page: pageNum,
-        limit: 20,
-        filters: {
-            search: debouncedSearch
-        }
+      page: pageNum,
+      limit: 20,
+      filters: {
+        search: debouncedSearch,
+      },
     };
 
     try {
-        const res = await getPaginatedClients(params);
-        if (res.success && res.data) {
-            const newRows = res.data.rows || [];
-            const totalRows = res.data.total || 0;
+      const res = await getClientsDatatable(params);
+      if (res.success && res.data) {
+        const newRows = res.data.rows || [];
+        const totalRows = res.data.total || 0;
 
-            if (pageNum === 1) {
-                setClients(newRows);
-                setHasMore(newRows.length < totalRows);
-            } else {
-                setClients(prev => [...prev, ...newRows]);
-                setHasMore(clients.length + newRows.length < totalRows);
-            }
-
-            setTotal(totalRows);
-            setPage(pageNum);
+        if (pageNum === 1) {
+          setClients(newRows);
+          setHasMore(newRows.length < totalRows);
+        } else {
+          setClients(prev => [...prev, ...newRows]);
+          setHasMore(clients.length + newRows.length < totalRows);
         }
+
+        setTotal(totalRows);
+        setPage(pageNum);
+      }
     } catch (error) {
-        console.error("Error fetching clients:", error);
+      console.error('Error fetching clients:', error);
     } finally {
-        setLoading(false);
-        setRefreshing(false);
-        setLoadingMore(false);
+      setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
@@ -101,7 +103,7 @@ export const ClientsScreen = ({ navigation }: any) => {
 
   const handleLoadMore = () => {
     if (!loading && !loadingMore && hasMore) {
-        fetchData(page + 1);
+      fetchData(page + 1);
     }
   };
 
@@ -125,18 +127,20 @@ export const ClientsScreen = ({ navigation }: any) => {
       `¿Estás seguro de que deseas eliminar "${item.name}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Eliminar', 
+        {
+          text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
             const res = await deleteClient(item.id);
             if (res.success) {
-              dispatch(showToast({ message: 'Cliente eliminado', type: 'success' }));
+              dispatch(
+                showToast({ message: 'Cliente eliminado', type: 'success' }),
+              );
               fetchData(1);
             }
-          }
+          },
         },
-      ]
+      ],
     );
   };
 
@@ -146,46 +150,59 @@ export const ClientsScreen = ({ navigation }: any) => {
       elevation={1}
       onPress={() => {
         navigation.navigate('LOCATIONS_STACK', {
-            screen: 'LOCATIONS_MAIN',
-            params: { clientId: item.id, clientName: item.name }
+          screen: 'LOCATIONS_MAIN',
+          params: { clientId: item.id, clientName: item.name },
         });
       }}
     >
       <View style={styles.cardLayout}>
         <View style={styles.avatarSection}>
-          <Avatar.Icon 
-            size={56} 
-            icon="office-building" 
-            style={styles.avatar} 
+          <Avatar.Icon
+            size={56}
+            icon="office-building"
+            style={styles.avatar}
             color="#0F4C3A"
           />
-          <View style={[styles.statusBadge, { backgroundColor: item.active ? '#059669' : '#64748B' }]}>
-            <Icon source={item.active ? "check" : "minus"} size={10} color="#fff" />
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: item.active ? '#059669' : '#64748B' },
+            ]}
+          >
+            <Icon
+              source={item.active ? 'check' : 'minus'}
+              size={10}
+              color="#fff"
+            />
           </View>
         </View>
 
         <View style={styles.infoSection}>
-          <Text style={styles.propertyName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.ownerText} numberOfLines={1}>ID: {item.id}</Text>
+          <Text style={styles.propertyName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.ownerText} numberOfLines={1}>
+            ID: {item.id}
+          </Text>
         </View>
 
         <View style={styles.actions}>
           {isAdmin ? (
             <View style={styles.adminActions}>
-                <IconButton
-                    icon="pencil-outline"
-                    size={20}
-                    onPress={() => handleEdit(item)}
-                    iconColor="#64748B"
-                    style={{ margin: 0 }}
-                />
-                <IconButton
-                    icon="trash-can-outline"
-                    size={20}
-                    onPress={() => handleDelete(item)}
-                    iconColor="#ba1a1a"
-                    style={{ margin: 0 }}
-                />
+              <IconButton
+                icon="pencil-outline"
+                size={20}
+                onPress={() => handleEdit(item)}
+                iconColor="#64748B"
+                style={{ margin: 0 }}
+              />
+              <IconButton
+                icon="trash-can-outline"
+                size={20}
+                onPress={() => handleDelete(item)}
+                iconColor="#ba1a1a"
+                style={{ margin: 0 }}
+              />
             </View>
           ) : (
             <IconButton icon="chevron-right" iconColor="#CBD5E1" size={24} />
@@ -201,7 +218,9 @@ export const ClientsScreen = ({ navigation }: any) => {
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.headerTitle}>Clientes</Text>
-            <Text style={styles.headerSubtitle}>{total} clientes registrados</Text>
+            <Text style={styles.headerSubtitle}>
+              {total} clientes registrados
+            </Text>
           </View>
         </View>
         <Searchbar
@@ -218,7 +237,7 @@ export const ClientsScreen = ({ navigation }: any) => {
 
       {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>Cargando clientes...</Text>
         </View>
       ) : (
@@ -227,15 +246,20 @@ export const ClientsScreen = ({ navigation }: any) => {
           keyExtractor={item => String(item.id)}
           renderItem={renderItem}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[PRIMARY_COLOR]} tintColor={PRIMARY_COLOR} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
+            />
           }
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={
             loadingMore ? (
-                <View style={styles.footerLoader}>
-                    <ActivityIndicator size="small" color={PRIMARY_COLOR} />
-                </View>
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              </View>
             ) : null
           }
           contentContainerStyle={styles.listContainer}
@@ -243,22 +267,28 @@ export const ClientsScreen = ({ navigation }: any) => {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <View style={styles.emptyIcon}>
-                <IconButton icon="office-building-off" size={40} iconColor="#94A3B8" />
+                <IconButton
+                  icon="office-building-off"
+                  size={40}
+                  iconColor="#94A3B8"
+                />
               </View>
               <Text style={styles.emptyTitle}>Sin clientes</Text>
-              <Text style={styles.emptyText}>No se encontraron clientes registrados.</Text>
+              <Text style={styles.emptyText}>
+                No se encontraron clientes registrados.
+              </Text>
             </View>
           }
         />
       )}
 
       {isAdmin && (
-          <FAB
-            icon="plus"
-            style={[styles.fab, { bottom: insets.bottom + 24 }]}
-            onPress={handleCreate}
-            color="white"
-          />
+        <FAB
+          icon="plus"
+          style={[styles.fab, { bottom: insets.bottom + 24 }]}
+          onPress={handleCreate}
+          color="white"
+        />
       )}
     </View>
   );
@@ -372,7 +402,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     margin: 16,
     right: 0,
-    backgroundColor: PRIMARY_COLOR,
+    backgroundColor: theme.colors.primary,
     borderRadius: 28,
   },
   footerLoader: {

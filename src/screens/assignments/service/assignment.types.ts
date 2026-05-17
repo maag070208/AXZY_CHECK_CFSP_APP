@@ -7,6 +7,14 @@ export enum AssignmentStatus {
   ANOMALY = 'ANOMALY',
 }
 
+export const ASSIGNMENT_STATUS_LABEL: Record<AssignmentStatus, string> = {
+  [AssignmentStatus.PENDING]: 'Pendiente',
+  [AssignmentStatus.CHECKING]: 'En Proceso',
+  [AssignmentStatus.UNDER_REVIEW]: 'En Revisión',
+  [AssignmentStatus.REVIEWED]: 'Revisado',
+  [AssignmentStatus.ANOMALY]: 'Anomalía',
+};
+
 export interface IAssignment {
   id: string;
   guardId: string;

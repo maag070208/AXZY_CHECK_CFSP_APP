@@ -7,6 +7,7 @@ import { useDispatch } from 'react-redux';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { TResult } from '../../../core/types/TResult';
+import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
   ITText,
   ITCard,
@@ -36,6 +37,8 @@ export const ClientGuardsScreen = () => {
 
   const [page, setPage] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  const { navigateToScreen } = useAppNavigation();
 
   const fetchGuards = async (isRefresh = false, isLoadMore = false) => {
     if (isRefresh) {
@@ -229,12 +232,10 @@ export const ClientGuardsScreen = () => {
             style={[styles.fab, { backgroundColor: theme.colors.primary }]}
             color="white"
             onPress={() => {
-              dispatch(
-                showToast({
-                  message: 'Asignación de guardias en desarrollo',
-                  type: 'info',
-                }),
-              );
+              navigateToScreen('CLIENTS_STACK', 'CLIENT_USER_FORM', {
+                clientId,
+                allowedRoles: ['GUARD', 'SHIFT', 'MAINT'],
+              });
             }}
           />
         }

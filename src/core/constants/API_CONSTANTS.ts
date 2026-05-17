@@ -1,5 +1,5 @@
 export const API_CONSTANTS = {
-  // BASE_URL: 'http://192.168.1.82:4444/api/v1',
+  // BASE_URL: 'http://192.168.10.100:4444/api/v1',
   // PROD
   // BASE_URL: 'https://axzycheckcfspapi-production.up.railway.app/api/v1',
   //DEV
@@ -23,4 +23,3 @@ export const API_CONSTANTS = {
     },
   },
 };
-//

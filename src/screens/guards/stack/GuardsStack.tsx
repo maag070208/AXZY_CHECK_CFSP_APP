@@ -5,6 +5,9 @@ import { GuardDetailScreen } from '../screens/GuardDetailScreen';
 import { AssignmentDetailScreen } from '../../assignments/screens/AssignmentDetailScreen';
 import { KardexDetailScreen } from '../../kardex/screens/KardexDetailScreen';
 import { HeaderBack } from '../../../navigation/header/HeaderBack';
+import { UserFormScreen } from '../../users/screens/UserFormScreen';
+import { GuardAssignmentsScreen } from '../screens/GuardAssignmentsScreen';
+import { GuardAssignmentFormScreen } from '../screens/GuardAssignmentFormScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,6 +35,45 @@ export const GuardsStack = () => {
             <HeaderBack
               navigation={navigation}
               title="Gestión de Guardias"
+              back={true}
+            />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="GUARD_FORM"
+        component={UserFormScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <HeaderBack
+              navigation={navigation}
+              title="Formulario de Guardia"
+              back={true}
+            />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="GUARD_ASSIGNMENTS"
+        component={GuardAssignmentsScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <HeaderBack
+              navigation={navigation}
+              title="Tareas de Guardia"
+              back={true}
+            />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="GUARD_ASSIGNMENT_FORM"
+        component={GuardAssignmentFormScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <HeaderBack
+              navigation={navigation}
+              title="Nueva Tarea"
               back={true}
             />
           ),

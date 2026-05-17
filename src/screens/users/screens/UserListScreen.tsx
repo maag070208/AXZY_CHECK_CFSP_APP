@@ -1,17 +1,16 @@
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Dialog, FAB, Portal, Searchbar } from 'react-native-paper';
+import { FAB, Searchbar } from 'react-native-paper';
 import { useDispatch } from 'react-redux';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
   ITAlert,
   ITBadge,
-  ITButton,
+  ITDialog,
   ITInput,
   ITScreenDatatableLayout,
-  ITText,
   ITTouchableOpacity,
 } from '../../../shared/components';
 import { getCatalog } from '../../../shared/service/catalog.service';
@@ -68,7 +67,7 @@ export const UserListScreen = () => {
           { label: 'Todos', value: null },
           ...res.data.map((r: any) => ({
             label: r.value,
-            value: r.name,
+            value: r.id,
           })),
         ];
         setRoleOptions(mapped);
@@ -98,7 +97,7 @@ export const UserListScreen = () => {
           limit: 15,
           filters: {
             name: debouncedSearch,
-            role: selectedRole,
+            roleId: selectedRole,
           },
         };
 
@@ -133,6 +132,12 @@ export const UserListScreen = () => {
       fetchUsers(1);
     }, [fetchUsers]),
   );
+
+  useEffect(() => {
+    if (isFocused) {
+      fetchUsers(1);
+    }
+  }, [debouncedSearch, selectedRole, isFocused, fetchUsers]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -251,7 +256,9 @@ export const UserListScreen = () => {
               >
                 <ITBadge
                   label={role.label}
-                  variant={selectedRole === role.value ? 'primary' : 'surface'}
+                  variant={
+                    selectedRole === role.value ? 'primary' : 'secondary'
+                  }
                   outline={selectedRole !== role.value}
                 />
               </ITTouchableOpacity>
@@ -274,56 +281,33 @@ export const UserListScreen = () => {
       />
 
       {/* RESET PASSWORD DIALOG */}
-      <Portal>
-        <Dialog
-          visible={showResetModal}
-          onDismiss={() => !reseting && setShowResetModal(false)}
-          style={{ borderRadius: 28, backgroundColor: '#FFFFFF' }}
-        >
-          <Dialog.Title>
-            <ITText variant="headlineSmall" weight="bold">
-              Seguridad
-            </ITText>
-          </Dialog.Title>
-          <Dialog.Content style={{ gap: 8 }}>
-            <ITText variant="bodyMedium" color={theme.colors.slate500}>
-              Establecer nueva contraseña para {selectedUser?.name}.
-            </ITText>
-            <View style={{ marginTop: 16 }}>
-              <ITInput
-                label="Nueva Contraseña"
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry={!showPassword}
-                leftIcon="lock-outline"
-                rightIcon={showPassword ? 'eye-off' : 'eye'}
-                onRightIconPress={() => setShowPassword(!showPassword)}
-                placeholder="Mínimo 6 caracteres"
-                autoCapitalize="none"
-              />
-            </View>
-          </Dialog.Content>
-          <Dialog.Actions
-            style={{ paddingHorizontal: 24, paddingBottom: 24, gap: 12 }}
-          >
-            <ITButton
-              label="Cancelar"
-              mode="outlined"
-              onPress={() => setShowResetModal(false)}
-              disabled={reseting}
-              style={{ flex: 1 }}
-              textColor={theme.colors.slate500}
-            />
-            <ITButton
-              label="Actualizar"
-              onPress={handleResetPassword}
-              loading={reseting}
-              disabled={reseting || newPassword.length < 6}
-              style={{ flex: 2, backgroundColor: theme.colors.primary }}
-            />
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+      <ITDialog
+        visible={showResetModal}
+        onDismiss={() => !reseting && setShowResetModal(false)}
+        title="Seguridad"
+        description={`Establecer nueva contraseña para ${
+          selectedUser?.name || 'el usuario'
+        }.`}
+        icon="shield-lock"
+        iconBackgroundColor="#EEF2FF"
+        iconColor={theme.colors.primary}
+        confirmLabel="Actualizar"
+        onConfirm={handleResetPassword}
+        loading={reseting}
+        confirmDisabled={newPassword.length < 6}
+      >
+        <ITInput
+          label="Nueva Contraseña"
+          value={newPassword}
+          onChangeText={setNewPassword}
+          secureTextEntry={!showPassword}
+          leftIcon="lock-outline"
+          rightIcon={showPassword ? 'eye-off' : 'eye'}
+          onRightIconPress={() => setShowPassword(!showPassword)}
+          placeholder="Mínimo 6 caracteres"
+          autoCapitalize="none"
+        />
+      </ITDialog>
 
       <ITAlert
         visible={showDeleteDialog}

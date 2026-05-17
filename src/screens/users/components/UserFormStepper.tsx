@@ -13,6 +13,8 @@ import {
   ITText,
   ITTouchableOpacity,
 } from '../../../shared/components';
+import { useDispatch } from 'react-redux';
+import { showToast } from '../../../core/store/slices/toast.slice';
 import { theme } from '../../../shared/theme/theme';
 
 interface UserFormStepperProps {
@@ -29,6 +31,7 @@ interface UserFormStepperProps {
   ) => void;
   roles: any[];
   schedules: any[];
+  clients: any[];
   saving: boolean;
   onSubmit: () => void;
   isEdit?: boolean;
@@ -44,16 +47,19 @@ export const UserFormStepper = ({
   setFieldTouched,
   roles,
   schedules,
+  clients,
   saving,
   onSubmit,
   isEdit = false,
 }: UserFormStepperProps) => {
+  const dispatch = useDispatch();
   const [currentStep, setCurrentStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
 
   const steps = [
     { title: 'Perfil', icon: 'account-outline' },
     { title: 'Seguridad', icon: 'shield-lock-outline' },
+    { title: 'Cliente', icon: 'office-building' },
     { title: 'Horario', icon: 'clock-outline' },
   ];
 
@@ -74,26 +80,54 @@ export const UserFormStepper = ({
     if (step === 1) {
       const baseValid = !!(
         values.username &&
-        values.role &&
+        values.roleId &&
         !errors.username &&
-        !errors.role
+        !errors.roleId
       );
       if (!isEdit) return baseValid && !!(values.password && !errors.password);
       return baseValid;
     }
+    if (step === 2) return !!values.clientId;
+    if (step === 3) return !!values.scheduleId;
     return true;
   };
 
   const validateCurrentStep = () => {
     const fieldsToTouch: string[] = [];
     if (currentStep === 0) fieldsToTouch.push('name', 'lastName');
-    if (currentStep === 1) fieldsToTouch.push('username', 'password', 'role');
+    if (currentStep === 1) fieldsToTouch.push('username', 'password', 'roleId');
+    if (currentStep === 2) fieldsToTouch.push('clientId');
+    if (currentStep === 3) fieldsToTouch.push('scheduleId');
 
     fieldsToTouch.forEach(field => setFieldTouched(field, true));
 
     if (isStepValid(currentStep)) {
       setCurrentStep(prev => prev + 1);
     }
+  };
+
+  const handleFinalSubmit = () => {
+    if (Object.keys(errors).length > 0) {
+      const allFields = [
+        'name',
+        'lastName',
+        'username',
+        'password',
+        'roleId',
+        'clientId',
+        'scheduleId',
+      ];
+      allFields.forEach(f => setFieldTouched(f, true));
+      console.log(errors);
+      dispatch(
+        showToast({
+          type: 'error',
+          message: 'Por favor, revisa los campos marcados en rojo.',
+        }),
+      );
+      return;
+    }
+    onSubmit();
   };
 
   const getRoleIcon = (name: string) => {
@@ -341,16 +375,79 @@ export const UserFormStepper = ({
               })}
             </View>
 
-            {errors.role && touched.role && (
+            {errors.roleId && touched.roleId && (
               <ITText variant="labelSmall" style={styles.errorText}>
-                {errors.role as string}
+                {errors.roleId as string}
               </ITText>
             )}
           </View>
         )}
 
-        {/* STEP 2: Horario */}
-        {currentStep === 2 && (
+        {/* STEP 2: Cliente (Solo Operativos) */}
+        {currentStep === 2 && isOperational && (
+          <View style={styles.stepContainer}>
+            <View style={styles.scheduleHeader}>
+              <ITText
+                variant="titleMedium"
+                weight="bold"
+                style={styles.scheduleTitle}
+              >
+                Asignación de Cliente
+              </ITText>
+              <ITText variant="labelSmall" style={styles.scheduleSubtitle}>
+                Selecciona el cliente para este usuario
+              </ITText>
+            </View>
+
+            <View style={styles.clientList}>
+              {clients.map(c => {
+                const isSelected = values.clientId === c.id;
+                return (
+                  <ITTouchableOpacity
+                    key={c.id}
+                    onPress={() => setFieldValue('clientId', c.id)}
+                    style={[
+                      styles.clientItem,
+                      isSelected && styles.clientItemActive,
+                    ]}
+                  >
+                    <View style={styles.clientIconContainer}>
+                      <Icon
+                        source="office-building"
+                        size={20}
+                        color={isSelected ? theme.colors.primary : '#94A3B8'}
+                      />
+                    </View>
+                    <ITText
+                      variant="bodyMedium"
+                      weight={isSelected ? '600' : '400'}
+                      style={[
+                        styles.clientName,
+                        isSelected && { color: theme.colors.primary },
+                      ]}
+                    >
+                      {c.name}
+                    </ITText>
+                    <Icon
+                      source={isSelected ? 'check-circle' : 'circle-outline'}
+                      size={20}
+                      color={isSelected ? theme.colors.primary : '#CBD5E1'}
+                    />
+                  </ITTouchableOpacity>
+                );
+              })}
+            </View>
+
+            {touched.clientId && errors.clientId && (
+              <ITText variant="labelSmall" style={styles.errorText}>
+                {errors.clientId as string}
+              </ITText>
+            )}
+          </View>
+        )}
+
+        {/* STEP 3: Horario (Solo Operativos) */}
+        {currentStep === 3 && isOperational && (
           <View style={styles.stepContainer}>
             <View style={styles.scheduleHeader}>
               <ITText
@@ -448,7 +545,7 @@ export const UserFormStepper = ({
             onPress={
               currentStep < filteredSteps.length - 1
                 ? validateCurrentStep
-                : onSubmit
+                : handleFinalSubmit
             }
             loading={saving}
             disabled={saving}
@@ -687,5 +784,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  clientList: {
+    gap: 10,
+    marginTop: 8,
+  },
+  clientItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+  },
+  clientItemActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: '#EEF2FF',
+  },
+  clientIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  clientName: {
+    flex: 1,
+    color: '#0F172A',
   },
 });

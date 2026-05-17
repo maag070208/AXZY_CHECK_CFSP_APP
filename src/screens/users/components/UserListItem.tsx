@@ -24,13 +24,16 @@ export const UserListItem = ({
   const initial = item.name ? item.name.charAt(0).toUpperCase() : 'U';
 
   const getRoleVariant = (roleName: string) => {
+    console.log(roleName);
     switch (roleName) {
       case 'ADMIN':
         return 'error';
-      case 'SUPERVISOR':
+      case 'SHIFT':
         return 'primary';
       case 'GUARD':
-        return 'success';
+        return 'info';
+      case 'MAINT':
+        return 'warning';
       default:
         return 'default';
     }
@@ -95,7 +98,11 @@ export const UserListItem = ({
           <View style={styles.infoGrid}>
             <View style={styles.infoItem}>
               <View style={styles.infoIconBox}>
-                <Icon source="office-building" size={12} color={theme.colors.primary} />
+                <Icon
+                  source="office-building"
+                  size={12}
+                  color={theme.colors.primary}
+                />
               </View>
               <ITText
                 variant="labelSmall"

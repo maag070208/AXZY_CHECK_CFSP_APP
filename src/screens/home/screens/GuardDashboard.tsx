@@ -426,13 +426,22 @@ export const GuardDashboard = () => {
           keyExtractor={item => String(item.id)}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <ITText
-              variant="labelSmall"
-              weight="bold"
-              style={styles.sectionTitle}
-            >
-              {isMyRound ? 'RUTA ACTUAL EN PROCESO' : 'RUTAS ASIGNADAS'}
-            </ITText>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <ITText
+                variant="labelSmall"
+                weight="bold"
+                style={{ color: '#94A3B8', letterSpacing: 1, textTransform: 'uppercase' }}
+              >
+                {isMyRound ? 'RUTA ACTUAL EN PROCESO' : 'RUTAS ASIGNADAS'}
+              </ITText>
+              <ITButton
+                mode="text"
+                icon="sync"
+                onPress={() => navigation.navigate('SYNC_SCREEN')}
+                label="Sincronizar"
+                compact
+              />
+            </View>
           }
           renderItem={({ item, index }) => (
             <ITCard style={styles.routeCard} mode="contained" key={index}>

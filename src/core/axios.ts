@@ -31,6 +31,9 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // Version Control Header
+    config.headers['X-App-Version'] = API_CONSTANTS.APP_VERSION;
+
     return config;
   },
   (error: AxiosError) => {
@@ -58,7 +61,7 @@ axiosInstance.interceptors.response.use(
    4. Central Error (igual web, backend ya regresa TResult)
 --------------------------------------------------------- */
 const handleError = <T>(error: any): TResult<T> => {
-  throw error?.response?.data;
+  throw error?.response?.data || error;
 };
 
 /* ---------------------------------------------------------

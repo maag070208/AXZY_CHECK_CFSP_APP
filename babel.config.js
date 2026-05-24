@@ -1,4 +1,8 @@
 module.exports = {
   presets: ['@react-native/babel-preset'],
-  plugins: ['react-native-reanimated/plugin', '@babel/plugin-transform-export-namespace-from',],
+  plugins: [
+    ['@babel/plugin-proposal-decorators', { legacy: true }],
+    'react-native-reanimated/plugin',
+    '@babel/plugin-transform-export-namespace-from',
+  ],
 };

@@ -4,6 +4,7 @@ import { HeaderGuard } from '../../../navigation/header/HeaderGuard';
 import { HeaderMain } from '../../../navigation/header/HeaderMain';
 import { IncidentReportScreen } from '../../assignments/screens/IncidentReportScreen';
 import { HomeScreen } from '../screens/HomeScreen';
+import { SyncScreen } from '../screens/SyncScreen';
 
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
@@ -35,6 +36,11 @@ const HomeStack = () => {
       <Stack.Screen
         name="MAINTENANCE_REPORT"
         component={MaintenanceReportScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="SYNC_SCREEN"
+        component={SyncScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

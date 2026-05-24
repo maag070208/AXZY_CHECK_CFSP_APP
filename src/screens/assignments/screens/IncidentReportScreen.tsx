@@ -32,6 +32,7 @@ import { uploadFile } from '../../../shared/service/upload.service';
 import { COLORS } from '../../../shared/utils/constants';
 import { CameraModal } from '../../check/components/CameraModal';
 import { createIncident } from '../service/incident.service';
+import { database } from '../../../core/database/database';
 
 const { width } = Dimensions.get('window');
 
@@ -75,6 +76,56 @@ export const IncidentReportScreen = () => {
 
   const fetchCatalogs = async () => {
     try {
+      // 1. Intentar cargar desde la base de datos local SQLite (Offline first)
+      const [localCats, localTypes, localClients] = await Promise.all([
+        database.get('incident_categories').query().fetch(),
+        database.get('incident_types').query().fetch(),
+        database.get('clients').query().fetch(),
+      ]);
+
+      if (localCats.length > 0 && localTypes.length > 0) {
+        setCategories(
+          localCats.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            value: c.value,
+            type: c.type,
+            color: c.color,
+            icon: c.icon,
+          })).filter((c) => c.type === 'INCIDENT')
+        );
+
+        setAllTypes(
+          localTypes.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            value: t.value,
+            categoryId: t.categoryId,
+          }))
+        );
+
+        setClients(
+          localClients.map((c: any) => ({
+            label: c.name,
+            value: c.id,
+          }))
+        );
+        
+        console.log('[IncidentReportScreen] Catálogos cargados de base de datos local');
+        return;
+      }
+    } catch (e: any) {
+      console.error('[IncidentReportScreen] Error leyendo base de datos local, intentando API...', e);
+      dispatch(
+        showToast({
+          message: `Error DB local: ${e.message || JSON.stringify(e)}`,
+          type: 'error',
+        }),
+      );
+    }
+
+    // 2. Fallback a la API original si la base de datos local está vacía o falla
+    try {
       const [catRes, typeRes, clientsRes] = await Promise.all([
         getCatalog('incident_category'),
         getCatalog('incident_type'),
@@ -97,8 +148,9 @@ export const IncidentReportScreen = () => {
           })),
         );
       }
+      console.log('[IncidentReportScreen] Catálogos cargados desde la API');
     } catch (e) {
-      console.error('Error fetching catalogs:', e);
+      console.error('Error fetching catalogs from API:', e);
     }
   };
 
@@ -246,6 +298,39 @@ export const IncidentReportScreen = () => {
         finalLocationId,
       );
       try {
+        const NetInfo = require('@react-native-community/netinfo').default;
+        const netState = await NetInfo.fetch();
+
+        if (!netState.isConnected) {
+          // MODO OFFLINE: Guardar localmente en WatermelonDB
+          await database.write(async () => {
+            await database.get('incidents').create((newIncident: any) => {
+              newIncident.title = selectedType?.value || 'Incidencia';
+              newIncident.description = values.description || '';
+              newIncident.locationId = finalLocationId;
+              newIncident.media = JSON.stringify(validMedia);
+              newIncident.categoryId = values.categoryId;
+              newIncident.typeId = values.typeId;
+              newIncident.latitude = position?.coords?.latitude || null;
+              newIncident.longitude = position?.coords?.longitude || null;
+              newIncident.status = 'PENDING';
+              newIncident.clientId = values.clientId || null;
+              newIncident.guardId = user.id;
+              newIncident.roundId = roundId || null;
+            });
+          });
+
+          dispatch(
+            showToast({
+              message: 'Reporte guardado localmente (Offline)',
+              type: 'success',
+            }),
+          );
+          navigation.goBack();
+          return;
+        }
+
+        // MODO ONLINE
         const res = await createIncident({
           title: selectedType?.value || 'Incidencia',
           description: values.description || '',
@@ -283,8 +368,8 @@ export const IncidentReportScreen = () => {
           );
         }
       } catch (e: any) {
-        console.error('[IncidentReportScreen] Connection/Catch error:', e);
-        dispatch(showToast({ message: 'Error de conexión', type: 'error' }));
+        console.error('[IncidentReportScreen] Connection/Catch/DB error:', e);
+        dispatch(showToast({ message: 'Error al enviar reporte o guardar localmente', type: 'error' }));
       } finally {
         dispatch(showLoader(false));
       }

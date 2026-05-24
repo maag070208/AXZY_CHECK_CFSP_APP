@@ -5,9 +5,7 @@ import { Provider } from 'react-redux';
 import { store } from './src/core/store/redux.config';
 import { persistStore } from 'redux-persist';
 import { PersistGate } from 'redux-persist/integration/react';
-import {
-  PaperProvider,
-} from 'react-native-paper';
+import { PaperProvider } from 'react-native-paper';
 import { ITTheme } from './src/shared/theme/theme';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from './src/shared/components/CustomToast';
@@ -19,34 +17,44 @@ registerTranslation('es', es);
 
 // SAFE AREA
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
-
 import { StatusBar } from 'react-native';
+
+// WATERMELON DB
+import { DatabaseProvider } from '@nozbe/watermelondb/DatabaseProvider';
+import { database } from './src/core/database/database';
+
+const DatabaseProviderAny = DatabaseProvider as any;
 
 function App() {
   const persistored = persistStore(store);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }} edges={['top','right', 'left']}>
-          {/* Agrega StatusBar con fondo blanco */}
-          <StatusBar
-            barStyle="dark-content" // o "light-content" dependiendo de tu diseño
-            backgroundColor="white"
-            translucent={false}
-          />
-          <Provider store={store}>
-            <PersistGate persistor={persistored} loading={null}>
-              <PaperProvider theme={ITTheme}>
-                <MainNavigator />
-                <ToastHandler />
-                <Toast config={toastConfig} />
-                <NoInternetScreen />
-              </PaperProvider>
-            </PersistGate>
-          </Provider>
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <DatabaseProviderAny database={database}>
+        <SafeAreaProvider>
+          <SafeAreaView
+            style={{ flex: 1, backgroundColor: 'white' }}
+            edges={['top', 'right', 'left']}
+          >
+            {/* Agrega StatusBar con fondo blanco */}
+            <StatusBar
+              barStyle="dark-content" // o "light-content" dependiendo de tu diseño
+              backgroundColor="white"
+              translucent={false}
+            />
+            <Provider store={store}>
+              <PersistGate persistor={persistored} loading={null}>
+                <PaperProvider theme={ITTheme}>
+                  <MainNavigator />
+                  <ToastHandler />
+                  <Toast config={toastConfig} />
+                  <NoInternetScreen />
+                </PaperProvider>
+              </PersistGate>
+            </Provider>
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </DatabaseProviderAny>
     </GestureHandlerRootView>
   );
 }

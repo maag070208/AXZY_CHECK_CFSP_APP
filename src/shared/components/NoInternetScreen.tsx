@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Modal, AppState, AppStateStatus } from 'react-native';
-import { Text, Button, Icon } from 'react-native-paper';
+import { View, StyleSheet, AppState, AppStateStatus } from 'react-native';
+import { Text, Icon } from 'react-native-paper';
 import NetInfo from '@react-native-community/netinfo';
-import { theme } from '../theme/theme';
 
 export const NoInternetScreen = () => {
   const [isConnected, setIsConnected] = useState<boolean | null>(true);
@@ -35,63 +34,31 @@ export const NoInternetScreen = () => {
   }
 
   return (
-    <Modal visible={!isConnected} animationType="fade" transparent={false}>
-      <View style={styles.container}>
-        <View style={styles.iconContainer}>
-          <Icon source="wifi-off" size={80} color={theme.colors.error} />
-        </View>
-        <Text style={styles.title}>Sin conexión a Internet</Text>
-        <Text style={styles.description}>
-          La aplicación requiere conexión a internet para funcionar. 
-          Por favor, revisa tu conexión WiFi o de datos móviles.
-        </Text>
-        <Button 
-          mode="contained" 
-          onPress={checkConnection} 
-          style={styles.button}
-          contentStyle={{ height: 50 }}
-        >
-          INTENTAR DE NUEVO
-        </Button>
-      </View>
-    </Modal>
+    <View style={styles.banner}>
+      <Icon source="wifi-off" size={14} color="#FFFFFF" />
+      <Text style={styles.bannerText}>Sin conexión — Modo Offline Activo</Text>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
+  banner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#EF4444', // Red 500
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 24,
-  },
-  iconContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: '#fef2f2',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
+    paddingVertical: 6,
+    gap: 6,
+    zIndex: 99999,
+    elevation: 5,
   },
-  title: {
-    fontSize: 24,
+  bannerText: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 12,
-    textAlign: 'center',
   },
-  description: {
-    fontSize: 16,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
-  },
-  button: {
-    width: '100%',
-    borderRadius: 8,
-    backgroundColor: theme.colors.primary,
-  }
 });

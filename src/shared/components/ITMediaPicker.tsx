@@ -72,6 +72,17 @@ export const ITMediaPicker = ({
 
   const performUpload = async (item: MediaItem, index: number, currentList: MediaItem[]) => {
     try {
+      const NetInfo = require('@react-native-community/netinfo').default;
+      const netState = await NetInfo.fetch();
+
+      if (!netState.isConnected) {
+        console.log('[ITMediaPicker] Device is offline, storing local URI:', item.uri);
+        const updatedList = [...currentList];
+        updatedList[index] = { ...item, url: item.uri, uploading: false, error: false };
+        onMediaChange(updatedList);
+        return;
+      }
+
       const res = await uploadFile(
         item.uri,
         item.type === 'video' ? 'video' : 'image',

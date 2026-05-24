@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Icon, useTheme } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
 import { ITText, ITButton } from '../../../shared/components';
-import { syncLocalDatabase, hasPendingServerChanges } from '../../../core/database/sync';
+import { syncLocalDatabase, hasPendingServerChanges, SyncStep } from '../../../core/database/sync';
 import { COLORS } from '../../../shared/utils/constants';
 import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
 
@@ -16,6 +16,12 @@ export const SyncScreen = () => {
   const [status, setStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('syncing');
   const [errorMessage, setErrorMessage] = useState('');
   const [serverStatus, setServerStatus] = useState<'checking' | 'updates_pending' | 'up_to_date'>('checking');
+  const [uploadProgress, setUploadProgress] = useState<{
+    current: number;
+    total: number;
+    tableName: string;
+  } | null>(null);
+
   const [steps, setSteps] = useState([
     { id: 1, label: 'Validando versión de la aplicación', state: 'pending' },
     { id: 2, label: 'Descargando actualizaciones del servidor', state: 'pending' },
@@ -29,6 +35,7 @@ export const SyncScreen = () => {
   const handleSync = async () => {
     setSyncing(true);
     setStatus('syncing');
+    setUploadProgress(null);
 
     // Reset steps to pending
     setSteps([
@@ -46,15 +53,34 @@ export const SyncScreen = () => {
       await new Promise(resolve => setTimeout(resolve, 800)); // Efecto de flujo fluido
       updateStep(1, 'success');
 
-      // 2. Ejecutar sincronización de WatermelonDB con callbacks de avance
-      await syncLocalDatabase((step) => {
-        if (step === 'pull') {
-          // Descargando actualizaciones
-          updateStep(2, 'active');
-        } else if (step === 'push') {
-          // Sincronizando modificaciones
-          updateStep(2, 'success');
-          updateStep(3, 'active');
+      // 2. Sincronizar
+      await syncLocalDatabase((step: SyncStep) => {
+        if (typeof step === 'string') {
+          if (step === 'pull') {
+            updateStep(2, 'active');
+          } else if (step === 'push') {
+            updateStep(2, 'success');
+            updateStep(3, 'active');
+          }
+        } else {
+          if (step.type === 'pull') {
+            updateStep(2, 'active');
+          } else if (step.type === 'push') {
+            updateStep(2, 'success');
+            updateStep(3, 'active');
+          } else if (step.type === 'media_upload_start') {
+            updateStep(2, 'success');
+            updateStep(3, 'active');
+            setUploadProgress({ current: 0, total: step.total, tableName: '' });
+          } else if (step.type === 'media_upload_progress') {
+            updateStep(2, 'success');
+            updateStep(3, 'active');
+            setUploadProgress({
+              current: step.current,
+              total: step.total,
+              tableName: step.tableName,
+            });
+          }
         }
       });
 
@@ -123,10 +149,10 @@ export const SyncScreen = () => {
 
   return (
     <LinearGradient colors={['#0F172A', '#1E293B']} style={styles.container}>
-      <View style={styles.content}>
+      <View style={styles.fullScreenContent}>
         <View style={styles.iconContainer}>
           {status === 'syncing' && (
-            <ActivityIndicator size="large" color={theme.colors.primary} style={styles.spinner} />
+            <ActivityIndicator size="large" color={COLORS.emerald} style={styles.spinner} />
           )}
           {status === 'success' && (
             <Icon source="check-circle" size={80} color={COLORS.emerald} />
@@ -142,18 +168,18 @@ export const SyncScreen = () => {
           {status === 'error' && 'Error al Sincronizar'}
         </ITText>
 
-        <ITText variant="bodyMedium" color="#64748B" center style={styles.subtitle}>
+        <ITText variant="bodyMedium" color="#94A3B8" center style={styles.subtitle}>
           {status === 'syncing' && 'No cierres la aplicación ni desconectes la red.'}
           {status === 'success' && 'Redireccionando al panel principal.'}
           {status === 'error' && errorMessage}
         </ITText>
 
         <View style={styles.versionContainer}>
-          <ITText variant="bodySmall" color="#64748B">
-            Versión de la App: <ITText variant="bodySmall" weight="bold" color="#1E293B">v{API_CONSTANTS.APP_VERSION}</ITText>
+          <ITText variant="bodySmall" color="#94A3B8">
+            Versión de la App: <ITText variant="bodySmall" weight="bold" color="#F8FAFC">v{API_CONSTANTS.APP_VERSION}</ITText>
           </ITText>
           <View style={styles.statusRow}>
-            <ITText variant="bodySmall" color="#64748B">
+            <ITText variant="bodySmall" color="#94A3B8">
               Servidor:{' '}
             </ITText>
             {serverStatus === 'checking' && (
@@ -172,8 +198,8 @@ export const SyncScreen = () => {
           {steps.map(step => (
             <View key={step.id} style={styles.stepRow}>
               <View style={styles.stepIcon}>
-                {step.state === 'pending' && <Icon source="circle-outline" size={20} color="#94A3B8" />}
-                {step.state === 'active' && <ActivityIndicator size="small" color={theme.colors.primary} />}
+                {step.state === 'pending' && <Icon source="circle-outline" size={20} color="#64748B" />}
+                {step.state === 'active' && <ActivityIndicator size="small" color={COLORS.emerald} />}
                 {step.state === 'success' && <Icon source="checkbox-marked-circle" size={22} color={COLORS.emerald} />}
                 {step.state === 'error' && <Icon source="close-circle" size={22} color={COLORS.red} />}
               </View>
@@ -181,8 +207,8 @@ export const SyncScreen = () => {
                 variant="bodyMedium"
                 style={[
                   styles.stepLabel,
-                  step.state === 'active' && { color: theme.colors.primary, fontWeight: 'bold' },
-                  step.state === 'success' && { color: '#334155' },
+                  step.state === 'active' && { color: COLORS.emerald, fontWeight: 'bold' },
+                  step.state === 'success' && { color: '#94A3B8' },
                   step.state === 'error' && { color: COLORS.red, fontWeight: '500' },
                 ]}
               >
@@ -191,6 +217,30 @@ export const SyncScreen = () => {
             </View>
           ))}
         </View>
+
+        {uploadProgress && (
+          <View style={styles.progressContainer}>
+            <ITText variant="bodySmall" color="#94A3B8" center>
+              Subiendo archivos offline de{' '}
+              {uploadProgress.tableName === 'incidents'
+                ? 'incidencias'
+                : uploadProgress.tableName === 'maintenances'
+                ? 'mantenimiento'
+                : 'bitácora'}...
+            </ITText>
+            <ITText variant="bodyLarge" weight="bold" color="#F8FAFC" center style={{ marginTop: 4 }}>
+              {uploadProgress.current} de {uploadProgress.total} archivos
+            </ITText>
+            <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${(uploadProgress.current / uploadProgress.total) * 100}%` },
+                ]}
+              />
+            </View>
+          </View>
+        )}
 
         {status === 'error' && (
           <View style={styles.btnGroup}>
@@ -218,24 +268,17 @@ export const SyncScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  content: {
-    width: '88%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 32,
-    paddingVertical: 32,
+  fullScreenContent: {
+    flex: 1,
     paddingHorizontal: 24,
+    paddingTop: 80,
+    paddingBottom: 40,
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 8,
+    justifyContent: 'center',
   },
   iconContainer: {
-    marginBottom: 16,
+    marginBottom: 24,
     height: 80,
     justifyContent: 'center',
     alignItems: 'center',
@@ -245,26 +288,26 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: 'center',
-    color: '#0F172A',
-    fontSize: 24,
+    color: '#F8FAFC',
+    fontSize: 26,
+    marginBottom: 8,
   },
   subtitle: {
-    marginTop: 8,
-    marginBottom: 16,
-    paddingHorizontal: 6,
+    marginBottom: 32,
+    paddingHorizontal: 16,
     lineHeight: 20,
   },
   versionContainer: {
     alignItems: 'center',
-    marginBottom: 20,
-    backgroundColor: '#F8FAFC',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 14,
+    marginBottom: 24,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 16,
     width: '100%',
     gap: 4,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'rgba(51, 65, 85, 0.5)',
   },
   statusRow: {
     flexDirection: 'row',
@@ -272,18 +315,18 @@ const styles = StyleSheet.create({
   },
   stepsContainer: {
     width: '100%',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 20,
-    padding: 20,
-    gap: 16,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    borderRadius: 24,
+    padding: 24,
+    gap: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 20,
+    borderColor: 'rgba(51, 65, 85, 0.5)',
+    marginBottom: 24,
   },
   stepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
   stepIcon: {
     width: 24,
@@ -292,25 +335,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepLabel: {
-    color: '#64748B',
+    color: '#94A3B8',
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
+  },
+  progressContainer: {
+    width: '100%',
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.5)',
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  progressBarBg: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#334155',
+    borderRadius: 4,
+    marginTop: 12,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.emerald,
+    borderRadius: 4,
   },
   btnGroup: {
     width: '100%',
-    gap: 10,
-    marginTop: 10,
+    gap: 12,
+    marginTop: 12,
   },
   retryBtn: {
     width: '100%',
-    borderRadius: 14,
-    height: 48,
+    borderRadius: 16,
+    height: 52,
     justifyContent: 'center',
+    backgroundColor: COLORS.emerald,
   },
   backBtn: {
     width: '100%',
-    borderRadius: 14,
-    height: 48,
+    borderRadius: 16,
+    height: 52,
     justifyContent: 'center',
+    borderColor: '#334155',
   },
 });

@@ -1,6 +1,7 @@
 import { synchronize } from '@nozbe/watermelondb/sync';
 import { database } from './database';
 import { get, post } from '../axios';
+import { uploadFile } from '../../shared/service/upload.service';
 
 // Mapeo de nombres de tablas locales (WatermelonDB) a modelos de la API (Prisma)
 const LOCAL_TO_API_MAP: Record<string, string> = {
@@ -64,6 +65,11 @@ function convertKeys(obj: any, transformFn: (s: string) => string, isPull: boole
   }
   if (obj !== null && typeof obj === 'object') {
     return Object.entries(obj).reduce((acc, [key, val]) => {
+      // Exclude WatermelonDB internal fields (like _status, _changed) when pushing to API
+      if (!isPull && key.startsWith('_')) {
+        return acc;
+      }
+
       const newKey = transformFn(key);
       let finalVal = val;
 
@@ -84,11 +90,103 @@ function convertKeys(obj: any, transformFn: (s: string) => string, isPull: boole
   return obj;
 }
 
-export async function syncLocalDatabase(onStepChange?: (step: 'pull' | 'push') => void): Promise<void> {
+// Helper to upload offline media files and update SQLite database before pushing changes
+async function uploadOfflineMediaForTable(
+  tableName: string,
+  records: any[],
+  progressTracker: { current: number; total: number },
+  onStepChange?: (step: SyncStep) => void
+): Promise<void> {
+  for (const record of records) {
+    if (!record.media) continue;
+    try {
+      const mediaList = JSON.parse(record.media);
+      if (!Array.isArray(mediaList)) continue;
+
+      const newMediaList: string[] = [];
+      let modified = false;
+
+      for (const uri of mediaList) {
+        // If the URI is a local path (starts with file:// or / or ph:// or content://)
+        if (
+          uri &&
+          (uri.startsWith('file://') ||
+            uri.startsWith('/') ||
+            uri.startsWith('ph://') ||
+            uri.startsWith('content://'))
+        ) {
+          progressTracker.current++;
+          if (onStepChange) {
+            onStepChange({
+              type: 'media_upload_progress',
+              current: progressTracker.current,
+              total: progressTracker.total,
+              tableName,
+            });
+          }
+
+          console.log(`[Sync] Uploading offline media (${progressTracker.current}/${progressTracker.total}): ${uri}`);
+
+          // Determine type (video vs image)
+          const isVideo =
+            uri.toLowerCase().endsWith('.mp4') ||
+            uri.toLowerCase().endsWith('.mov') ||
+            uri.toLowerCase().endsWith('.3gp');
+          const type = isVideo ? 'video' : 'image';
+
+          // Determine upload path mapping to singular for backend subfolder naming
+          let uploadPath = tableName;
+          if (tableName === 'incidents') uploadPath = 'incident';
+          if (tableName === 'maintenances') uploadPath = 'maintenance';
+
+          // Upload the file
+          const uploadRes = await uploadFile(uri, type, uploadPath);
+
+          if (uploadRes.success && uploadRes.url) {
+            newMediaList.push(uploadRes.url);
+            modified = true;
+            console.log(`[Sync] Offline media uploaded successfully: ${uploadRes.url}`);
+          } else {
+            console.error(`[Sync] Failed to upload offline media ${uri}:`, uploadRes.error);
+            throw new Error(uploadRes.error || 'Error al subir archivo offline');
+          }
+        } else {
+          newMediaList.push(uri);
+        }
+      }
+
+      if (modified) {
+        const finalMediaStr = JSON.stringify(newMediaList);
+        // 1. Update the database record locally so we don't upload again
+        await database.write(async () => {
+          const dbRecord = await database.get(tableName).find(record.id);
+          await dbRecord.update((r: any) => {
+            r.media = finalMediaStr;
+          });
+        });
+        // 2. Update the in-memory record for the API push
+        record.media = finalMediaStr;
+      }
+    } catch (e: any) {
+      console.error(`[Sync] Error processing offline media for ${tableName} record ${record.id}:`, e);
+      throw e;
+    }
+  }
+}
+
+export type SyncStep =
+  | 'pull'
+  | 'push'
+  | { type: 'pull' }
+  | { type: 'push' }
+  | { type: 'media_upload_start'; total: number }
+  | { type: 'media_upload_progress'; current: number; total: number; tableName: string };
+
+export async function syncLocalDatabase(onStepChange?: (step: SyncStep) => void): Promise<void> {
   await synchronize({
     database,
     pullChanges: async ({ lastPulledAt }) => {
-      if (onStepChange) onStepChange('pull');
+      if (onStepChange) onStepChange({ type: 'pull' });
 
       // Check which local tables are empty to request a full pull for those tables
       const resetModels: string[] = [];
@@ -159,7 +257,53 @@ export async function syncLocalDatabase(onStepChange?: (step: 'pull' | 'push') =
       return { changes: formattedChanges, timestamp };
     },
     pushChanges: async ({ changes }) => {
-      if (onStepChange) onStepChange('push');
+      // 1. Calcular total de archivos multimedia offline a subir
+      const mediaTables = ['incidents', 'maintenances', 'kardex'];
+      let totalFiles = 0;
+      for (const table of mediaTables) {
+        if (changes[table]) {
+          const { created = [], updated = [] } = changes[table];
+          const allRecords = [...created, ...updated];
+          for (const r of allRecords) {
+            if (r.media) {
+              try {
+                const mediaList = JSON.parse(r.media);
+                if (Array.isArray(mediaList)) {
+                  for (const uri of mediaList) {
+                    if (
+                      uri &&
+                      (uri.startsWith('file://') ||
+                        uri.startsWith('/') ||
+                        uri.startsWith('ph://') ||
+                        uri.startsWith('content://'))
+                    ) {
+                      totalFiles++;
+                    }
+                  }
+                }
+              } catch {}
+            }
+          }
+        }
+      }
+
+      if (totalFiles > 0 && onStepChange) {
+        onStepChange({ type: 'media_upload_start', total: totalFiles });
+      }
+
+      const progressTracker = { current: 0, total: totalFiles };
+
+      // 2. Subir archivos multimedia offline antes de enviar cambios al servidor
+      for (const table of mediaTables) {
+        if (changes[table]) {
+          const { created = [], updated = [] } = changes[table];
+          await uploadOfflineMediaForTable(table, created, progressTracker, onStepChange);
+          await uploadOfflineMediaForTable(table, updated, progressTracker, onStepChange);
+        }
+      }
+
+      if (onStepChange) onStepChange({ type: 'push' });
+
       const apiChanges: any = {};
 
       // Traducir tablas y llaves del formato Local (snake_case) al formato API (camelCase)
@@ -174,7 +318,7 @@ export async function syncLocalDatabase(onStepChange?: (step: 'pull' | 'push') =
         };
       }
 
-      // 2. Enviar cambios locales al servidor (App -> API)
+      // 3. Enviar cambios locales al servidor (App -> API)
       const response = await post<any>('/sync', { changes: apiChanges }, { timeout: 30000 });
       
       if (!response.success) {

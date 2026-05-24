@@ -87,7 +87,7 @@ export const uploadFile = async (
       }
       return {
         success: false,
-        error: result.message || 'Error en respuesta del servidor',
+        error: result.messages?.[0] || result.message || 'Error en respuesta del servidor',
       };
     } catch (error: any) {
       if (attempts < maxRetries) {

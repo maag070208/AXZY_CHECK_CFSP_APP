@@ -176,6 +176,7 @@ export const CameraModal = ({
               iconColor="white"
               containerColor="rgba(0,0,0,0.3)"
               onPress={onDismiss}
+              testID="camera-close-button"
             />
             <View style={styles.statusBadge}>
               <View style={styles.pulseDot} />
@@ -220,6 +221,7 @@ export const CameraModal = ({
             <TouchableOpacity
               onPress={handleCapture}
               style={styles.captureOuter}
+              testID="camera-shutter-button"
             >
               <View
                 style={[

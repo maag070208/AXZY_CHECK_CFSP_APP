@@ -19,6 +19,7 @@ import { SchedulesStack } from '../../screens/schedules/stack/SchedulesStack';
 import { ClientStack as ClientsStack } from '../../screens/clients/stack/ClientStack';
 import { ZonesStack } from '../../screens/zones/stack/ZonesStack';
 import { RecurringStack } from '../../screens/recurring/stack/RecurringStack';
+import { SyncScreen } from '../../screens/home/screens/SyncScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -94,6 +95,15 @@ const DrawerNavigator = () => {
         component={CheckStack}
         options={{
           drawerItemStyle: { display: 'none' },
+        }}
+      />
+
+      <Drawer.Screen
+        name="SYNC_SCREEN"
+        component={SyncScreen}
+        options={{
+          drawerItemStyle: { display: 'none' },
+          headerShown: false,
         }}
       />
 

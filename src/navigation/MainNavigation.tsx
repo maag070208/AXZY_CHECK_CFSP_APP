@@ -8,6 +8,8 @@ import LoginScreen from '../screens/auth/screens/LoginScreen';
 import { PermissionsValidator } from '../shared/components';
 import DrawerNavigator from './drawer/DrawerNavigator';
 
+import { navigationRef } from './navigationRef';
+
 const MainNavigation = () => {
   const { isSignedIn, token } = useAppSelector(state => state.userState);
   const dispatch = useAppDispatch();
@@ -51,7 +53,7 @@ const MainNavigation = () => {
 
   return (
     <>
-      <NavigationContainer onStateChange={validateToken}>
+      <NavigationContainer ref={navigationRef} onStateChange={validateToken}>
         {isSignedIn ? (
           <PermissionsValidator>
             <DrawerNavigator />

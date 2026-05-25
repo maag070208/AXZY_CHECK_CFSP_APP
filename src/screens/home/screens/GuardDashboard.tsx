@@ -242,7 +242,7 @@ export const GuardDashboard = () => {
     }
   };
 
-  const renderLocationItem = ({ item }: { item: any }) => {
+  const renderLocationItem = ({ item, index }: { item: any; index: number }) => {
     const checks =
       activeRound?.kardex?.filter(
         (c: any) => String(c.locationId) === String(item.id),
@@ -252,8 +252,27 @@ export const GuardDashboard = () => {
     );
     const isIncomplete = !isCompleted && checks.length > 0;
 
+    const handleLocationTap = () => {
+      if (__DEV__ && isMyRound && !isCompleted) {
+        navigation.navigate('CHECK_STACK', {
+          screen: 'CHECK_MAIN',
+          params: {
+            location: item,
+            recurringTasks: item.tasks,
+            roundId: activeRound?.id,
+          },
+        });
+      }
+    };
+
     return (
-      <View style={[styles.locCard, isCompleted && styles.completedCard]}>
+      <TouchableOpacity
+        key={item.id || String(index)}
+        style={[styles.locCard, isCompleted && styles.completedCard]}
+        onPress={handleLocationTap}
+        disabled={!__DEV__ || !isMyRound || isCompleted}
+        testID={`loc-card-${item.id}`}
+      >
         <View
           style={[
             styles.statusIndicator,
@@ -279,7 +298,7 @@ export const GuardDashboard = () => {
           size={20}
           color={isCompleted ? COLORS.emerald : '#CBD5E1'}
         />
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -384,6 +403,7 @@ export const GuardDashboard = () => {
                 : theme.colors.primary
             }
             style={styles.mainActionBtn}
+            testID="toggle-round-button"
           />
 
           <View style={styles.secondaryActions}>
@@ -463,9 +483,10 @@ export const GuardDashboard = () => {
 
               {isMyRound && (
                 <View style={styles.locationList}>
-                  {(item.recurringLocations || []).map((rl: any) =>
+                  {(item.recurringLocations || []).map((rl: any, idx: number) =>
                     renderLocationItem({
                       item: { ...rl.location, tasks: rl.tasks },
+                      index: idx,
                     }),
                   )}
                 </View>

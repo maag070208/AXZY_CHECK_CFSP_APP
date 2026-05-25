@@ -33,6 +33,7 @@ import { COLORS } from '../../../shared/utils/constants';
 import { CameraModal } from '../../check/components/CameraModal';
 import { createIncident } from '../service/incident.service';
 import { database } from '../../../core/database/database';
+import { generateUUID } from '../../../shared/utils/uuid';
 
 const { width } = Dimensions.get('window');
 
@@ -177,6 +178,20 @@ export const IncidentReportScreen = () => {
     setMedia(prev => [...prev, newItem]);
 
     try {
+      const NetInfo = require('@react-native-community/netinfo').default;
+      const netState = await NetInfo.fetch();
+
+      if (!netState.isConnected) {
+        setMedia(prev =>
+          prev.map(item =>
+            item.id === tempId
+              ? { ...item, url: file.uri, uploading: false, error: false }
+              : item,
+          ),
+        );
+        return;
+      }
+
       const res = await uploadFile(
         file.uri,
         file.type === 'video' ? 'video' : 'image',
@@ -212,13 +227,25 @@ export const IncidentReportScreen = () => {
     const item = media[index];
     if (!item.error || item.uploading) return;
 
-    setMedia(prev => {
-      const newMedia = [...prev];
-      newMedia[index] = { ...newMedia[index], error: false, uploading: true };
-      return newMedia;
-    });
-
     try {
+      const NetInfo = require('@react-native-community/netinfo').default;
+      const netState = await NetInfo.fetch();
+
+      if (!netState.isConnected) {
+        setMedia(prev => {
+          const newMedia = [...prev];
+          newMedia[index] = { ...newMedia[index], url: item.uri, error: false, uploading: false };
+          return newMedia;
+        });
+        return;
+      }
+
+      setMedia(prev => {
+        const newMedia = [...prev];
+        newMedia[index] = { ...newMedia[index], error: false, uploading: true };
+        return newMedia;
+      });
+
       const res = await uploadFile(
         item.uri,
         item.type === 'video' ? 'video' : 'image',
@@ -305,6 +332,7 @@ export const IncidentReportScreen = () => {
           // MODO OFFLINE: Guardar localmente en WatermelonDB
           await database.write(async () => {
             await database.get('incidents').create((newIncident: any) => {
+              newIncident._raw.id = generateUUID();
               newIncident.title = selectedType?.value || 'Incidencia';
               newIncident.description = values.description || '';
               newIncident.locationId = finalLocationId;

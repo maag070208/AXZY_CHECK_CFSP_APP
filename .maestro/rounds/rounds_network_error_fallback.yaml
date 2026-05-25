@@ -1,0 +1,32 @@
+appId: com.checkapp
+---
+- clearState
+- launchApp
+- tapOn: 'Usuario'
+- inputText: 'victor'
+- tapOn: 'Contraseña'
+- inputText: '123456'
+- tapOn: 'Entrar al Sistema'
+- assertVisible: 'INICIAR RUTA'
+- tapOn:
+    id: "toggle-round-button"
+- runFlow:
+    when:
+      visible: "Seleccionar Ruta"
+    commands:
+      - tapOn: "Plaza 2000"
+- assertVisible: "FINALIZAR RUTA"
+- tapOn: "Plaza 2000-BAJA-Administracion"
+- assertVisible: "Reporte de Verificación"
+- toggleWifi
+- sleep: 1000
+- tapOn:
+    id: "report-notes-input"
+- inputText: "Simulando error de red al enviar reporte"
+- tapOn:
+    id: "submit-report-button"
+- assertVisible: "FINALIZAR RUTA"
+- toggleWifi
+- sleep: 3000
+- assertVisible: "Actualizando..."
+- assertVisible: "¡Todo Listo!"

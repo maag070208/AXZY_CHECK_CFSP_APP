@@ -1,38 +1,38 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-  Platform,
-  PermissionsAndroid,
-  BackHandler,
-  SafeAreaView,
-  ActivityIndicator,
-} from 'react-native';
-import {
-  ITText,
-  ITButton,
-  ITInput,
-  ITCard,
-  ITScreenWrapper,
-  ITTouchableOpacity,
-  LoaderComponent,
-  ITAlert,
-} from '../../../shared/components';
-import { theme } from '../../../shared/theme/theme';
-import { createVideoThumbnail } from 'react-native-compressor';
-import { HeaderBack } from '../../../navigation/header/HeaderBack';
 import Geolocation from '@react-native-community/geolocation';
 import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  BackHandler,
+  Dimensions,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  PermissionsAndroid,
+  Platform,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { createVideoThumbnail } from 'react-native-compressor';
 import { Icon, IconButton } from 'react-native-paper';
-import { useSelector, useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { database } from '../../../core/database/database';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
+import { HeaderBack } from '../../../navigation/header/HeaderBack';
+import {
+  ITAlert,
+  ITButton,
+  ITCard,
+  ITInput,
+  ITScreenWrapper,
+  ITText,
+  ITTouchableOpacity,
+  LoaderComponent,
+} from '../../../shared/components';
 import { uploadFile } from '../../../shared/service/upload.service';
+import { theme } from '../../../shared/theme/theme';
 import {
   getAllAssignments,
   updateAssignmentStatus,
@@ -66,6 +66,17 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
   const [cameraVisible, setCameraVisible] = useState(false);
   const [cameraMode, setCameraMode] = useState<'video' | 'photo'>('photo');
   const [tasks, setTasks] = useState<any[]>([]);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  // Refs for offline/online synchronization state preservation
+  const currentKardexIdRef = useRef<string | null>(null);
+  const hasInitializedRef = useRef(false);
+  const scrollViewRef = useRef<any>(null);
+
+  const updateKardexId = (id: string | null) => {
+    setCurrentKardexId(id);
+    currentKardexIdRef.current = id;
+  };
 
   const [requirements] = useState({
     minPhotos: 0,
@@ -90,33 +101,99 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
   const isAnyMediaUploading =
     photos.some(p => p.uploading) || videos.some(v => v.uploading);
 
+  // Keyboard listeners
+  React.useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => setKeyboardVisible(true),
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => setKeyboardVisible(false),
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
   useFocusEffect(
-    React.useCallback(() => {
-      // Reset state on focus to ensure clean start
-      console.log('[Check] Focus gained, initializing report...');
-      setPhotos([]);
-      setVideos([]);
-      setNotes('');
-      setCurrentKardexId(null);
-      setTasks([]);
+    useCallback(() => {
+      const initializeOrRefresh = async () => {
+        const activeKardexId = currentKardexIdRef.current;
+        if (hasInitializedRef.current) {
+          // Already initialized. Refresh state from local database in case background sync uploaded media files
+          if (activeKardexId) {
+            try {
+              const dbRecord: any = await database
+                .get('kardex')
+                .find(activeKardexId);
+              if (dbRecord && dbRecord.media) {
+                const mediaUrls: string[] = JSON.parse(dbRecord.media);
+                console.log(
+                  '[Check] Refreshing media URLs from database after sync:',
+                  mediaUrls,
+                );
+                if (Array.isArray(mediaUrls)) {
+                  let urlIndex = 0;
+                  setPhotos(prev =>
+                    prev.map(p => {
+                      const updatedUrl = mediaUrls[urlIndex++];
+                      return {
+                        ...p,
+                        url: updatedUrl || p.url,
+                        uploading: false,
+                        error: false,
+                      };
+                    }),
+                  );
+                  setVideos(prev =>
+                    prev.map(v => {
+                      const updatedUrl = mediaUrls[urlIndex++];
+                      return {
+                        ...v,
+                        url: updatedUrl || v.url,
+                        uploading: false,
+                        error: false,
+                      };
+                    }),
+                  );
+                }
+              }
+            } catch (err) {
+              console.warn(
+                '[Check] Failed to refresh check record from database:',
+                err,
+              );
+            }
+          }
+          return;
+        }
 
-      initReport();
-
-      if (route.params.recurringTasks) {
-        setTasks(route.params.recurringTasks);
-      } else if (assignmentId) {
-        loadAssignmentTasks();
-      }
-
-      return () => {
-        // Clear on blur/unmount
-        console.log('[Check] Focus lost, clearing state...');
+        console.log('[Check] Focus gained, initializing report...');
+        hasInitializedRef.current = true;
         setPhotos([]);
         setVideos([]);
         setNotes('');
-        setCurrentKardexId(null);
+        updateKardexId(null);
+        setTasks([]);
+
+        await initReport();
+
+        if (route.params.recurringTasks) {
+          setTasks(route.params.recurringTasks);
+        } else if (assignmentId) {
+          loadAssignmentTasks();
+        }
       };
-    }, [location.id, assignmentId])
+
+      initializeOrRefresh();
+
+      return () => {
+        console.log('[Check] Focus lost (blur)');
+      };
+    }, [location.id, assignmentId]),
   );
 
   React.useLayoutEffect(() => {
@@ -189,7 +266,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
 
       const res = await registerCheck({
         locationId: location.id,
-        userId: user.id,
+        userId: user.id || '',
         notes: '',
         media: [],
         latitude: coords?.lat,
@@ -206,7 +283,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
       console.log('[Check] kardexId:', kardexId);
       if (kardexId) {
         console.log('[Check] Setting currentKardexId:', kardexId);
-        setCurrentKardexId(kardexId);
+        updateKardexId(kardexId);
       } else {
         console.error('[Check] No ID found in response:', res);
         setAlertConfig({
@@ -232,13 +309,14 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
   };
 
   const syncMedia = async (updatedPhotos: any[], updatedVideos: any[]) => {
-    if (!currentKardexId) return;
+    const activeId = currentKardexIdRef.current;
+    if (!activeId) return;
     const mediaToSend = [
       ...updatedPhotos.filter(p => p.url).map(p => p.url!),
       ...updatedVideos.filter(v => v.url).map(v => v.url!),
     ];
     try {
-      await updateCheck(currentKardexId, { media: mediaToSend });
+      await updateCheck(activeId, { media: mediaToSend });
     } catch (e) {}
   };
 
@@ -266,6 +344,22 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
   };
 
   const performVideoUpload = async (uri: string) => {
+    const NetInfo = require('@react-native-community/netinfo').default;
+    const netState = await NetInfo.fetch();
+
+    if (!netState.isConnected) {
+      setVideos(curr => {
+        const updated = curr.map(v =>
+          v.uri === uri
+            ? { ...v, url: uri, uploading: false, error: false }
+            : v,
+        );
+        syncMedia(photos, updated);
+        return updated;
+      });
+      return;
+    }
+
     setVideos(curr =>
       curr.map(v =>
         v.uri === uri ? { ...v, uploading: true, error: false } : v,
@@ -298,6 +392,22 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
   };
 
   const performPhotoUpload = async (photo: any) => {
+    const NetInfo = require('@react-native-community/netinfo').default;
+    const netState = await NetInfo.fetch();
+
+    if (!netState.isConnected) {
+      setPhotos(curr => {
+        const updated = curr.map(p =>
+          p.uri === photo.uri
+            ? { ...p, url: photo.uri, uploading: false, error: false }
+            : p,
+        );
+        syncMedia(updated, videos);
+        return updated;
+      });
+      return;
+    }
+
     setPhotos(curr =>
       curr.map(p =>
         p.uri === photo.uri ? { ...p, uploading: true, error: false } : p,
@@ -341,10 +451,11 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
       message: 'Se perderán los cambios. El punto quedará como no verificado.',
       type: 'warning',
       onConfirm: async () => {
-        if (currentKardexId) {
+        const activeKardexId = currentKardexIdRef.current;
+        if (activeKardexId) {
           try {
             // Limpiar datos en el servidor para que quede incompleto
-            await updateCheck(currentKardexId, { notes: '', media: [] });
+            await updateCheck(activeKardexId, { notes: '', media: [] });
           } catch (e) {
             console.error('[Check] Error clearing on abandon:', e);
           }
@@ -353,7 +464,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
         setNotes('');
         setPhotos([]);
         setVideos([]);
-        setCurrentKardexId(null);
+        updateKardexId(null);
         setAlertConfig({ ...alertConfig, visible: false });
         navigation.goBack();
       },
@@ -368,19 +479,20 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
         handleBackPress,
       );
       return () => handler.remove();
-    }, [currentKardexId]),
+    }, [handleBackPress]),
   );
 
   const handleSubmit = async () => {
     if (loading) return;
-    if (!currentKardexId) {
+    const activeId = currentKardexIdRef.current;
+    if (!activeId) {
       dispatch(
         showToast({
           message: 'Error: No se pudo sincronizar el inicio del reporte.',
           type: 'error',
         }),
       );
-      initReport(); // Re-intentar inicialización
+      initReport();
       return;
     }
     setLoading(true);
@@ -392,7 +504,6 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
           .join('\n');
         finalNotes = `${finalNotes}\n\n--- CHECKLIST ---\n${checklist}`;
       }
-      console.log('[Check] handleSubmit finalNotes:', finalNotes);
 
       const mediaToSend = [
         ...photos.filter(p => p.url).map(p => p.url!),
@@ -401,24 +512,25 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
 
       console.log('[Check] updateCheck mediaToSend count:', mediaToSend.length);
 
-      const res = await updateCheck(currentKardexId, {
+      const res = await updateCheck(activeId, {
         notes: finalNotes || 'Check completado',
         media: mediaToSend,
       });
-      console.log('[Check] updateCheck response:', res);
+
       if (res.success) {
         if (assignmentId) {
           try {
             await updateAssignmentStatus(assignmentId, 'UNDER_REVIEW' as any);
           } catch (err) {
             console.warn(
-              '[Check] No se pudo actualizar el status de la asignación (puede ser una ronda):',
+              '[Check] No se pudo actualizar el status de la asignación:',
               err,
             );
           }
         }
         dispatch(showToast({ message: '¡Reporte enviado!', type: 'success' }));
-        navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+        setLoading(false);
+        navigation.goBack();
         return;
       }
 
@@ -443,283 +555,311 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
 
   return (
     <ITScreenWrapper
-      scrollable
+      scrollable={false}
       padding={false}
       style={styles.mainContainer}
       edges={['bottom']}
     >
       <LoaderComponent visible={loading} />
 
-      <View style={styles.scrollContent}>
-        {/* HEADER MODERNO */}
-        <ITCard style={styles.headerCard}>
-          <View style={styles.headerTop}>
-            <View style={styles.badgeLabel}>
-              <ITText style={styles.badgeLabelText} weight="bold">
-                {(requirements.label || '').toUpperCase()}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <KeyboardAwareScrollView
+          ref={scrollViewRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.scrollContent,
+            keyboardVisible && styles.scrollContentWithKeyboard,
+          ]}
+          keyboardShouldPersistTaps="handled"
+          enableOnAndroid={true}
+          enableAutomaticScroll={true}
+          extraScrollHeight={Platform.OS === 'ios' ? 80 : 60}
+          extraHeight={Platform.OS === 'ios' ? 80 : 60}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
+        >
+          {/* HEADER MODERNO */}
+          <ITCard style={styles.headerCard}>
+            <View style={styles.headerTop}>
+              <View style={styles.badgeLabel}>
+                <ITText style={styles.badgeLabelText} weight="bold">
+                  {(requirements.label || '').toUpperCase()}
+                </ITText>
+              </View>
+              <ITText style={styles.headerDate} weight="bold">
+                {new Date().toLocaleDateString()}
               </ITText>
             </View>
-            <ITText style={styles.headerDate} weight="bold">
-              {new Date().toLocaleDateString()}
+            <ITText
+              variant="headlineSmall"
+              weight="bold"
+              color={theme.colors.slate800}
+            >
+              {location?.name || 'Ubicación'}
             </ITText>
-          </View>
-          <ITText
-            variant="headlineSmall"
-            weight="bold"
-            color={theme.colors.slate800}
-          >
-            {location?.name || 'Ubicación'}
-          </ITText>
-          <View style={styles.locRow}>
-            <Icon
-              source="map-marker-radius"
-              size={18}
-              color={theme.colors.primary}
-            />
-            <ITText style={styles.locText} weight="bold">
-              Punto de control verificado
-            </ITText>
-          </View>
-        </ITCard>
+            <View style={styles.locRow}>
+              <Icon
+                source="map-marker-radius"
+                size={18}
+                color={theme.colors.primary}
+              />
+              <ITText style={styles.locText} weight="bold">
+                Punto de control verificado
+              </ITText>
+            </View>
+          </ITCard>
 
-        {/* CHECKLIST */}
-        {tasks.length > 0 && (
+          {/* CHECKLIST */}
+          {tasks.length > 0 && (
+            <View style={styles.section}>
+              <ITText
+                variant="titleMedium"
+                weight="bold"
+                style={styles.sectionTitle}
+              >
+                Tareas a Realizar
+              </ITText>
+              <TaskChecklist
+                tasks={tasks}
+                onTaskToggle={handleTaskToggle}
+                isLocalOnly={!!route.params?.recurringTasks}
+              />
+            </View>
+          )}
+
+          {/* MULTIMEDIA */}
           <View style={styles.section}>
             <ITText
               variant="titleMedium"
               weight="bold"
               style={styles.sectionTitle}
             >
-              Tareas a Realizar
+              Evidencia Visual
             </ITText>
-            <TaskChecklist
-              tasks={tasks}
-              onTaskToggle={handleTaskToggle}
-              isLocalOnly={!!route.params?.recurringTasks}
-            />
-          </View>
-        )}
 
-        {/* MULTIMEDIA */}
-        <View style={styles.section}>
-          <ITText
-            variant="titleMedium"
-            weight="bold"
-            style={styles.sectionTitle}
-          >
-            Evidencia Visual
-          </ITText>
+            <View style={styles.mediaRow}>
+              {/* PHOTO CARD */}
+              <ITTouchableOpacity
+                style={styles.mediaActionCard}
+                onPress={() => {
+                  setCameraMode('photo');
+                  setCameraVisible(true);
+                }}
+                testID="take-photo-button"
+              >
+                <View style={styles.iconBox}>
+                  <Icon
+                    source="camera-plus"
+                    size={28}
+                    color={theme.colors.primary}
+                  />
+                </View>
+                <ITText style={styles.mediaActionText} weight="bold">
+                  Tomar Foto
+                </ITText>
+              </ITTouchableOpacity>
+              {/* VIDEO CARD */}
+              <ITTouchableOpacity
+                style={styles.mediaActionCard}
+                onPress={() => {
+                  setCameraMode('video');
+                  setCameraVisible(true);
+                }}
+                testID="record-video-button"
+              >
+                <View style={styles.iconBox}>
+                  <Icon
+                    source="video-plus"
+                    size={28}
+                    color={theme.colors.primary}
+                  />
+                </View>
+                <ITText style={styles.mediaActionText} weight="bold">
+                  Grabar Video
+                </ITText>
+              </ITTouchableOpacity>
+            </View>
 
-          <View style={styles.mediaRow}>
-            {/* VIDEO CARD */}
-            <ITTouchableOpacity
-              style={styles.mediaActionCard}
-              onPress={() => {
-                setCameraMode('video');
-                setCameraVisible(true);
-              }}
-            >
-              <View style={styles.iconBox}>
-                <Icon
-                  source="video-plus"
-                  size={28}
-                  color={theme.colors.primary}
-                />
-              </View>
-              <ITText style={styles.mediaActionText} weight="bold">
-                Grabar Video
-              </ITText>
-            </ITTouchableOpacity>
-
-            {/* PHOTO CARD */}
-            <ITTouchableOpacity
-              style={styles.mediaActionCard}
-              onPress={() => {
-                setCameraMode('photo');
-                setCameraVisible(true);
-              }}
-            >
-              <View style={styles.iconBox}>
-                <Icon
-                  source="camera-plus"
-                  size={28}
-                  color={theme.colors.primary}
-                />
-              </View>
-              <ITText style={styles.mediaActionText} weight="bold">
-                Tomar Foto
-              </ITText>
-            </ITTouchableOpacity>
-          </View>
-
-          {/* FOTOS Y VIDEOS GRID */}
-          {(photos.length > 0 || videos.length > 0) && (
-            <View style={styles.photoGrid}>
-              {/* VIDEOS */}
-              {videos.map((v, i) => (
-                <View
-                  key={`v-${i}`}
-                  style={[
-                    styles.photoWrapper,
-                    v.url && !v.uploading
-                      ? styles.borderSuccess
-                      : v.error
-                      ? styles.borderError
-                      : {},
-                  ]}
-                >
-                  {v.thumbnail ? (
-                    <Image
-                      source={{ uri: v.thumbnail }}
-                      style={styles.photoImg}
-                    />
-                  ) : (
-                    <View
-                      style={[
-                        styles.photoImg,
-                        {
-                          backgroundColor: theme.colors.slate800,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                        },
-                      ]}
-                    >
-                      <Icon source="video" size={32} color="#fff" />
-                    </View>
-                  )}
+            {/* FOTOS Y VIDEOS GRID */}
+            {(photos.length > 0 || videos.length > 0) && (
+              <View style={styles.photoGrid}>
+                {/* VIDEOS */}
+                {videos.map((v, i) => (
                   <View
+                    key={`v-${i}`}
                     style={[
-                      styles.photoOverlay,
-                      { backgroundColor: 'rgba(0,0,0,0.2)' },
+                      styles.photoWrapper,
+                      v.url && !v.uploading
+                        ? styles.borderSuccess
+                        : v.error
+                        ? styles.borderError
+                        : {},
                     ]}
                   >
-                    <Icon source="play-circle" size={32} color="#fff" />
+                    {v.thumbnail ? (
+                      <Image
+                        source={{ uri: v.thumbnail }}
+                        style={styles.photoImg}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.photoImg,
+                          {
+                            backgroundColor: theme.colors.slate800,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          },
+                        ]}
+                      >
+                        <Icon source="video" size={32} color="#fff" />
+                      </View>
+                    )}
+                    <View
+                      style={[
+                        styles.photoOverlay,
+                        { backgroundColor: 'rgba(0,0,0,0.2)' },
+                      ]}
+                    >
+                      <Icon source="play-circle" size={32} color="#fff" />
+                    </View>
+                    {v.uploading && (
+                      <View style={styles.photoOverlay}>
+                        <ActivityIndicator color="#fff" size="small" />
+                      </View>
+                    )}
+
+                    {v.error && !v.uploading && (
+                      <View style={styles.photoOverlayError}>
+                        <IconButton
+                          icon="refresh"
+                          size={24}
+                          iconColor="#fff"
+                          onPress={() => performVideoUpload(v.uri)}
+                        />
+                      </View>
+                    )}
+
+                    {v.url && !v.uploading && (
+                      <View style={styles.statusBadgeOk}>
+                        <Icon source="check-bold" size={12} color="#fff" />
+                      </View>
+                    )}
+
+                    <ITTouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => {
+                        const updated = videos.filter((_, idx) => idx !== i);
+                        setVideos(updated);
+                        syncMedia(photos, updated);
+                      }}
+                    >
+                      <Icon source="close" size={14} color="#fff" />
+                    </ITTouchableOpacity>
                   </View>
-                  {v.uploading && (
-                    <View style={styles.photoOverlay}>
-                      <ActivityIndicator color="#fff" size="small" />
-                    </View>
-                  )}
-
-                  {v.error && !v.uploading && (
-                    <View style={styles.photoOverlayError}>
-                      <IconButton
-                        icon="refresh"
-                        size={24}
-                        iconColor="#fff"
-                        onPress={() => performVideoUpload(v.uri)}
-                      />
-                    </View>
-                  )}
-
-                  {v.url && !v.uploading && (
-                    <View style={styles.statusBadgeOk}>
-                      <Icon source="check-bold" size={12} color="#fff" />
-                    </View>
-                  )}
-
-                  <ITTouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => {
-                      const updated = videos.filter((_, idx) => idx !== i);
-                      setVideos(updated);
-                      syncMedia(photos, updated);
-                    }}
+                ))}
+                {/* FOTOS */}
+                {photos.map((p, i) => (
+                  <View
+                    key={`p-${i}`}
+                    style={[
+                      styles.photoWrapper,
+                      p.url && !p.uploading
+                        ? styles.borderSuccess
+                        : p.error
+                        ? styles.borderError
+                        : {},
+                    ]}
                   >
-                    <Icon source="close" size={14} color="#fff" />
-                  </ITTouchableOpacity>
-                </View>
-              ))}
-              {/* FOTOS */}
-              {photos.map((p, i) => (
-                <View
-                  key={`p-${i}`}
-                  style={[
-                    styles.photoWrapper,
-                    p.url && !p.uploading
-                      ? styles.borderSuccess
-                      : p.error
-                      ? styles.borderError
-                      : {},
-                  ]}
-                >
-                  <Image source={{ uri: p.uri }} style={styles.photoImg} />
-                  {p.uploading && (
-                    <View style={styles.photoOverlay}>
-                      <ActivityIndicator color="#fff" size="small" />
-                    </View>
-                  )}
+                    <Image source={{ uri: p.uri }} style={styles.photoImg} />
+                    {p.uploading && (
+                      <View style={styles.photoOverlay}>
+                        <ActivityIndicator color="#fff" size="small" />
+                      </View>
+                    )}
 
-                  {p.error && !p.uploading && (
-                    <View style={styles.photoOverlayError}>
-                      <IconButton
-                        icon="refresh"
-                        size={24}
-                        iconColor="#fff"
-                        onPress={() => performPhotoUpload(p)}
-                      />
-                    </View>
-                  )}
+                    {p.error && !p.uploading && (
+                      <View style={styles.photoOverlayError}>
+                        <IconButton
+                          icon="refresh"
+                          size={24}
+                          iconColor="#fff"
+                          onPress={() => performPhotoUpload(p)}
+                        />
+                      </View>
+                    )}
 
-                  {p.url && !p.uploading && (
-                    <View style={styles.statusBadgeOk}>
-                      <Icon source="check-bold" size={12} color="#fff" />
-                    </View>
-                  )}
+                    {p.url && !p.uploading && (
+                      <View style={styles.statusBadgeOk}>
+                        <Icon source="check-bold" size={12} color="#fff" />
+                      </View>
+                    )}
 
-                  <ITTouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => {
-                      const updated = photos.filter((_, idx) => idx !== i);
-                      setPhotos(updated);
-                      syncMedia(updated, videos);
-                    }}
-                  >
-                    <Icon source="close" size={14} color="#fff" />
-                  </ITTouchableOpacity>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
+                    <ITTouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => {
+                        const updated = photos.filter((_, idx) => idx !== i);
+                        setPhotos(updated);
+                        syncMedia(updated, videos);
+                      }}
+                    >
+                      <Icon source="close" size={14} color="#fff" />
+                    </ITTouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
 
-        {/* OBSERVACIONES */}
-        <View style={styles.section}>
-          <ITText
-            variant="titleMedium"
-            weight="bold"
-            style={styles.sectionTitle}
+          {/* OBSERVACIONES */}
+          <View style={styles.section}>
+            <ITText
+              variant="titleMedium"
+              weight="bold"
+              style={styles.sectionTitle}
+            >
+              Notas del Turno
+            </ITText>
+            <ITInput
+              placeholder="Escribe aquí cualquier novedad o comentario..."
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              numberOfLines={4}
+              label={''}
+              testID="report-notes-input"
+            />
+          </View>
+
+          {/* Espacio adicional para el botón */}
+          <View style={styles.bottomSpacer} />
+        </KeyboardAwareScrollView>
+
+        {/* Botón fijo en la parte inferior */}
+        <View style={styles.footerContainer}>
+          <ITButton
+            onPress={handleSubmit}
+            loading={loading}
+            disabled={
+              loading ||
+              photos.length < requirements.minPhotos ||
+              isAnyMediaUploading
+            }
+            style={styles.submitBtn}
+            testID="submit-report-button"
           >
-            Notas del Turno
-          </ITText>
-          <ITInput
-            placeholder="Escribe aquí cualquier novedad o comentario..."
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            numberOfLines={4}
-            label={''}
-          />
+            {isAnyMediaUploading
+              ? 'Subiendo evidencia...'
+              : photos.length < requirements.minPhotos
+              ? `Faltan ${requirements.minPhotos - photos.length} fotos`
+              : 'Finalizar Reporte'}
+          </ITButton>
         </View>
-
-        {/* BOTON FINAL */}
-        <ITButton
-          onPress={handleSubmit}
-          loading={loading}
-          disabled={
-            loading ||
-            photos.length < requirements.minPhotos ||
-            isAnyMediaUploading
-          }
-          style={styles.submitBtn}
-        >
-          {isAnyMediaUploading
-            ? 'Subiendo evidencia...'
-            : photos.length < requirements.minPhotos
-            ? `Faltan ${requirements.minPhotos - photos.length} fotos`
-            : 'Finalizar Reporte'}
-        </ITButton>
-      </View>
+      </KeyboardAvoidingView>
 
       <CameraModal
         visible={cameraVisible}
@@ -746,8 +886,35 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#F8FAFC', paddingBottom: 20 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  mainContainer: { flex: 1, backgroundColor: '#F8FAFC' },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+  scrollContentWithKeyboard: {
+    paddingBottom: 120, // Espacio extra cuando el teclado está visible
+  },
+  bottomSpacer: {
+    height: 80, // Espacio para que el contenido no quede detrás del botón
+  },
+  footerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    paddingTop: 12,
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 4,
+  },
 
   // Header
   headerCard: {
@@ -868,7 +1035,7 @@ const styles = StyleSheet.create({
   textAreaOutline: { borderRadius: 16, borderColor: '#E2E8F0' },
 
   // Submit
-  submitBtn: { borderRadius: 16, marginTop: 10, elevation: 4 },
+  submitBtn: { borderRadius: 16, marginTop: 0, elevation: 4 },
   submitBtnContent: { height: 60 },
   submitBtnLabel: { fontSize: 16, fontWeight: 'bold' },
 

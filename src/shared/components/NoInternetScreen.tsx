@@ -1,33 +1,61 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, AppState, AppStateStatus } from 'react-native';
 import { Text, Icon } from 'react-native-paper';
 import NetInfo from '@react-native-community/netinfo';
+import { store } from '../../core/store/redux.config';
 
 export const NoInternetScreen = () => {
   const [isConnected, setIsConnected] = useState<boolean | null>(true);
+  const wasOfflineRef = useRef(false);
+
+  const handleSyncOnReconnect = () => {
+    const stateStore = store.getState();
+    if (stateStore.userState.isSignedIn) {
+      console.log('[NetInfo Listener] Reconnected. Navigating to SyncScreen...');
+      const { navigationRef } = require('../../navigation/navigationRef');
+      if (navigationRef.isReady()) {
+        const currentRoute = navigationRef.getCurrentRoute();
+        if (currentRoute?.name !== 'SYNC_SCREEN') {
+          navigationRef.navigate('SYNC_SCREEN');
+        }
+      }
+    }
+  };
 
   // Initial check & listener
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
+      const isOnline = !!state.isConnected;
       setIsConnected(state.isConnected);
+
+      if (isOnline && wasOfflineRef.current) {
+        wasOfflineRef.current = false;
+        handleSyncOnReconnect();
+      } else if (!isOnline) {
+        wasOfflineRef.current = true;
+      }
     });
     return () => unsubscribe();
   }, []);
 
   // Update check on app coming to foreground
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+    const subscription = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active') {
-        checkConnection();
+        const state = await NetInfo.fetch();
+        const isOnline = !!state.isConnected;
+        setIsConnected(state.isConnected);
+
+        if (isOnline && wasOfflineRef.current) {
+          wasOfflineRef.current = false;
+          handleSyncOnReconnect();
+        } else if (!isOnline) {
+          wasOfflineRef.current = true;
+        }
       }
     });
     return () => subscription.remove();
   }, []);
-
-  const checkConnection = async () => {
-    const state = await NetInfo.fetch();
-    setIsConnected(state.isConnected);
-  };
 
   if (isConnected === null || isConnected) {
     return null;

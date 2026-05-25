@@ -1,0 +1,39 @@
+appId: com.checkapp
+---
+- clearState
+- launchApp
+- tapOn: 'Usuario'
+- inputText: 'victor'
+- tapOn: 'Contraseña'
+- inputText: '123456'
+- tapOn: 'Entrar al Sistema'
+- assertVisible: 'INICIAR RUTA'
+- toggleWifi
+- sleep: 2000
+- tapOn:
+    id: "toggle-round-button"
+- runFlow:
+    when:
+      visible: "Seleccionar Ruta"
+    commands:
+      - tapOn: "Plaza 2000"
+- assertVisible: "FINALIZAR RUTA"
+- tapOn: "Plaza 2000-BAJA-Administracion"
+- assertVisible: "Reporte de Verificación"
+- tapOn:
+    id: "take-photo-button"
+- assertVisible: "camera-shutter-button"
+- tapOn:
+    id: "camera-shutter-button"
+- sleep: 1000
+- toggleWifi
+- sleep: 3000
+- assertVisible: "Actualizando..."
+- assertVisible: "¡Todo Listo!"
+- assertVisible: "Reporte de Verificación"
+- tapOn:
+    id: "report-notes-input"
+- inputText: "Transicion Offline a Online con formulario abierto"
+- tapOn:
+    id: "submit-report-button"
+- assertVisible: "FINALIZAR RUTA"

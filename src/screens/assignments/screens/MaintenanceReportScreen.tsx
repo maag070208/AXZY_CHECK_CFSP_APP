@@ -1,15 +1,22 @@
 // src/screens/maintenances/screens/MaintenanceReportScreen.tsx
 
-import { useNavigation, useRoute } from '@react-navigation/native';
+import Geolocation from '@react-native-community/geolocation';
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { Formik } from 'formik';
 import React, { useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import * as Yup from 'yup';
+import { database } from '../../../core/database/database';
 import { RootState } from '../../../core/store/redux.config';
+import { showLoader } from '../../../core/store/slices/loader.slice';
+import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
-import { SearchComponent } from '../../../shared/components/SearchComponent';
 import {
   ITButton,
   ITCategorySelector,
@@ -20,12 +27,10 @@ import {
   ITTypeSelector,
   MediaItem,
 } from '../../../shared/components';
-import { showToast } from '../../../core/store/slices/toast.slice';
-import { createMaintenance } from '../service/maintenance.service';
-import Geolocation from '@react-native-community/geolocation';
+import { SearchComponent } from '../../../shared/components/SearchComponent';
 import { getCatalog } from '../../../shared/service/catalog.service';
-import { useFocusEffect } from '@react-navigation/native';
-import { showLoader } from '../../../core/store/slices/loader.slice';
+import { createMaintenance } from '../service/maintenance.service';
+import { generateUUID } from '../../../shared/utils/uuid';
 
 const { width } = Dimensions.get('window');
 
@@ -57,6 +62,57 @@ export const MaintenanceReportScreen = () => {
 
   const fetchCatalogs = async () => {
     try {
+      // 1. Intentar cargar desde la base de datos local SQLite (Offline first)
+      const [localCats, localTypes, localClients] = await Promise.all([
+        database.get('incident_categories').query().fetch(),
+        database.get('incident_types').query().fetch(),
+        database.get('clients').query().fetch(),
+      ]);
+
+      if (localCats.length > 0 && localTypes.length > 0) {
+        setCategories(
+          localCats
+            .map((c: any) => ({
+              id: c.id,
+              name: c.name,
+              value: c.value,
+              type: c.type,
+              color: c.color,
+              icon: c.icon,
+            }))
+            .filter(c => c.type === 'MAINTENANCE'),
+        );
+
+        setAllTypes(
+          localTypes.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            value: t.value,
+            categoryId: t.categoryId,
+          })),
+        );
+
+        setClients(
+          localClients.map((c: any) => ({
+            label: c.name,
+            value: c.id,
+          })),
+        );
+
+        console.log(
+          '[MaintenanceReportScreen] Catálogos cargados de base de datos local',
+        );
+        return;
+      }
+    } catch (e: any) {
+      console.error(
+        '[MaintenanceReportScreen] Error leyendo base de datos local, intentando API...',
+        e,
+      );
+    }
+
+    // 2. Fallback a la API original si la base de datos local está vacía o falla
+    try {
       const [catRes, typeRes, clientsRes] = await Promise.all([
         getCatalog('incident_category'),
         getCatalog('incident_type'),
@@ -72,8 +128,9 @@ export const MaintenanceReportScreen = () => {
           clientsRes.data.map((c: any) => ({ label: c.name, value: c.id })),
         );
       }
+      console.log('[MaintenanceReportScreen] Catálogos cargados desde la API');
     } catch (e) {
-      console.error('Error fetching catalogs:', e);
+      console.error('Error fetching catalogs from API:', e);
     }
   };
 
@@ -104,6 +161,39 @@ export const MaintenanceReportScreen = () => {
 
     const sendReport = async (position?: any) => {
       try {
+        const NetInfo = require('@react-native-community/netinfo').default;
+        const netState = await NetInfo.fetch();
+
+        if (!netState.isConnected) {
+          // MODO OFFLINE: Guardar localmente en WatermelonDB
+          await database.write(async () => {
+            await database.get('maintenances').create((newMaint: any) => {
+              newMaint._raw.id = generateUUID();
+              newMaint.title = selectedType?.value || 'Mantenimiento';
+              newMaint.description = values.description || '';
+              newMaint.locationId = finalLocationId;
+              newMaint.media = JSON.stringify(validMedia);
+              newMaint.categoryId = values.categoryId;
+              newMaint.typeId = values.typeId;
+              newMaint.latitude = position?.coords?.latitude || null;
+              newMaint.longitude = position?.coords?.longitude || null;
+              newMaint.status = 'PENDING';
+              newMaint.clientId = values.clientId || null;
+              newMaint.guardId = user.id;
+            });
+          });
+
+          dispatch(
+            showToast({
+              message: 'Reporte de mantenimiento guardado localmente (Offline)',
+              type: 'success',
+            }),
+          );
+          navigation.goBack();
+          return;
+        }
+
+        // MODO ONLINE
         const res = await createMaintenance({
           title: selectedType?.value || 'Mantenimiento',
           description: values.description || '',
@@ -133,6 +223,17 @@ export const MaintenanceReportScreen = () => {
             }),
           );
         }
+      } catch (e: any) {
+        console.error(
+          '[MaintenanceReportScreen] Connection/Catch/DB error:',
+          e,
+        );
+        dispatch(
+          showToast({
+            message: 'Error al enviar reporte o guardar localmente',
+            type: 'error',
+          }),
+        );
       } finally {
         dispatch(showLoader(false));
       }

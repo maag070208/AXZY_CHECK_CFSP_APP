@@ -148,6 +148,7 @@ export const HomeScreen = () => {
   const user = useSelector((state: RootState) => state.userState);
   const theme = useTheme() as any;
   const dispatch = useDispatch();
+  const navigation = useNavigation<any>();
 
   const [pendingIncidents, setPendingIncidents] = useState(0);
   const [pendingMaintenance, setPendingMaintenance] = useState(0);
@@ -155,7 +156,18 @@ export const HomeScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  if (user.role !== UserRole.ADMIN && user.role !== UserRole.RESDN) {
+  React.useEffect(() => {
+    const checkFirstSync = async () => {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const lastSync = await AsyncStorage.getItem('last_sync_timestamp');
+      if (!lastSync) {
+        navigation.navigate('SYNC_SCREEN');
+      }
+    };
+    checkFirstSync();
+  }, [navigation]);
+
+  if (user.role !== UserRole.ADMIN && user.role !== UserRole.RESDN && user.role !== UserRole.SHIFT) {
     return <GuardDashboard />;
   }
 
@@ -173,10 +185,7 @@ export const HomeScreen = () => {
             message: response.messages?.[0] || 'Error al cargar estadísticas',
           }),
         );
-        return;
-      }
-
-      if (response.data) {
+      } else if (response.data) {
         setPendingIncidents(response.data.pendingIncidentsCount);
         setPendingMaintenance(response.data.pendingMaintenanceCount);
         setActiveRounds(response.data.activeRounds);
@@ -221,7 +230,7 @@ export const HomeScreen = () => {
       stack: 'GUARDS_STACK',
       screen: 'GUARD_LIST',
       color: theme.colors.primary,
-      roles: [UserRole.ADMIN, UserRole.RESDN],
+      roles: [UserRole.ADMIN, UserRole.RESDN, UserRole.SHIFT],
     },
     {
       id: 'incidents',
@@ -230,7 +239,7 @@ export const HomeScreen = () => {
       stack: 'INCIDENTS_STACK',
       screen: 'INCIDENT_LIST',
       color: '#EF4444',
-      roles: [UserRole.ADMIN, UserRole.RESDN],
+      roles: [UserRole.ADMIN, UserRole.RESDN, UserRole.SHIFT],
       badge: pendingIncidents,
     },
     {
@@ -259,7 +268,7 @@ export const HomeScreen = () => {
       stack: 'LOCATIONS_STACK',
       screen: 'LOCATIONS_MAIN',
       color: '#10B981',
-      roles: [UserRole.ADMIN],
+      roles: [UserRole.ADMIN, UserRole.SHIFT],
     },
     {
       id: 'recurring',
@@ -277,7 +286,7 @@ export const HomeScreen = () => {
       stack: 'ROUNDS_STACK',
       screen: 'ROUNDS_LIST',
       color: '#64748B',
-      roles: [UserRole.ADMIN, UserRole.RESDN],
+      roles: [UserRole.ADMIN, UserRole.RESDN, UserRole.SHIFT],
     },
     {
       id: 'schedules',

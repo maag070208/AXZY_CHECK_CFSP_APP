@@ -10,6 +10,7 @@ import { API_CONSTANTS } from './constants/API_CONSTANTS';
 
 import { store } from './store/redux.config';
 import { logout } from './store/slices/user.slice';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /* ---------------------------------------------------------
    1. Axios Instance
@@ -32,7 +33,22 @@ axiosInstance.interceptors.request.use(
     }
 
     // Version Control Header
-    config.headers['X-App-Version'] = API_CONSTANTS.APP_VERSION;
+    if (!config.headers['X-App-Version']) {
+      const AsyncStorage =
+        require('@react-native-async-storage/async-storage').default;
+      const appVersion = await AsyncStorage.getItem('current_app_version');
+      if (appVersion) {
+        config.headers['X-App-Version'] = appVersion;
+      } else {
+        config.headers['X-App-Version'] = API_CONSTANTS.APP_VERSION || '1.0.0';
+      }
+    }
+
+    // Check for version check bypass flag (used during auto-update sync)
+    const bypassCheck = await AsyncStorage.getItem('bypass_version_check');
+    if (bypassCheck === 'true') {
+      config.headers['X-Bypass-Version-Check'] = 'true';
+    }
 
     return config;
   },
@@ -51,6 +67,34 @@ axiosInstance.interceptors.response.use(
   async (error: AxiosError) => {
     if (error.response?.status === 401) {
       store.dispatch(logout());
+    }
+
+    if (error.response?.status === 400) {
+      const responseData = error.response.data as any;
+      if (
+        responseData?.data?.versionMismatch &&
+        responseData?.data?.requiredVersion
+      ) {
+        const AsyncStorage =
+          require('@react-native-async-storage/async-storage').default;
+        const currentVersion = await AsyncStorage.getItem(
+          'current_app_version',
+        );
+        const newVersion = responseData.data.requiredVersion;
+        if (!currentVersion || currentVersion !== newVersion) {
+          await AsyncStorage.setItem('current_app_version', newVersion);
+          console.log(
+            `[VersionControl] Stored app version ${newVersion} from API`,
+          );
+
+          const config = error.config;
+          if (config) {
+            config.headers = config.headers || {};
+            config.headers['X-App-Version'] = newVersion;
+            return axiosInstance(config);
+          }
+        }
+      }
     }
 
     return Promise.reject(error);

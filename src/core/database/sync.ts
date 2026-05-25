@@ -33,6 +33,27 @@ const API_TO_LOCAL_MAP: Record<string, string> = Object.entries(LOCAL_TO_API_MAP
   {} as Record<string, string>
 );
 
+const MODEL_TRANSLATIONS: Record<string, string> = {
+  role: 'Roles',
+  client: 'Clientes',
+  zone: 'Zonas',
+  user: 'Personal / Guardias',
+  schedule: 'Horarios',
+  location: 'Puntos de control',
+  locationTask: 'Tareas de ubicación',
+  kardex: 'Registros de bitácora',
+  assignment: 'Asignaciones',
+  assignmentTask: 'Tareas asignadas',
+  incidentCategory: 'Categorías de incidencias',
+  incidentType: 'Tipos de incidencias',
+  incident: 'Reportes de incidencias',
+  round: 'Recorridos / Rondas',
+  maintenance: 'Reportes de mantenimiento',
+  recurringConfiguration: 'Rondas recurrentes',
+  recurringLocation: 'Puntos recurrentes',
+  recurringTask: 'Tareas recurrentes',
+};
+
 // Conversión de nomenclatura snake_case <-> camelCase para mapear BD local con JSON API
 function toCamelCase(str: string): string {
   if (str === 'id' || str === 'created_at' || str === 'updated_at' || str === 'deleted_at') {
@@ -178,11 +199,14 @@ export type SyncStep =
   | 'pull'
   | 'push'
   | { type: 'pull' }
+  | { type: 'pull_data_received'; total: number; details: Array<{ model: string; count: number }> }
   | { type: 'push' }
   | { type: 'media_upload_start'; total: number }
   | { type: 'media_upload_progress'; current: number; total: number; tableName: string };
 
 export async function syncLocalDatabase(onStepChange?: (step: SyncStep) => void): Promise<void> {
+  let pullTimestamp = 0;
+
   await synchronize({
     database,
     pullChanges: async ({ lastPulledAt }) => {
@@ -207,7 +231,11 @@ export async function syncLocalDatabase(onStepChange?: (step: SyncStep) => void)
 
       for (const table of tablesToCheck) {
         try {
-          const count = await database.get(table).query().fetchCount();
+          const collection = database.collections.get(table);
+          if (!collection) {
+            continue;
+          }
+          const count = await collection.query().fetchCount();
           if (count === 0) {
             const apiModel = LOCAL_TO_API_MAP[table];
             if (apiModel) {
@@ -233,6 +261,28 @@ export async function syncLocalDatabase(onStepChange?: (step: SyncStep) => void)
       }
 
       const { changes: serverChanges, timestamp } = response.data;
+      pullTimestamp = timestamp;
+
+      // Calcular detalles de la descarga de datos del servidor
+      const pullDetails: Array<{ model: string; count: number }> = [];
+      let totalPullRecords = 0;
+      for (const [model, change] of Object.entries(serverChanges)) {
+        const c = change as { created: any[]; updated: any[]; deleted: string[] };
+        const count = (c.created?.length || 0) + (c.updated?.length || 0) + (c.deleted?.length || 0);
+        if (count > 0) {
+          const translatedName = MODEL_TRANSLATIONS[model] || model;
+          pullDetails.push({ model: translatedName, count });
+          totalPullRecords += count;
+        }
+      }
+
+      if (onStepChange && totalPullRecords > 0) {
+        onStepChange({
+          type: 'pull_data_received',
+          total: totalPullRecords,
+          details: pullDetails,
+        });
+      }
       
       // Guardar el timestamp en AsyncStorage de forma explícita para el chequeo rápido
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
@@ -319,7 +369,7 @@ export async function syncLocalDatabase(onStepChange?: (step: SyncStep) => void)
       }
 
       // 3. Enviar cambios locales al servidor (App -> API)
-      const response = await post<any>('/sync', { changes: apiChanges }, { timeout: 30000 });
+      const response = await post<any>('/sync', { changes: apiChanges, lastPulledAt: pullTimestamp }, { timeout: 30000 });
       
       if (!response.success) {
         throw new Error(response.messages?.[0] || 'Error al subir cambios al servidor');

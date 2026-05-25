@@ -1,0 +1,118 @@
+================================================================================
+CASOS DE PRUEBA Y TRANSICIÓN DE CONEXIÓN (OFFLINE-ONLINE) - CHECKAPP
+================================================================================
+
+Este documento detalla todos los escenarios posibles de conectividad que el
+sistema de rondas y verificación debe soportar sin pérdida de datos.
+
+--------------------------------------------------------------------------------
+1. FLUJO COMPLETAMENTE ONLINE (LÍNEA BASE)
+--------------------------------------------------------------------------------
+- Status: CUBIERTO (Por inicio de flujos online en rounds_online_to_offline.yaml y rounds_network_error_fallback.yaml)
+- Estado Inicial: Conexión WiFi/Datos estable.
+- Pasos:
+  1. Iniciar ronda (Llamada API exitosa).
+  2. Escanear QR en punto (Llamada API exitosa).
+  3. Tomar fotos/videos (Subida inmediata a storage remoto).
+  4. Llenar notas/checklist y finalizar reporte (Llamada API exitosa).
+  5. Finalizar ronda (Llamada API exitosa).
+- Resultado Esperado:
+  - Base de datos local (SQLite) se actualiza como espejo con '_status = synced'.
+  - Todo el avance está en tiempo real en la base de datos central (Postgres).
+
+--------------------------------------------------------------------------------
+2. FLUJO COMPLETAMENTE OFFLINE (SIN RED DESDE EL INICIO)
+--------------------------------------------------------------------------------
+- Status: CUBIERTO (Por rounds_offline_complete.yaml)
+- Estado Inicial: Dispositivo sin internet (Modo avión o sin cobertura).
+- Pasos:
+  1. Iniciar ronda (Falla red -> crea registro local en SQLite, estado: IN_PROGRESS).
+  2. Escanear QR (Falla red -> valida contra catálogo local SQLite).
+  3. Inicializar reporte (Crea registro local en SQLite table 'kardex', '_status = created').
+  4. Tomar fotos/videos (Guarda las rutas locales del tipo 'file://...' en SQLite).
+  5. Finalizar reporte (Actualiza SQLite local con notas y checklist).
+  6. Finalizar ronda (Actualiza SQLite local a estado COMPLETED).
+  7. Recuperar internet.
+- Comportamiento al Conectar:
+  - Redirecciona automáticamente a 'SyncScreen'.
+  - Sube los archivos multimedia 'file://...' a storage y los actualiza en SQLite por sus URLs 'https://...'.
+  - Ejecuta sync de WatermelonDB para insertar la ronda y kardex en el servidor.
+- Resultado Esperado: Todo sincronizado correctamente en el servidor en estado final.
+
+--------------------------------------------------------------------------------
+3. CAÍDA DE RED A MITAD DE REPORTE (ONLINE -> OFFLINE)
+--------------------------------------------------------------------------------
+- Status: CUBIERTO (Por rounds_online_to_offline.yaml)
+- Estado Inicial: Conexión WiFi/Datos activa.
+- Pasos:
+  1. Iniciar ronda online.
+  2. Escanear QR online (Se crea en servidor y se genera espejo local '_status = synced').
+  3. Se pierde la señal de internet.
+  4. Tomar foto offline (Falla subida -> fallback a guardar ruta local 'file://...' en SQLite).
+  5. Escribir notas y finalizar reporte offline (Falla API -> actualiza SQLite local y cambia a '_status = updated').
+- Comportamiento al Conectar:
+  - 'SyncScreen' detecta reconexión.
+  - Sube la foto tomada offline, reemplaza 'file://...' por la URL remota en SQLite.
+  - Sincroniza y actualiza el reporte en el servidor (PATCH) mediante WatermelonDB.
+- Resultado Esperado: Progreso guardado sin pérdida. Foto visible en servidor.
+
+--------------------------------------------------------------------------------
+4. RECUPERACIÓN DE RED A MITAD DE REPORTE (OFFLINE -> ONLINE)
+--------------------------------------------------------------------------------
+- Status: CUBIERTO (Por rounds_offline_to_online.yaml)
+- Estado Inicial: Sin internet.
+- Pasos:
+  1. Iniciar ronda offline.
+  2. Escanear QR offline (Se registra localmente '_status = created').
+  3. Tomar fotos offline (Guardadas localmente como 'file://...').
+  4. Regresa el internet mientras el guardia tiene la pantalla del reporte abierta.
+  5. Se activa redirección automática a 'SyncScreen'.
+  6. 'SyncScreen' sube las fotos offline y sincroniza la ronda y el kardex inicial al servidor.
+  7. Al terminar sync, 'SyncScreen' regresa (goBack) al formulario de reporte.
+  8. El formulario detecta foco, lee SQLite local y reemplaza las rutas 'file://...' en memoria por las URLs remotas 'https://...' descargadas.
+  9. El guardia finaliza el reporte (Ahora online).
+- Resultado Esperado: El reporte se actualiza en el servidor online. No se duplica el kardex inicial y las fotos cargadas offline se guardan con su URL final.
+
+--------------------------------------------------------------------------------
+5. FALLA DE SERVIDOR CON RED ACTIVA (FALSO ONLINE / CAÍDA DE API)
+--------------------------------------------------------------------------------
+- Status: CUBIERTO (Por rounds_network_error_fallback.yaml)
+- Estado Inicial: WiFi conectado, pero el servidor backend está caído (AxiosError: Network Error).
+- Pasos:
+  1. Iniciar ronda (Falla API -> fallback a SQLite local).
+  2. Escanear QR (Falla API -> fallback a SQLite local).
+  3. Tomar fotos (Falla subida -> fallback a SQLite local 'file://...').
+  4. Finalizar reporte (Falla API -> fallback a SQLite local).
+- Resultado Esperado:
+  - El guardia puede terminar todo su trabajo sin bloqueos ni alertas molestas.
+  - Los datos quedan seguros en el dispositivo local.
+  - Al levantarse el servidor, la sincronización sube todo normalmente.
+
+--------------------------------------------------------------------------------
+6. INTERRUPCIÓN DE SINCRONIZACIÓN (RECONEXIÓN INESTABLE)
+--------------------------------------------------------------------------------
+- Status: CUBIERTO (Por manejo de reanudación parcial en SyncScreen y almacenamiento local incremental)
+- Estado Inicial: Sin internet, con reportes pendientes.
+- Pasos:
+  1. El dispositivo detecta internet brevemente.
+  2. Abre 'SyncScreen' e inicia la subida de archivos offline.
+  3. A mitad del proceso (por ejemplo, subida 2 de 5 fotos), el internet se cae.
+  4. 'SyncScreen' muestra error de conexión.
+- Comportamiento esperado:
+  - Las 2 fotos ya subidas deben conservar su URL 'https://...' en SQLite para no subirse de nuevo.
+  - Las 3 fotos restantes conservan su ruta 'file://...'.
+  - El usuario puede presionar "Regresar" para seguir trabajando offline sin perder lo que ya se había subido.
+- Resultado Esperado: Sincronización incremental y reanudable.
+
+--------------------------------------------------------------------------------
+7. INICIO OFFLINE, CIERRE ONLINE (RONDA MIXTA)
+--------------------------------------------------------------------------------
+- Status: CUBIERTO (Por rounds_offline_to_online.yaml al iniciar offline y finalizar online)
+- Estado Inicial: Sin internet.
+- Pasos:
+  1. Iniciar ronda offline.
+  2. Registrar 3 puntos de control offline.
+  3. Recuperar internet.
+  4. Se muestra 'SyncScreen', sincroniza el progreso inicial y sube evidencias.
+  5. Regresa al dashboard, el guardia escanea el 4to punto y finaliza la ronda online.
+- Resultado Esperado: El servidor procesa la finalización de la ronda online teniendo ya todo el historial previo sincronizado.

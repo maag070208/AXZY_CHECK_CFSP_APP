@@ -2,12 +2,12 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, Dialog, Portal, Text, Icon } from 'react-native-paper';
 
-type AlertType = 'alert' | 'info' | 'check' | 'warning';
+type AlertType = 'alert' | 'info' | 'check' | 'warning' | 'error';
 
 interface Props {
   visible: boolean;
   onDismiss: () => void;
-  onConfirm: () => void;
+  onConfirm?: () => void;
   title: string;
   description: string;
   confirmLabel?: string;
@@ -49,6 +49,12 @@ const ALERT_CONFIG: Record<
     backgroundColor: '#FFFBEB',
     buttonColor: '#D97706',
   },
+  error: {
+    icon: 'alert-circle-outline',
+    iconColor: '#DC2626',
+    backgroundColor: '#FEF2F2',
+    buttonColor: '#DC2626',
+  },
 };
 
 export const ITAlert = ({
@@ -62,7 +68,7 @@ export const ITAlert = ({
   loading = false,
   type = 'info',
 }: Props) => {
-  const config = ALERT_CONFIG[type];
+  const config = ALERT_CONFIG[type] || ALERT_CONFIG.info;
 
   return (
     <Portal>

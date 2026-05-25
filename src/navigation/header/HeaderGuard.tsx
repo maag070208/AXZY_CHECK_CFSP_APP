@@ -11,50 +11,94 @@ export const HeaderGuard = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const user = useSelector((state: RootState) => state.userState);
 
+  const currentHour = new Date().getHours();
+  let greeting = 'Hola';
+  let themeStyles = {
+    bg: '#FFFFFF',
+    text: '#1E293B',
+    subtext: '#64748B',
+    statusBar: 'dark-content' as const,
+    menuBg: '#F8FAFC',
+    divider: '#E2E8F0',
+  };
+
+  if (currentHour >= 6 && currentHour < 12) {
+    greeting = 'Buenos días';
+    themeStyles = {
+      bg: '#F8FAFC',
+      text: '#0F172A',
+      subtext: '#64748B',
+      statusBar: 'dark-content' as const,
+      menuBg: '#E2E8F0',
+      divider: '#CBD5E1',
+    };
+  } else if (currentHour >= 12 && currentHour < 19) {
+    greeting = 'Buenas tardes';
+    themeStyles = {
+      bg: '#FFFBEB',
+      text: '#78350F',
+      subtext: '#B45309',
+      statusBar: 'dark-content' as const,
+      menuBg: '#FEF3C7',
+      divider: '#FDE68A',
+    };
+  } else {
+    greeting = 'Buenas noches';
+    themeStyles = {
+      bg: '#0F172A',
+      text: '#F8FAFC',
+      subtext: '#94A3B8',
+      statusBar: 'light-content' as const,
+      menuBg: '#1E293B',
+      divider: '#334155',
+    };
+  }
+
   return (
     <View
       style={[
         styles.container,
         {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: themeStyles.bg,
           paddingTop: Platform.OS === 'ios' ? insets.top + 12 : insets.top + 10,
           paddingBottom: 20,
+          borderBottomColor: themeStyles.divider,
         },
       ]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle={themeStyles.statusBar} backgroundColor={themeStyles.bg} />
 
       <View style={styles.topRow}>
         <ITTouchableOpacity
           onPress={() => navigation.getParent()?.openDrawer()}
-          style={styles.menuButton}
+          style={[styles.menuButton, { backgroundColor: themeStyles.menuBg }]}
         >
-          <Icon source="menu" size={24} color="#1E293B" />
+          <Icon source="menu" size={24} color={themeStyles.text} />
         </ITTouchableOpacity>
 
         <View style={styles.titleContainer}>
-          <ITText variant="bodySmall" style={styles.greetingText}>
-            Hola, {user.fullName?.split(' ')[0] || 'Guardia'}
+          <ITText variant="bodySmall" style={[styles.greetingText, { color: themeStyles.subtext }]}>
+            {greeting}, {user.fullName?.split(' ')[0] || 'Guardia'}
           </ITText>
           <View style={styles.timeRow}>
             <View style={styles.timeBox}>
-              <ITText variant="labelSmall" style={styles.timeLabel}>ENTRADA</ITText>
-              <ITText variant="titleMedium" weight="bold" style={styles.timeValue}>
+              <ITText variant="labelSmall" style={[styles.timeLabel, { color: themeStyles.subtext }]}>ENTRADA</ITText>
+              <ITText variant="titleMedium" weight="bold" style={[styles.timeValue, { color: themeStyles.text }]}>
                 {user.loginTime || '--:--'}
               </ITText>
             </View>
-            <View style={styles.timeDivider} />
+            <View style={[styles.timeDivider, { backgroundColor: themeStyles.divider }]} />
             <View style={styles.timeBox}>
-              <ITText variant="labelSmall" style={styles.timeLabel}>SALIDA</ITText>
-              <ITText variant="titleMedium" weight="bold" style={styles.timeValue}>
+              <ITText variant="labelSmall" style={[styles.timeLabel, { color: themeStyles.subtext }]}>SALIDA</ITText>
+              <ITText variant="titleMedium" weight="bold" style={[styles.timeValue, { color: themeStyles.text }]}>
                 --:--
               </ITText>
             </View>
           </View>
         </View>
 
-        <ITTouchableOpacity style={styles.avatarButton}>
-          <Icon source="account-circle" size={32} color="#64748B" />
+        <ITTouchableOpacity style={[styles.avatarButton, { backgroundColor: themeStyles.menuBg, borderColor: themeStyles.divider }]}>
+          <Icon source="account-circle" size={32} color={themeStyles.subtext} />
         </ITTouchableOpacity>
       </View>
     </View>
@@ -71,7 +115,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
-    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
   },
   topRow: {
     flexDirection: 'row',
@@ -82,7 +126,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -91,7 +134,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   greetingText: {
-    color: '#64748B',
     fontSize: 12,
     marginBottom: 6,
     fontWeight: '600',
@@ -104,29 +146,24 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   timeLabel: {
-    color: '#94A3B8',
     fontSize: 10,
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   timeValue: {
-    color: '#1E293B',
     fontSize: 16,
   },
   timeDivider: {
     width: 1,
     height: 24,
-    backgroundColor: '#E2E8F0',
     marginHorizontal: 16,
   },
   avatarButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#F1F5F9',
   },
 });

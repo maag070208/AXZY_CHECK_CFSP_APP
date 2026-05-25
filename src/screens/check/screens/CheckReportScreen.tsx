@@ -192,6 +192,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
 
       return () => {
         console.log('[Check] Focus lost (blur)');
+        hasInitializedRef.current = false;
       };
     }, [location.id, assignmentId]),
   );
@@ -530,7 +531,11 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
         }
         dispatch(showToast({ message: '¡Reporte enviado!', type: 'success' }));
         setLoading(false);
-        navigation.goBack();
+        navigation.navigate('Tabs');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'CHECK_SCAN' }],
+        });
         return;
       }
 

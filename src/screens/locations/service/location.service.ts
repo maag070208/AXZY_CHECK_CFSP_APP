@@ -6,7 +6,48 @@ import { store } from '../../../core/store/redux.config';
 import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
 
 export const getLocations = async (): Promise<TResult<ILocation[]>> => {
-  return await get<ILocation[]>('/locations');
+  const NetInfo = require('@react-native-community/netinfo').default;
+  const netState = await NetInfo.fetch();
+
+  const getLocationsOffline = async (): Promise<TResult<ILocation[]>> => {
+    try {
+      const { database } = require('../../../core/database/database');
+      const localLocations = await database.get('locations').query().fetch();
+      return {
+        success: true,
+        data: localLocations.map((l: any) => ({
+          id: l.id,
+          name: l.name,
+          clientId: l.clientId,
+          zoneId: l.zoneId,
+          createdAt: l.createdAt ? new Date(l.createdAt).toISOString() : '',
+          updatedAt: l.updatedAt ? new Date(l.updatedAt).toISOString() : '',
+        })),
+      };
+    } catch (dbErr: any) {
+      console.warn('[LocationService] Error getting offline locations:', dbErr);
+      return { success: true, data: [] };
+    }
+  };
+
+  if (!netState.isConnected) {
+    return await getLocationsOffline();
+  }
+
+  try {
+    return await get<ILocation[]>('/locations');
+  } catch (error: any) {
+    const isNetworkOrServerError =
+      error?.message === 'Network Error' ||
+      error?.code === 'ERR_NETWORK' ||
+      !error?.response ||
+      (error?.response?.status && error.response.status >= 500);
+    if (isNetworkOrServerError) {
+      console.log('[LocationService] Network or server error getting locations. Falling back to local...');
+      return await getLocationsOffline();
+    }
+    throw error;
+  }
 };
 
 export const getPaginatedLocations = async (

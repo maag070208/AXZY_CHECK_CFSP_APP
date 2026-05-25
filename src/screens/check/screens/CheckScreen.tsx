@@ -53,7 +53,7 @@ export const CheckScreen = ({ navigation }: any) => {
         setLocations(res.data as ILocation[]);
       }
     } catch (error) {
-      console.error('Error loading locations', error);
+      console.warn('Error loading locations', error);
     }
   };
 

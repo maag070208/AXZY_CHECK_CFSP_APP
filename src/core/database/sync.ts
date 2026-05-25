@@ -388,7 +388,7 @@ export async function hasUnsyncedLocalChanges(): Promise<boolean> {
   for (const table of tables) {
     try {
       const count = await database.get(table).query(
-        Q.unsafeRaw("id in (select id from " + table + " where _status is not null and _status != 'synced')")
+        Q.where('_status', Q.notEq('synced'))
       ).fetchCount();
       if (count > 0) return true;
     } catch (error) {

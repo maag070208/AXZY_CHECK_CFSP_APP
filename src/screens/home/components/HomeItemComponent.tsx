@@ -24,7 +24,7 @@ export const HomeItemComponent = ({
   badge,
   params,
 }: HomeItemComponentProps) => {
-  const { resetToModule } = useAppNavigation();
+  const { navigateToScreen } = useAppNavigation();
 
   // Color de fondo suave para el icono
   const softBg = `${color}15`;
@@ -32,7 +32,7 @@ export const HomeItemComponent = ({
   return (
     <TouchableOpacity
       style={styles.cardContainer}
-      onPress={() => resetToModule(stack, screen, params)}
+      onPress={() => navigateToScreen(stack, screen, params)}
     >
       <View style={styles.contentContainer}>
         <View style={[styles.iconWrapper, { backgroundColor: softBg }]}>

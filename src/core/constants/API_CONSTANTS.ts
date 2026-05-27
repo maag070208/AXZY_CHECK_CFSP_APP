@@ -1,10 +1,10 @@
 export const API_CONSTANTS = {
   APP_VERSION: '1.0.0',
-  BASE_URL: 'http://192.168.1.106:4444/api/v1',
+  // BASE_URL: 'http://192.168.1.106:4444/api/v1',
   // PROD
   // BASE_URL: 'https://axzycheckcfspapi-production.up.railway.app/api/v1',
   //DEV
-  // BASE_URL: 'https://axzycheckapidevelop-production.up.railway.app/api/v1',
+  BASE_URL: 'https://axzycheckapidevelop-production.up.railway.app/api/v1',
   ROUND_COOLDOWN_MINUTES: 0,
   TIMEOUT: 5000,
   HEADERS: {

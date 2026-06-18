@@ -1,8 +1,7 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { FAB, Searchbar, useTheme, Icon } from 'react-native-paper';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { FAB, Icon, Searchbar, useTheme } from 'react-native-paper';
 import { useDispatch } from 'react-redux';
 
 import { showToast } from '../../../core/store/slices/toast.slice';
@@ -10,16 +9,15 @@ import { TResult } from '../../../core/types/TResult';
 import {
   ITAlert,
   ITBadge,
-  ITCard,
   ITInput,
   ITText,
-  ITTouchableOpacity,
+  ITTouchableOpacity
 } from '../../../shared/components';
 import { ITScreenDatatableLayout } from '../../../shared/components/ITScreenDatatableLayout';
 import { ITScreensFiltersModal } from '../../../shared/components/ITScreensFiltersModal';
+import { theme } from '../../../shared/theme/theme';
 import { deleteClient, getClientsDatatable } from '../service/client.service';
 import { IClient } from '../service/client.types';
-import { theme } from '../../../shared/theme/theme';
 
 export const ClientListScreen = () => {
   const paperTheme = useTheme() as any;

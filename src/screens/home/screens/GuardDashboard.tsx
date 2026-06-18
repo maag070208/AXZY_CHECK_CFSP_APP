@@ -32,6 +32,8 @@ import {
   startRound,
 } from '../../home/service/round.service';
 import { getRecurringByGuard } from '../service/recurring.service';
+import { getMyAssignments } from '../../assignments/service/assignment.service';
+import { IAssignment, AssignmentStatus } from '../../assignments/service/assignment.types';
 import {
   ITText,
   ITButton,
@@ -133,6 +135,7 @@ export const GuardDashboard = () => {
   const [clients, setClients] = useState<any[]>([]);
   const [routeSelectionVisible, setRouteSelectionVisible] = useState(false);
   const [endRoundVisible, setEndRoundVisible] = useState(false);
+  const [assignments, setAssignments] = useState<IAssignment[]>([]);
   const [alertConfig, setAlertConfig] = useState<{
     visible: boolean;
     title: string;
@@ -156,13 +159,17 @@ export const GuardDashboard = () => {
     setLoading(true);
     const start = Date.now();
     try {
-      const [recurringRes, roundRes, activeRoundsRes] = await Promise.all([
+      const [recurringRes, roundRes, activeRoundsRes, assignmentsRes] = await Promise.all([
         getRecurringByGuard(user.id).catch(() => ({
           success: false,
           data: [],
         })),
         getCurrentRound().catch(() => ({ success: false, data: null })),
         getActiveRounds().catch(() => ({ success: false, data: [] })),
+        getMyAssignments(user.id?.toString() ?? '').catch(() => ({
+          success: false,
+          data: [],
+        })),
       ]);
 
       const allRecurring = recurringRes?.data || [];
@@ -180,6 +187,7 @@ export const GuardDashboard = () => {
 
       setClients(filteredRecurring);
       setActiveRound(roundRes?.success && roundRes.data ? roundRes.data : null);
+      setAssignments(assignmentsRes?.data || []);
     } catch (e) {
       dispatch(showToast({ message: 'Error de conexión', type: 'error' }));
     } finally {
@@ -503,6 +511,21 @@ export const GuardDashboard = () => {
                     navigation.navigate('INCIDENT_REPORT', {
                       initialCategory: 'FALTAS',
                       roundId: activeRound?.id,
+                    })
+                  }
+                />
+                <QuickAction
+                  icon="clipboard-list"
+                  label={
+                    assignments.filter(a => a.status !== AssignmentStatus.REVIEWED).length > 0
+                      ? `Tareas (${assignments.filter(a => a.status !== AssignmentStatus.REVIEWED).length})`
+                      : 'Tareas'
+                  }
+                  color="#0EA5E9"
+                  bg="#F0F9FF"
+                  onPress={() =>
+                    navigation.navigate('ASSIGNMENTS_STACK', {
+                      screen: 'MY_ASSIGNMENTS_MAIN',
                     })
                   }
                 />

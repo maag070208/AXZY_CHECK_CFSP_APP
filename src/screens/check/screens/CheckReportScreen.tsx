@@ -34,7 +34,6 @@ import {
 import { uploadFile } from '../../../shared/service/upload.service';
 import { theme } from '../../../shared/theme/theme';
 import {
-  getAllAssignments,
   updateAssignmentStatus,
 } from '../../assignments/service/assignment.service';
 import { CameraModal } from '../components/CameraModal';
@@ -183,8 +182,6 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
 
         if (route.params.recurringTasks) {
           setTasks(route.params.recurringTasks);
-        } else if (assignmentId) {
-          loadAssignmentTasks();
         }
       };
 
@@ -209,17 +206,6 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
       ),
     });
   }, [navigation, currentKardexId]);
-
-  const loadAssignmentTasks = async () => {
-    try {
-      const res = await getAllAssignments({ id: assignmentId });
-      if (res.success && res.data?.length > 0) {
-        setTasks(res.data[0].tasks || []);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const handleTaskToggle = (taskId: number) => {
     setTasks(current =>
@@ -285,6 +271,11 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
       if (kardexId) {
         console.log('[Check] Setting currentKardexId:', kardexId);
         updateKardexId(kardexId);
+        const tasksFromResponse = res.data?.assignment?.tasks;
+        if (tasksFromResponse?.length) {
+          console.log('[Check] Setting tasks from response:', tasksFromResponse.length);
+          setTasks(tasksFromResponse);
+        }
       } else {
         console.error('[Check] No ID found in response:', res);
         setAlertConfig({
@@ -292,18 +283,18 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
           title: 'Error',
           message: 'No se pudo generar el reporte inicial.',
           type: 'alert',
-          onConfirm: () => navigation.goBack(),
+          onConfirm: () => navigation.navigate('Tabs'),
         });
       }
     } catch (e: any) {
       console.error('[Check] Init error:', e);
-      setAlertConfig({
-        visible: true,
-        title: 'Error de Conexión',
-        message: e?.messages?.[0] || 'No se pudo contactar con el servidor.',
-        type: 'alert',
-        onConfirm: () => navigation.goBack(),
-      });
+        setAlertConfig({
+          visible: true,
+          title: 'Error de Conexión',
+          message: e?.messages?.[0] || 'No se pudo contactar con el servidor.',
+          type: 'alert',
+          onConfirm: () => navigation.navigate('Tabs'),
+        });
     } finally {
       setLoading(false);
     }
@@ -467,7 +458,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
         setVideos([]);
         updateKardexId(null);
         setAlertConfig({ ...alertConfig, visible: false });
-        navigation.goBack();
+        navigation.navigate('Tabs');
       },
     });
     return true;

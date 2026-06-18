@@ -8,6 +8,7 @@ import { logout } from '../../core/store/slices/user.slice';
 import { logout as logoutApi } from '../../screens/auth/services/AuthService';
 import { RootState } from '../../core/store/redux.config';
 import { getCurrentRound } from '../../screens/home/service/round.service';
+import { clockOut } from '../../screens/guards/service/GuardLogsService';
 import { ITAlert } from '../../shared/components';
 import { theme } from '../../shared/theme/theme';
 
@@ -48,6 +49,20 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'shield-check',
     route: 'GUARDS_STACK',
     screen: 'GUARD_LIST',
+    roles: ['ADMIN', 'SHIFT', 'RESDN'],
+  },
+  {
+    label: 'Prenómina',
+    icon: 'clipboard-text-clock',
+    route: 'GUARD_LOGS_STACK',
+    screen: 'GUARD_LOGS_LIST',
+    roles: ['ADMIN', 'SHIFT', 'RESDN'],
+  },
+  {
+    label: 'Incidencias a Guardias',
+    icon: 'alert-circle-outline',
+    route: 'GUARD_DISCIPLINE_STACK',
+    screen: 'GUARD_DISCIPLINE_LIST',
     roles: ['ADMIN', 'SHIFT', 'RESDN'],
   },
   {
@@ -142,6 +157,10 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
   );
 
   const handleLogout = async () => {
+    const userId = userState.id;
+    if (userId && (userRole === 'GUARD' || userRole === 'SHIFT' || userRole === 'MAINT')) {
+      clockOut(userId).catch(() => {});
+    }
     try {
       await logoutApi();
     } catch (e) {

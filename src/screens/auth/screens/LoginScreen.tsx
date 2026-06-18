@@ -10,11 +10,13 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useDispatch } from 'react-redux';
+import { jwtDecode } from 'jwt-decode';
 import packageJson from '../../../../package.json';
 import { useAppSelector } from '../../../core/store/hooks';
 import { showLoader } from '../../../core/store/slices/loader.slice';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { login } from '../../../core/store/slices/user.slice';
+import { IAuthToken } from '../../../core/types/IUser';
 import { TResult } from '../../../core/types/TResult';
 import Logo from '../../../shared/assets/logo.png';
 import { ITScreenWrapper, ITText } from '../../../shared/components';
@@ -23,6 +25,7 @@ import {
   LoginFormComponentValues,
 } from '../components/LoginFormComponent';
 import { login as loginService } from '../services/AuthService';
+import { clockIn } from '../../guards/service/GuardLogsService';
 
 const { height, width } = Dimensions.get('window');
 
@@ -36,7 +39,13 @@ const LoginScreen: React.FC = () => {
       const response = await loginService(values);
 
       if (response.success && response.data) {
+        const decoded = jwtDecode<IAuthToken>(response.data);
         dispatch(login(response.data));
+
+        if (decoded.role === 'GUARD' || decoded.role === 'SHIFT' || decoded.role === 'MAINT') {
+          clockIn(String(decoded.id)).catch(() => {});
+        }
+
         dispatch(
           showToast({
             type: 'success',

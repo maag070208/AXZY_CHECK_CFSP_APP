@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DRAWER_WHITELIST } from '../../core/constants/navigation.constants';
 import { LocationsStack } from '../../screens/locations/stack/LocationsStack';
 import { GuardsStack } from '../../screens/guards/stack/GuardsStack';
+import { GuardDisciplineStack } from '../../screens/guard-discipline/stack/GuardDisciplineStack';
+import { GuardLogsStack } from '../../screens/guard-logs/stack/GuardLogsStack';
 import { AssignmentsStack } from '../../screens/assignments/stack/AssignmentsStack';
 import { UsersStack } from '../../screens/users/stack/UsersStack';
 import TabNavigator from '../tabs/TabNavigator';
@@ -118,6 +120,22 @@ const DrawerNavigator = () => {
       <Drawer.Screen
         name="GUARDS_STACK"
         component={GuardsStack}
+        options={({ route }) => ({
+          swipeEnabled: isDrawerEnabled(route),
+        })}
+      />
+
+      <Drawer.Screen
+        name="GUARD_LOGS_STACK"
+        component={GuardLogsStack}
+        options={({ route }) => ({
+          swipeEnabled: isDrawerEnabled(route),
+        })}
+      />
+
+      <Drawer.Screen
+        name="GUARD_DISCIPLINE_STACK"
+        component={GuardDisciplineStack}
         options={({ route }) => ({
           swipeEnabled: isDrawerEnabled(route),
         })}

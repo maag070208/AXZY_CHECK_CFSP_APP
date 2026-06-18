@@ -1,6 +1,6 @@
 export const API_CONSTANTS = {
   APP_VERSION: '1.0.0',
-  // BASE_URL: 'http://192.168.1.106:4444/api/v1',
+  // BASE_URL: 'http://192.168.10.100:4444/api/v1',
   // PROD
   // BASE_URL: 'https://axzycheckcfspapi-production.up.railway.app/api/v1',
   //DEV
@@ -21,6 +21,10 @@ export const API_CONSTANTS = {
       END: '/rounds/end',
       CURRENT: '/rounds/current',
       ALL: '/rounds',
+    },
+    GUARD_LOGS: {
+      CLOCK_IN: '/guard-logs/clock-in',
+      CLOCK_OUT: '/guard-logs/clock-out',
     },
   },
 };

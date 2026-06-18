@@ -1,4 +1,4 @@
-package com.checkapp
+package com.axzydev.fansal.checkapp
 
 import android.app.Application
 import com.facebook.react.PackageList

@@ -60,7 +60,7 @@ export const HeaderGuard = ({ navigation }: any) => {
         styles.container,
         {
           backgroundColor: themeStyles.bg,
-          paddingTop: Platform.OS === 'ios' ? insets.top + 12 : insets.top + 10,
+          paddingTop: Platform.OS === 'ios' ? insets.top + 2 : insets.top + -12,
           paddingBottom: 20,
           borderBottomColor: themeStyles.divider,
         },

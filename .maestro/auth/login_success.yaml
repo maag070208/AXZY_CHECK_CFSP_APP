@@ -1,4 +1,4 @@
-appId: com.checkapp
+appId: com.axzydev.fansal.checkapp
 ---
 - clearState
 - launchApp

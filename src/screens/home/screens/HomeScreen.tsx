@@ -158,6 +158,7 @@ export const HomeScreen = () => {
 
   React.useEffect(() => {
     const checkFirstSync = async () => {
+      if (user.role === UserRole.ADMIN || user.role === UserRole.RESDN) return;
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const lastSync = await AsyncStorage.getItem('last_sync_timestamp');
       if (!lastSync) {
@@ -165,7 +166,7 @@ export const HomeScreen = () => {
       }
     };
     checkFirstSync();
-  }, [navigation]);
+  }, [navigation, user.role]);
 
   if (user.role !== UserRole.ADMIN && user.role !== UserRole.RESDN && user.role !== UserRole.SHIFT) {
     return <GuardDashboard />;
@@ -251,6 +252,15 @@ export const HomeScreen = () => {
       color: '#F59E0B',
       roles: [UserRole.ADMIN, UserRole.RESDN],
       badge: pendingMaintenance,
+    },
+    {
+      id: 'guard-discipline',
+      label: 'Quejas Guardias',
+      icon: 'alert-circle-outline',
+      stack: 'GUARD_DISCIPLINE_STACK',
+      screen: 'GUARD_DISCIPLINE_LIST',
+      color: '#7C3AED',
+      roles: [UserRole.ADMIN, UserRole.SHIFT, UserRole.RESDN],
     },
     {
       id: 'clients',

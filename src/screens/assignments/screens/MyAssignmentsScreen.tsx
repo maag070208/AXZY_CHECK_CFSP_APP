@@ -1,17 +1,7 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import {
-  Alert,
-  Dimensions,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { IconButton, Surface, Text, useTheme } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Icon, useTheme } from 'react-native-paper';
 
 import { useAppSelector } from '../../../core/store/hooks';
 import { RootState } from '../../../core/store/redux.config';
@@ -25,29 +15,37 @@ import {
   IAssignment,
 } from '../../assignments/service/assignment.types';
 import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
-
-const { width } = Dimensions.get('window');
+import {
+  ITScreenDatatableLayout,
+  ITText,
+  ITTouchableOpacity,
+} from '../../../shared/components';
 
 export const MyAssignmentsScreen = () => {
   const theme = useTheme();
   const navigation = useNavigation<any>();
   const user = useAppSelector((state: RootState) => state.userState);
   const [assignments, setAssignments] = useState<IAssignment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { navigateToScreen } = useAppNavigation();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const loadAssignments = async () => {
-    setLoading(true);
+  const loadAssignments = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const response = await getMyAssignments(user.id?.toString() ?? '');
       const allAssignments = (response.data as any[]) ?? [];
-      // Strict filtering just in case BE response hasn't propagated or for double safety
       const filtered = allAssignments.filter(a => a.status !== 'REVIEWED');
       setAssignments(filtered);
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -56,6 +54,14 @@ export const MyAssignmentsScreen = () => {
       loadAssignments();
     }, []),
   );
+
+  const onRefresh = () => loadAssignments(true);
+
+  const filteredData = searchQuery
+    ? assignments.filter(a =>
+        a.location?.name?.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : assignments;
 
   const handlePress = (item: IAssignment) => {
     if (
@@ -81,205 +87,152 @@ export const MyAssignmentsScreen = () => {
   const renderItem = ({ item }: { item: IAssignment }) => {
     const totalTasks = item.tasks?.length || 0;
     const completedTasks = item.tasks?.filter(t => t.completed).length || 0;
-    const taskProgress = totalTasks > 0 ? completedTasks / totalTasks : 0;
+    const statusColor = getStatusColor(item.status);
 
     return (
-      <TouchableOpacity
+      <ITTouchableOpacity
         onPress={() => handlePress(item)}
+        activeOpacity={0.7}
         style={styles.cardContainer}
       >
-        <Surface style={styles.card} elevation={2}>
-          {/* Status Strip */}
-          <View
-            style={[
-              styles.statusStrip,
-              { backgroundColor: getStatusColor(item.status) },
-            ]}
-          />
-
+        <View style={styles.card}>
           <View style={styles.cardContent}>
-            {/* Header: Location & Status Badge */}
             <View style={styles.cardHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.locationTitle} numberOfLines={1}>
+                <ITText variant="titleSmall" weight="bold" numberOfLines={2}>
                   {item.location?.name || 'Ubicación Desconocida'}
-                </Text>
-                <Text style={styles.locationSubtitle}>
+                </ITText>
+                <ITText variant="bodySmall" color="#64748b" style={{ marginTop: 2 }}>
                   {item.location?.aisle
                     ? `Pasillo ${item.location.aisle} • ${item.location.number}`
                     : 'Zona General'}
-                </Text>
+                </ITText>
               </View>
-
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusColor(item.status) + '20' },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusText,
-                    { color: getStatusColor(item.status) },
-                  ]}
-                >
+              <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+                <ITText variant="labelSmall" weight="bold" color={statusColor}>
                   {getStatusText(item.status)}
-                </Text>
+                </ITText>
               </View>
             </View>
 
-            {/* Divider */}
             <View style={styles.divider} />
 
-            {/* Info Section */}
             <View style={styles.infoRow}>
               <View style={styles.infoItem}>
-                <MaterialCommunityIcons
-                  name="calendar-clock"
+                <Icon
+                  source="calendar-clock"
                   size={16}
                   color="#64748b"
                 />
-                <Text style={styles.infoText}>
+                <ITText variant="bodySmall" color="#64748b" style={{ marginLeft: 6 }}>
                   {new Date(item.createdAt).toLocaleDateString()}
-                </Text>
+                </ITText>
               </View>
-
               {totalTasks > 0 && (
                 <View style={styles.infoItem}>
-                  <MaterialCommunityIcons
-                    name="checkbox-marked-circle-outline"
+                  <Icon
+                    source="checkbox-marked-circle-outline"
                     size={16}
                     color="#065911"
                   />
-                  <Text style={styles.infoText}>
+                  <ITText variant="bodySmall" color="#065911" style={{ marginLeft: 6 }}>
                     {completedTasks}/{totalTasks} Tareas
-                  </Text>
+                  </ITText>
                 </View>
               )}
             </View>
 
-            {/* Notes Snippet */}
             {item.notes && (
               <View style={styles.notesContainer}>
-                <Text style={styles.notesText} numberOfLines={1}>
+                <ITText
+                  variant="bodySmall"
+                  color="#475569"
+                  style={{ fontStyle: 'italic' }}
+                  numberOfLines={1}
+                >
                   "{item.notes}"
-                </Text>
+                </ITText>
               </View>
             )}
 
-            {/* Action Call */}
             {item.status !== AssignmentStatus.REVIEWED && (
               <View style={styles.actionRow}>
-                <Text style={styles.actionText}>Tocar para escanear</Text>
-                <MaterialCommunityIcons
-                  name="line-scan"
+                <ITText variant="labelSmall" weight="bold" color="#065911" style={{ marginRight: 6 }}>
+                  Tocar para escanear
+                </ITText>
+                <Icon
+                  source="line-scan"
                   size={18}
                   color="#065911"
                 />
               </View>
             )}
           </View>
-        </Surface>
-      </TouchableOpacity>
+        </View>
+      </ITTouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
-      {/* Custom Modern Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSubtitle}>MIS TAREAS</Text>
-          <Text style={styles.headerTitle}>Asignaciones</Text>
-        </View>
-        <IconButton
-          icon="refresh"
-          size={24}
-          iconColor="#065911"
-          containerColor="#f0fdf4"
-          onPress={loadAssignments}
-        />
-      </View>
-
-      <FlatList
-        data={assignments}
-        renderItem={renderItem}
-        keyExtractor={item => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={loading}
-            onRefresh={loadAssignments}
-            colors={[theme.colors.primary]}
-            tintColor={theme.colors.primary}
+    <ITScreenDatatableLayout
+      title="Asignaciones"
+      totalItems={filteredData.length}
+      loading={loading}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      data={filteredData}
+      renderItem={renderItem}
+      keyExtractor={item => item.id.toString()}
+      emptyComponent={
+        <View style={styles.emptyContainer}>
+          <Icon
+            source="clipboard-check-outline"
+            size={48}
+            color="#cbd5e1"
           />
-        }
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <Surface style={styles.emptyIconInfo} elevation={0}>
-                <MaterialCommunityIcons
-                  name="clipboard-check-outline"
-                  size={48}
-                  color="#cbd5e1"
-                />
-              </Surface>
-              <Text style={styles.emptyTitle}>¡Todo listo!</Text>
-              <Text style={styles.emptyText}>
-                No tienes asignaciones pendientes por ahora.
-              </Text>
-            </View>
-          ) : null
-        }
-      />
-    </SafeAreaView>
+          <ITText
+            variant="titleMedium"
+            weight="bold"
+            color="#1e293b"
+            center
+            style={{ marginTop: 16 }}
+          >
+            ¡Todo listo!
+          </ITText>
+          <ITText
+            variant="bodySmall"
+            color="#94a3b8"
+            center
+            style={{ marginTop: 8 }}
+          >
+            No tienes asignaciones pendientes por ahora.
+          </ITText>
+        </View>
+      }
+    />
   );
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#f8fafc', // Very light cool gray/blue background
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 20,
-    backgroundColor: '#f8fafc',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748b',
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#0f172a',
-    letterSpacing: -0.5,
-  },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
   cardContainer: {
     marginBottom: 16,
+    borderRadius: 20,
+     // Sombra para iOS
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    // Elevación para Android
+    elevation: 3,
+    borderColor: '#e2e8f0',
+    borderWidth: 1,
   },
   card: {
     borderRadius: 20,
     backgroundColor: '#fff',
     overflow: 'hidden',
-    flexDirection: 'row',
-  },
-  statusStrip: {
-    width: 6,
-    height: '100%',
   },
   cardContent: {
     flex: 1,
@@ -291,26 +244,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
-  locationTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  locationSubtitle: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '500',
-  },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
     marginLeft: 8,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '700',
   },
   divider: {
     height: 1,
@@ -320,18 +258,11 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16, // Requires newer React Native, fall back to margins if old
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 16,
-  },
-  infoText: {
-    fontSize: 12,
-    color: '#64748b',
-    marginLeft: 6,
-    fontWeight: '500',
   },
   notesContainer: {
     marginTop: 12,
@@ -339,46 +270,15 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 10,
   },
-  notesText: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    color: '#475569',
-  },
   actionRow: {
     marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
-  actionText: {
-    fontSize: 12,
-    color: '#065911',
-    fontWeight: '700',
-    marginRight: 6,
-  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 80,
-  },
-  emptyIconInfo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#94a3b8',
-    textAlign: 'center',
+    paddingVertical: 60,
   },
 });

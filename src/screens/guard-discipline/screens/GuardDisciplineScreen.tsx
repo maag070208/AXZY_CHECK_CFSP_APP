@@ -112,16 +112,16 @@ export const GuardDisciplineScreen = () => {
 
     return (
       <ITTouchableOpacity>
-        <View style={[styles.card, isPending && styles.cardPending]}>
-          <View style={styles.cardHeader}>
-            <View style={styles.headerLeft}>
-              <View style={[styles.iconContainer, isPending && { backgroundColor: '#FEF3C7' }]}>
-                <Icon
-                  source="shield-account"
-                  size={20}
-                  color={isPending ? '#D97706' : '#64748B'}
-                />
-              </View>
+          <View style={[styles.card, isPending && styles.cardPending]}>
+            <View style={styles.cardHeader}>
+              <View style={styles.headerLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: (item.category?.color || (isPending ? '#FEF3C7' : '#F8FAFC')) + '20' }]}>
+                  <Icon
+                    source={item.category?.icon || "shield-account"}
+                    size={20}
+                    color={item.category?.color || (isPending ? '#D97706' : '#64748B')}
+                  />
+                </View>
               <View style={{ flex: 1 }}>
                 <ITText variant="titleSmall" weight="bold" style={styles.cardTitle} numberOfLines={1}>
                   {item.guard.name} {item.guard.lastName}

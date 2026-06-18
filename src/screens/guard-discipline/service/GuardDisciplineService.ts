@@ -10,7 +10,7 @@ export interface IGuardDiscipline {
   createdAt: string;
   guard: { id: string; name: string; lastName: string | null; username: string };
   createdBy: { id: string; name: string; lastName: string | null; username: string };
-  category?: { id: string; name: string; color?: string } | null;
+  category?: { id: string; name: string; color?: string; icon?: string } | null;
   type?: { id: string; name: string } | null;
 }
 

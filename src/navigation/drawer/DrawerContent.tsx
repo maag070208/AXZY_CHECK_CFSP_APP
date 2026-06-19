@@ -143,7 +143,7 @@ const MENU_ITEMS: MenuItem[] = [
 const DrawerContent = ({ navigation }: { navigation: any }) => {
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
-  const { resetToModule } = useAppNavigation();
+  const {} = useAppNavigation();
 
   const userState = useAppSelector((state: RootState) => state.userState);
   const userRole = userState.role;
@@ -194,7 +194,13 @@ const DrawerContent = ({ navigation }: { navigation: any }) => {
       item.label === 'Contactos'
         ? { residentId: Number(userState.id) }
         : undefined;
-    resetToModule(item.route as any, item.screen, params);
+    
+    if (item.route && item.screen) {
+      navigation.navigate(item.route, {
+        screen: item.screen,
+        params,
+      });
+    }
   };
 
   return (

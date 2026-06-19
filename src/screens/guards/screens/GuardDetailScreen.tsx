@@ -66,7 +66,7 @@ export const GuardDetailScreen = () => {
   }, [guard.id, dispatch]);
 
   useEffect(() => {
-    const filtered = assignments.filter(a =>
+    const filtered = (assignments || []).filter(a =>
       (a.location?.name || '').toLowerCase().includes(search.toLowerCase()),
     );
     setFilteredAssignments(filtered);
@@ -133,7 +133,7 @@ export const GuardDetailScreen = () => {
         <View style={styles.cardHeaderRow}>
           <View style={styles.cardAvatar}>
             <ITText style={styles.cardAvatarText}>
-              {locationName.charAt(0).toUpperCase()}
+              {locationName?.charAt(0).toUpperCase()}
             </ITText>
           </View>
           <View style={styles.cardInfo}>

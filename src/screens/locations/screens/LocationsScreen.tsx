@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
-import { FAB, Icon, IconButton, Portal, Searchbar } from 'react-native-paper';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { FAB, Icon, Searchbar } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showLoader } from '../../../core/store/slices/loader.slice';
 import { getClients } from '../../clients/service/client.service';
@@ -23,17 +23,16 @@ import { UserRole } from '../../../core/types/IUser';
 import {
   ITAlert,
   ITBadge,
-  ITButton,
   ITCard,
   ITScreenDatatableLayout,
   ITText,
   ITTouchableOpacity,
-  SearchComponent,
+  SearchComponent
 } from '../../../shared/components';
-import { theme } from '../../../shared/theme/theme';
 import { ITScreensFiltersModal } from '../../../shared/components/ITScreensFiltersModal';
-import { handleLocationQRPrint } from '../utils/qr.utils';
+import { theme } from '../../../shared/theme/theme';
 import { BulkPrintModal } from '../modal/BulkPrintModal';
+import { handleLocationQRPrint } from '../utils/qr.utils';
 
 export const LocationsScreen = ({ navigation, route }: any) => {
   const insets = useSafeAreaInsets();
@@ -344,22 +343,24 @@ export const LocationsScreen = ({ navigation, route }: any) => {
           </View>
 
           <View style={styles.headerInfo}>
-            <ITText
-              variant="titleMedium"
-              weight="700"
-              style={styles.locationName}
-              numberOfLines={1}
-            >
+            <ITText style={styles.locationName}>
               {item.name}
             </ITText>
-            <View style={styles.headerRowBadge}>
-              <ITText
-                variant="labelSmall"
-                style={styles.clientText}
-                numberOfLines={1}
-              >
-                {(item as any).client?.name || 'S/C'}
-              </ITText>
+            <View style={styles.headerMeta}>
+              <View style={styles.metaItem}>
+                <Icon source="domain" size={14} color={theme.colors.slate400} />
+                <ITText style={styles.metaText} numberOfLines={1}>
+                  {(item as any).client?.name || 'Sin Cliente'}
+                </ITText>
+              </View>
+              {(item as any).zone?.name && (
+                <View style={[styles.metaItem, { marginLeft: 10 }]}>
+                  <Icon source="map-marker-outline" size={14} color={theme.colors.slate400} />
+                  <ITText style={styles.metaText} numberOfLines={1}>
+                    {(item as any).zone?.name}
+                  </ITText>
+                </View>
+              )}
             </View>
           </View>
 
@@ -371,38 +372,14 @@ export const LocationsScreen = ({ navigation, route }: any) => {
           />
         </View>
 
-        <View style={styles.cardBody}>
-          <View style={styles.infoItem}>
-            <Icon
-              source="map-marker-outline"
-              size={16}
-              color={theme.colors.slate500}
-            />
-            <ITText
-              variant="bodySmall"
-              style={styles.infoText}
-              numberOfLines={1}
-            >
-              {(item as any).zone?.name || 'Zona General'}
+        {item.reference ? (
+          <View style={styles.referenceRow}>
+            <Icon source="information-outline" size={14} color={theme.colors.slate400} />
+            <ITText variant="bodySmall" color={theme.colors.slate500} style={{ marginLeft: 6, flex: 1 }} numberOfLines={1}>
+              {item.reference}
             </ITText>
           </View>
-          {item.reference && (
-            <View style={styles.infoItem}>
-              <Icon
-                source="information-outline"
-                size={16}
-                color={theme.colors.slate500}
-              />
-              <ITText
-                variant="bodySmall"
-                style={styles.infoText}
-                numberOfLines={1}
-              >
-                {item.reference}
-              </ITText>
-            </View>
-          )}
-        </View>
+        ) : null}
 
         {isAdmin && (
           <View style={styles.cardFooter}>
@@ -410,7 +387,7 @@ export const LocationsScreen = ({ navigation, route }: any) => {
               style={styles.footerButton}
               onPress={() => handlePrintQR(item)}
             >
-              <Icon source="qrcode" size={18} color={theme.colors.primary} />
+              <Icon source="qrcode" size={18} color="#3B82F6" />
               <ITText style={styles.footerButtonText}>QR</ITText>
             </ITTouchableOpacity>
 
@@ -420,11 +397,7 @@ export const LocationsScreen = ({ navigation, route }: any) => {
               style={styles.footerButton}
               onPress={() => handleEdit(item)}
             >
-              <Icon
-                source="pencil-outline"
-                size={18}
-                color={theme.colors.primary}
-              />
+              <Icon source="pencil-outline" size={18} color={theme.colors.primary} />
               <ITText style={styles.footerButtonText}>Editar</ITText>
             </ITTouchableOpacity>
 
@@ -435,7 +408,7 @@ export const LocationsScreen = ({ navigation, route }: any) => {
               onPress={() => handleDeletePress(item)}
             >
               <Icon source="trash-can-outline" size={18} color="#EF4444" />
-              <ITText style={[styles.footerButtonText, { color: '#EF4444' }]}>
+              <ITText style={styles.footerButtonText}>
                 Eliminar
               </ITText>
             </ITTouchableOpacity>
@@ -491,7 +464,7 @@ export const LocationsScreen = ({ navigation, route }: any) => {
             <ITTouchableOpacity onPress={() => setAppliedClientId('')}>
               <ITBadge
                 label="Todos"
-                variant={appliedClientId === '' ? 'primary' : 'surface'}
+                color={appliedClientId === '' ? 'primary' : 'secondary'}
                 outline={appliedClientId !== ''}
               />
             </ITTouchableOpacity>
@@ -687,8 +660,6 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   itemCard: {
-    padding: 16,
-    marginBottom: 16,
     borderRadius: 24,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -726,35 +697,35 @@ const styles = StyleSheet.create({
   },
   headerInfo: {
     flex: 1,
-    gap: 4,
   },
   locationName: {
     color: '#1E293B',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
   },
-  headerRowBadge: {
+  headerMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    flexWrap: 'wrap',
   },
-  clientText: {
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaText: {
     color: theme.colors.slate500,
-    flex: 1,
+    fontSize: 12,
+    marginLeft: 4,
   },
-  cardBody: {
+  referenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 12,
-    gap: 8,
-    marginBottom: 16,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  infoText: {
-    color: theme.colors.slate500,
-    flex: 1,
+    borderRadius: 10,
+    padding: 8,
+    marginTop: 10,
+    marginBottom: 8,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -769,7 +740,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     paddingVertical: 4,
   },
   footerButtonText: {

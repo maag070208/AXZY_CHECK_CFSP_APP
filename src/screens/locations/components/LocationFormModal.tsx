@@ -64,9 +64,23 @@ export const LocationFormModal = ({
 
   const loadZones = async (clientId: string) => {
     setLoadingZones(true);
-    const res = await getPaginatedZones({ filters: { clientId } });
-    if (res.success) setZones(res.data.rows || []);
-    setLoadingZones(false);
+    try {
+      const res = await getPaginatedZones({ 
+        page: 1, 
+        limit: 1000, 
+        filters: { clientId } 
+      });
+      if (res.success && res.data) {
+        setZones(res.data.rows || []);
+      } else {
+        setZones([]);
+      }
+    } catch (err) {
+      console.error('Error loading zones:', err);
+      setZones([]);
+    } finally {
+      setLoadingZones(false);
+    }
   };
 
   const initialValues = {
@@ -224,7 +238,6 @@ export const LocationFormModal = ({
                                 : 'Primero selecciona un cliente'
                             }
                             disabled={
-                              !!initialData ||
                               !values.clientId ||
                               loadingZones ||
                               loading

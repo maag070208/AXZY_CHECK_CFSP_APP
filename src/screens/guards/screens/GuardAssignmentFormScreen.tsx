@@ -103,7 +103,11 @@ export const GuardAssignmentFormScreen = () => {
 
       if (res.success) {
         dispatch(showToast({ type: 'success', message: 'Asignación creada' }));
-        navigation.goBack();
+        setTimeout(() => {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          }
+        }, 300);
       } else {
         const errorMsg = res.messages?.[0] || 'Error al crear asignación';
         console.error('API ERROR:', errorMsg);
@@ -113,6 +117,7 @@ export const GuardAssignmentFormScreen = () => {
             message: errorMsg,
           }),
         );
+        setSaving(false);
       }
     } catch (error: any) {
       console.error('CATCH ERROR:', error);
@@ -122,7 +127,6 @@ export const GuardAssignmentFormScreen = () => {
           message: error?.messages?.[0] || 'Error de red o servidor' 
         })
       );
-    } finally {
       setSaving(false);
     }
   };

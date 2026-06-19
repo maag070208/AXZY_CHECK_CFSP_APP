@@ -510,7 +510,6 @@ export const GuardDashboard = () => {
                   onPress={() =>
                     navigation.navigate('INCIDENT_REPORT', {
                       initialCategory: 'FALTAS',
-                      roundId: activeRound?.id,
                     })
                   }
                 />

@@ -16,4 +16,5 @@ export const DRAWER_WHITELIST: string[] = [
   'ORDERS_MAIN',
   'CLIENTS_MAIN',
   'ZONES_MAIN',
+  'MY_ASSIGNMENTS_MAIN',
 ];

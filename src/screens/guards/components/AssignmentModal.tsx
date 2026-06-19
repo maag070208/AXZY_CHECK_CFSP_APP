@@ -211,16 +211,21 @@ export const AssignmentModal = ({
         assignedBy: currentUserId?.toString() || guardId,
       };
 
-      await createAssignment(payload);
-      onSuccess();
+      const res = await createAssignment(payload);
+      if (res.success) {
+        onSuccess();
+      } else {
+        setError(res.messages?.[0] || 'Error al crear asignación');
+      }
     } catch (err: any) {
       console.log(err);
-      const backendMsgs = err.response?.data?.messages;
+      const backendMsgs = err?.messages;
       const backendMsg = Array.isArray(backendMsgs)
         ? backendMsgs[0]
-        : backendMsgs;
+        : backendMsgs || err?.response?.data?.messages;
+      const finalErrorMsg = Array.isArray(backendMsg) ? backendMsg[0] : backendMsg;
       const finalError =
-        backendMsg || err.message || 'Error al crear asignación';
+        finalErrorMsg || err.message || 'Error al crear asignación';
 
       if (finalError.includes('asignación activa')) {
         setError(

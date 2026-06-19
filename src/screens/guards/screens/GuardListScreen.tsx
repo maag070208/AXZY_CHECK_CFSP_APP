@@ -316,7 +316,7 @@ export const GuardListScreen = () => {
               <Icon
                 source="calendar-clock"
                 size={18}
-                color={theme.colors.primary}
+                color="#F59E0B"
               />
               <ITText style={styles.footerButtonText}>Horario</ITText>
             </ITTouchableOpacity>
@@ -348,7 +348,7 @@ export const GuardListScreen = () => {
                 setShowClientModal(true);
               }}
             >
-              <Icon source="domain" size={18} color={theme.colors.primary} />
+              <Icon source="domain" size={18} color="#3B82F6" />
               <ITText style={styles.footerButtonText}>Cliente</ITText>
             </ITTouchableOpacity>
           </View>

@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Video from 'react-native-video';
 import { useSelector } from 'react-redux';
 import { API_CONSTANTS } from '../../../core/constants/API_CONSTANTS';
+import { store } from '../../../core/store/redux.config';
 import {
   ITBadge,
   ITButton,
@@ -98,7 +99,8 @@ export const RoundDetailScreen = ({ route }: any) => {
     if (!data || sharing) return;
     setSharing(true);
     try {
-      const url = `${API_CONSTANTS.BASE_URL}/rounds/${id}/report?token=${token}`;
+      const currentToken = store.getState().userState.token || token;
+      const url = `${API_CONSTANTS.BASE_URL}/rounds/${id}/report?token=${encodeURIComponent(currentToken || '')}`;
       await Linking.openURL(url);
     } catch (error) {
       console.error('Error opening PDF:', error);

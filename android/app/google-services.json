@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "724152696495",
+    "project_id": "axzyfansalcheck",
+    "storage_bucket": "axzyfansalcheck.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:724152696495:android:ca2e567c649a5166411e5a",
+        "android_client_info": {
+          "package_name": "com.axzydev.fansal.checkapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZbPXaLkdyo560HZ27aDC4i0hoerHLm_Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { FAB, Icon, Searchbar } from 'react-native-paper';
 import { useDispatch } from 'react-redux';
@@ -10,16 +10,20 @@ import { TResult } from '../../../core/types/TResult';
 import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
   ITText,
-  ITCard,
   ITBadge,
   ITTouchableOpacity,
+  ITButton,
+  ActionPickerModal,
+  ITModal,
 } from '../../../shared/components';
 import { ITScreenDatatableLayout } from '../../../shared/components/ITScreenDatatableLayout';
-import { getPaginatedUsers } from '../../users/service/user.service';
+import { getPaginatedUsers, updateUser } from '../../users/service/user.service';
 import { IUser } from '../../users/service/user.types';
 import { ClientStackParamList } from '../stack/ClientStack';
 import { theme } from '../../../shared/theme/theme';
 import { CLIENT_USER_ROLES } from '../../../core/constants/constants';
+import { getSchedules } from '../../schedules/service/schedules.service';
+import { getClients } from '../../clients/service/client.service';
 
 type ClientGuardsRouteProp = RouteProp<ClientStackParamList, 'CLIENT_GUARDS'>;
 
@@ -39,6 +43,77 @@ export const ClientGuardsScreen = () => {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const { navigateToScreen } = useAppNavigation();
+
+  // Action modals
+  const [changingGuard, setChangingGuard] = useState<IUser | null>(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [showToggleModal, setShowToggleModal] = useState(false);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  useEffect(() => {
+    getSchedules().then(res => { if (res.success) setSchedules(res.data || []); });
+    getClients().then(res => { if (res.success) setClients(res.data || []); });
+  }, []);
+
+  const handleScheduleChange = async (scheduleId: string) => {
+    if (!changingGuard) return;
+    setActionLoading(true);
+    try {
+      const res = await updateUser(changingGuard.id, { scheduleId });
+      if (res.success) {
+        dispatch(showToast({ message: 'Horario actualizado', type: 'success' }));
+        setShowScheduleModal(false);
+        fetchGuards(true);
+      } else {
+        dispatch(showToast({ message: res.messages?.[0] || 'Error', type: 'error' }));
+      }
+    } catch (e: any) {
+      dispatch(showToast({ message: e?.messages?.[0] || 'Error', type: 'error' }));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleClientChange = async (newClientId: string) => {
+    if (!changingGuard) return;
+    setActionLoading(true);
+    try {
+      const res = await updateUser(changingGuard.id, { clientId: newClientId });
+      if (res.success) {
+        dispatch(showToast({ message: 'Cliente actualizado', type: 'success' }));
+        setShowClientModal(false);
+        fetchGuards(true);
+      } else {
+        dispatch(showToast({ message: res.messages?.[0] || 'Error', type: 'error' }));
+      }
+    } catch (e: any) {
+      dispatch(showToast({ message: e?.messages?.[0] || 'Error', type: 'error' }));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleToggleStatus = async () => {
+    if (!changingGuard) return;
+    setActionLoading(true);
+    try {
+      const res = await updateUser(changingGuard.id, { active: !changingGuard.active });
+      if (res.success) {
+        dispatch(showToast({ message: changingGuard.active ? 'Guardia desactivado' : 'Guardia activado', type: 'success' }));
+        setShowToggleModal(false);
+        fetchGuards(true);
+      } else {
+        dispatch(showToast({ message: res.messages?.[0] || 'Error', type: 'error' }));
+      }
+    } catch (e: any) {
+      dispatch(showToast({ message: e?.messages?.[0] || 'Error', type: 'error' }));
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const fetchGuards = async (isRefresh = false, isLoadMore = false) => {
     if (isRefresh) {
@@ -109,76 +184,79 @@ export const ClientGuardsScreen = () => {
     const initial = item.name ? item.name.charAt(0).toUpperCase() : 'G';
 
     return (
-      <ITTouchableOpacity>
-        <ITCard mode="elevated" style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={styles.avatarContainer}>
-              <ITText style={styles.avatarText}>{initial}</ITText>
-              <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: item.active ? '#10B981' : '#EF4444' },
-                ]}
-              />
-            </View>
-
-            <View style={styles.headerInfo}>
-              <ITText
-                variant="titleMedium"
-                weight="700"
-                style={styles.guardName}
-              >
-                {item.name} {item.lastName}
-              </ITText>
-              <View style={styles.headerRow}>
-                <Icon source="at" size={14} color={theme.colors.slate500} />
-                <ITText variant="labelSmall" style={styles.usernameText}>
-                  {item.username}
-                </ITText>
-              </View>
-            </View>
-
-            <ITBadge
-              label={item.active ? 'Activo' : 'Inactivo'}
-              variant={item.active ? 'success' : 'error'}
-              size="small"
-              dot
-            />
+      <ITTouchableOpacity
+        style={[styles.card, !item.active && styles.cardInactive]}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.avatarContainer}>
+            <ITText style={styles.avatarText}>{initial}</ITText>
+            <View style={[styles.statusDot, { backgroundColor: item.active ? '#10B981' : '#EF4444' }]} />
           </View>
 
-          <View style={styles.cardFooter}>
-            <View style={styles.footerStats}>
-              <Icon
-                source="shield-outline"
-                size={16}
-                color={theme.colors.slate500}
-              />
-              <ITText variant="bodySmall" style={styles.roleText}>
-                {CLIENT_USER_ROLES.find(role => role.value === item.role?.name)
-                  ?.label || 'Sin rol'}
+          <View style={styles.headerInfo}>
+            <ITText style={styles.guardName}>
+              {item.name} {item.lastName}
+            </ITText>
+            <View style={styles.headerMeta}>
+              <Icon source="at" size={12} color="#64748B" />
+              <ITText variant="labelSmall" color="#64748B" style={{ marginLeft: 3 }}>
+                {item.username}
               </ITText>
             </View>
+          </View>
 
-            {/* <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              dispatch(
-                showToast({
-                  message: 'Detalles del guardia en desarrollo',
-                  type: 'info',
-                }),
-              );
-            }}
+          <ITBadge
+            label={item.active ? 'Activo' : 'Inactivo'}
+            variant={item.active ? 'success' : 'error'}
+            size="small"
+            dot
+          />
+        </View>
+
+        {/* Info row */}
+        <View style={styles.infoRow}>
+          <Icon source="shield-outline" size={13} color="#64748B" />
+          <ITText variant="labelSmall" color="#64748B" style={{ marginLeft: 4, marginRight: 12 }}>
+            {CLIENT_USER_ROLES.find(r => r.value === item.role?.name)?.label || 'Sin rol'}
+          </ITText>
+          {item.schedule && (
+            <>
+              <Icon source="clock-outline" size={13} color="#64748B" />
+              <ITText variant="labelSmall" color="#64748B" style={{ marginLeft: 4 }}>
+                {item.schedule.name}
+              </ITText>
+            </>
+          )}
+        </View>
+
+        {/* Footer actions */}
+        <View style={styles.cardFooter}>
+          <ITTouchableOpacity
+            onPress={() => { setChangingGuard(item); setShowScheduleModal(true); }}
+            style={styles.footerButton}
           >
-            <ITText style={styles.actionText}>VER PERFIL</ITText>
-            <Icon
-              source="chevron-right"
-              size={16}
-              color={theme.colors.primary}
-            />
-          </TouchableOpacity> */}
-          </View>
-        </ITCard>
+            <Icon source="clock-outline" size={16} color="#F59E0B" />
+            <ITText style={[styles.footerButtonText, { color: '#F59E0B' }] as any}>Horario</ITText>
+          </ITTouchableOpacity>
+          <View style={styles.footerDivider} />
+          <ITTouchableOpacity
+            onPress={() => { setChangingGuard(item); setShowClientModal(true); }}
+            style={styles.footerButton}
+          >
+            <Icon source="domain" size={16} color="#3B82F6" />
+            <ITText style={[styles.footerButtonText, { color: '#3B82F6' }] as any}>Cliente</ITText>
+          </ITTouchableOpacity>
+          <View style={styles.footerDivider} />
+          <ITTouchableOpacity
+            onPress={() => { setChangingGuard(item); setShowToggleModal(true); }}
+            style={styles.footerButton}
+          >
+            <Icon source={item.active ? "power" : "power"} size={16} color={item.active ? '#EF4444' : '#10B981'} />
+            <ITText style={[styles.footerButtonText, { color: item.active ? '#EF4444' : '#10B981' }] as any}>
+              {item.active ? 'Desactivar' : 'Activar'}
+            </ITText>
+          </ITTouchableOpacity>
+        </View>
       </ITTouchableOpacity>
     );
   };
@@ -205,22 +283,6 @@ export const ClientGuardsScreen = () => {
             elevation={0}
           />
         }
-        // filterBadges={
-        //   <View style={styles.filterBadges}>
-        //     {CLIENT_USER_ROLES.map(role => (
-        //       <TouchableOpacity
-        //         key={role.value}
-        //         onPress={() => setRoleFilter(role.value)}
-        //       >
-        //         <ITBadge
-        //           label={role.label}
-        //           variant={roleFilter === role.value ? 'primary' : 'default'}
-        //           outline={roleFilter !== role.value}
-        //         />
-        //       </TouchableOpacity>
-        //     ))}
-        //   </View>
-        // }
         data={guards}
         renderItem={renderGuard}
         keyExtractor={item => item.id}
@@ -239,11 +301,60 @@ export const ClientGuardsScreen = () => {
             }}
           />
         }
-        searchQuery={''}
-        onSearchChange={function (query: string): void {
-          throw new Error('Function not implemented.');
-        }}
       />
+
+      {/* ===== MODAL ESTÁNDAR NATIVO: Cambiar Horario ===== */}
+      <ActionPickerModal
+        visible={showScheduleModal}
+        onDismiss={() => setShowScheduleModal(false)}
+        title="Cambiar Horario"
+        icon="clock-outline"
+        iconColor="#F59E0B"
+        subtitle={`${changingGuard?.name} ${changingGuard?.lastName}`}
+        options={schedules.map((s: any) => ({
+          id: s.id,
+          label: `${s.name} (${s.startTime} - ${s.endTime})`,
+          icon: 'clock-outline',
+          selected: changingGuard?.scheduleId === s.id,
+        }))}
+        onSelect={(opt) => handleScheduleChange(opt.id)}
+        loading={actionLoading}
+      />
+
+      <ActionPickerModal
+        visible={showClientModal}
+        onDismiss={() => setShowClientModal(false)}
+        title="Cambiar Cliente"
+        icon="domain"
+        iconColor="#3B82F6"
+        subtitle={`${changingGuard?.name} ${changingGuard?.lastName}`}
+        options={clients.map((c: any) => ({
+          id: c.id,
+          label: c.name,
+          icon: 'domain',
+          selected: changingGuard?.clientId === c.id,
+        }))}
+        onSelect={(opt) => handleClientChange(opt.id)}
+        loading={actionLoading}
+      />
+
+      <ITModal
+        visible={showToggleModal}
+        onDismiss={() => setShowToggleModal(false)}
+        title={changingGuard?.active ? 'Desactivar Guardia' : 'Activar Guardia'}
+        icon={changingGuard?.active ? 'alert-circle-outline' : 'check-circle-outline'}
+        iconColor={changingGuard?.active ? '#EF4444' : theme.colors.primary}
+        confirmLabel={changingGuard?.active ? 'Desactivar' : 'Activar'}
+        onConfirm={handleToggleStatus}
+        confirmColor={changingGuard?.active ? '#EF4444' : theme.colors.primary}
+        loading={actionLoading}
+      >
+        <ITText variant="bodyMedium" color="#334155" style={{ textAlign: 'center', paddingVertical: 8 }}>
+          {changingGuard?.active
+            ? 'El guardia perderá acceso inmediato a la aplicación.'
+            : 'El guardia recuperará el acceso a la plataforma.'}
+        </ITText>
+      </ITModal>
     </View>
   );
 };
@@ -267,15 +378,22 @@ const styles = StyleSheet.create({
     minHeight: 0,
     color: theme.colors.slate900,
   },
-  filterBadges: {
-    flexDirection: 'row',
-    gap: 8,
-  },
   card: {
-    marginHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
     marginBottom: 12,
-    borderRadius: 16,
-    padding: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  cardInactive: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -283,9 +401,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatarContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -293,14 +411,14 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatarText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: theme.colors.primary,
   },
   statusDot: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: 2,
+    right: 2,
     width: 12,
     height: 12,
     borderRadius: 6,
@@ -311,46 +429,131 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   guardName: {
-    color: theme.colors.slate900,
+    fontWeight: '700',
+    color: '#1E293B',
     fontSize: 16,
     letterSpacing: -0.3,
-    marginBottom: 2,
+    marginBottom: 4,
   },
-  headerRow: {
+  headerMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
-  usernameText: {
-    color: theme.colors.slate500,
-    fontSize: 12,
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
+    paddingTop: 10,
   },
-  footerStats: {
+  footerButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    paddingVertical: 8,
   },
-  roleText: {
-    color: theme.colors.slate500,
+  footerButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 5,
   },
-  actionButton: {
+  footerDivider: {
+    width: 1,
+    backgroundColor: '#F1F5F9',
+  },
+
+  // ====================================================
+  //  NUEVO ESTÁNDAR DE MODAL: ULTRA-MINIMALISTA Y BLANCO
+  // ====================================================
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.3)', // Fondo oscuro traslúcido muy estético
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    width: '100%',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+    paddingTop: 24,         // Un espacio limpio pero sutil en el top
+    paddingBottom: 4,        // Pegado de inmediato al contenido
+    paddingHorizontal: 24,
+    backgroundColor: '#FFFFFF', // Blanco absoluto garantizado
   },
-  actionText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: theme.colors.primary,
-    letterSpacing: 0.5,
+  modalTitle: {
+    fontSize: 19,
+    color: '#0F172A',       // Texto oscuro legible
+    letterSpacing: -0.5,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalContent: {
+    paddingHorizontal: 24,
+    paddingTop: 0,          // Eliminamos cualquier separación con el título
+    paddingBottom: 24,
+  },
+  modalSubtitle: {
+    color: '#64748B',
+    fontSize: 14,
+    marginBottom: 16,
+    marginTop: 2,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    marginBottom: 8,
+    backgroundColor: '#F8FAFC', // Fondo gris claro muy limpio
+  },
+  modalItemSelected: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  modalItemText: {
+    fontSize: 14,
+    color: '#334155',
+    marginLeft: 12,
+    flex: 1,
+    fontWeight: '500',
+  },
+  confirmIconContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  confirmText: {
+    textAlign: 'center',
+    color: '#475569',
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    gap: 8,
   },
   fab: {
     position: 'absolute',

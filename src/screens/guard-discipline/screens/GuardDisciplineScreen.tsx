@@ -1,4 +1,4 @@
-import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -8,7 +8,6 @@ import { FAB, Icon } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
-import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
   ITBadge,
   ITScreenDatatableLayout,
@@ -27,7 +26,7 @@ export const GuardDisciplineScreen = () => {
   const insets = useSafeAreaInsets();
   const user = useSelector((state: RootState) => state.userState);
   const isFocused = useIsFocused();
-  const navigateToScreen = useAppNavigation();
+  const navigation = useNavigation<any>();
   const [formModalVisible, setFormModalVisible] = useState(false);
   const [records, setRecords] = useState<IGuardDiscipline[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +110,11 @@ export const GuardDisciplineScreen = () => {
     const timeStr = date.format('HH:mm');
 
     return (
-      <ITTouchableOpacity>
+      <ITTouchableOpacity
+        onPress={() =>
+          navigation.navigate('GUARD_DISCIPLINE_DETAIL', { record: item })
+        }
+      >
           <View style={[styles.card, isPending && styles.cardPending]}>
             <View style={styles.cardHeader}>
               <View style={styles.headerLeft}>
@@ -351,6 +354,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
     backgroundColor: '#059669',
     borderRadius: 16,
   },

@@ -8,10 +8,11 @@ import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
   ITAlert,
   ITBadge,
-  ITDialog,
+  ITModal,
   ITInput,
   ITScreenDatatableLayout,
   ITTouchableOpacity,
+  ITText,
 } from '../../../shared/components';
 import { getCatalog } from '../../../shared/service/catalog.service';
 import { theme } from '../../../shared/theme/theme';
@@ -281,20 +282,15 @@ export const UserListScreen = () => {
       />
 
       {/* RESET PASSWORD DIALOG */}
-      <ITDialog
+      <ITModal
         visible={showResetModal}
         onDismiss={() => !reseting && setShowResetModal(false)}
-        title="Seguridad"
-        description={`Establecer nueva contraseña para ${
-          selectedUser?.name || 'el usuario'
-        }.`}
+        title="Restablecer Contraseña"
         icon="shield-lock"
-        iconBackgroundColor="#EEF2FF"
         iconColor={theme.colors.primary}
         confirmLabel="Actualizar"
         onConfirm={handleResetPassword}
         loading={reseting}
-        confirmDisabled={newPassword.length < 6}
       >
         <ITInput
           label="Nueva Contraseña"
@@ -307,7 +303,10 @@ export const UserListScreen = () => {
           placeholder="Mínimo 6 caracteres"
           autoCapitalize="none"
         />
-      </ITDialog>
+        <ITText variant="labelSmall" color="#64748B" style={{ marginTop: 4, textAlign: 'center' }}>
+          {selectedUser?.name} {selectedUser?.lastName}
+        </ITText>
+      </ITModal>
 
       <ITAlert
         visible={showDeleteDialog}

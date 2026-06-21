@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import {
@@ -21,7 +20,7 @@ import ModernStyles from '../../../shared/theme/app.styles';
 import { getClients } from '../../clients/service/client.service';
 import { getUsers } from '../../kardex/service/kardex.service';
 import { getLocations } from '../../locations/service/location.service';
-import { getPaginatedZones } from '../../zones/service/zone.service';
+import { getZonesByClient } from '../../zones/service/zone.service';
 import {
   createRecurring,
   getRecurringById,
@@ -112,11 +111,6 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
             setSelectedClientId(data.recurringLocations[0].location.clientId);
           }
         }
-      } else {
-        // Default: todos los guardias asignados
-        if (filteredGuards.length > 0) {
-          setSelectedGuards(filteredGuards.map(g => g.id));
-        }
       }
     } catch (error) {
       console.error('Error loading form data:', error);
@@ -139,9 +133,9 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
 
   const fetchZones = async (clientId: string) => {
     try {
-      const res = await getPaginatedZones({ filters: { clientId } });
-      if (res.success && res.data) {
-        setZones(res.data.rows || []);
+      const res = await getZonesByClient(clientId);
+      if (res.success) {
+        setZones(res.data || []);
       }
     } catch (error) {
       console.error('Error fetching zones:', error);
@@ -208,12 +202,6 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
     setAddedLocations(copy);
   };
 
-  const handleAddTask = (locIndex: number) => {
-    const copy = [...addedLocations];
-    copy[locIndex].tasks.push({ description: '', reqPhoto: false });
-    setAddedLocations(copy);
-  };
-
   const handleRemoveTask = (locIndex: number, taskIndex: number) => {
     const copy = [...addedLocations];
     copy[locIndex].tasks.splice(taskIndex, 1);
@@ -236,6 +224,17 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
         ? prev.filter(id => id !== guardId)
         : [...prev, guardId],
     );
+  };
+
+  const selectAllGuards = () => {
+    const filtered = guards.filter(
+      g => !selectedClientId || String(g.clientId) === String(selectedClientId),
+    );
+    setSelectedGuards(filtered.map(g => g.id));
+  };
+
+  const deselectAllGuards = () => {
+    setSelectedGuards([]);
   };
 
   const handleSave = async () => {
@@ -458,32 +457,27 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                   >
                     Vincular Puntos
                   </ITText>
-                  <View style={styles.filtersWrapper}>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <View style={{ flex: 1 }}>
-                        <SearchComponent
-                          label="Por Zona"
-                          placeholder="Selecciona zona..."
-                          options={zones.map(z => ({
-                            label: z.name,
-                            value: z.id,
-                          }))}
-                          value={selectedZoneId}
-                          onSelect={val => setSelectedZoneId(String(val))}
-                          disabled={!selectedClientId}
-                        />
-                      </View>
-                      <IconButton
-                        icon="plus-box-multiple"
-                        mode="contained"
-                        containerColor="#D1FAE5"
-                        iconColor={theme.colors.primary}
-                        onPress={handleAddAllFromZone}
-                        disabled={!selectedZoneId}
-                        style={{ marginTop: 24, borderRadius: 12 }}
-                      />
-                    </View>
-                    <View style={{ marginTop: 12 }}>
+                   <View style={styles.filtersWrapper}>
+                    <SearchComponent
+                      label="Por Zona"
+                      placeholder="Selecciona zona..."
+                      options={zones.map(z => ({
+                        label: z.name,
+                        value: z.id,
+                      }))}
+                      value={selectedZoneId}
+                      onSelect={val => setSelectedZoneId(String(val))}
+                      disabled={!selectedClientId}
+                    />
+                    <ITButton
+                      mode="outlined"
+                      onPress={handleAddAllFromZone}
+                      disabled={!selectedZoneId}
+                      style={{ marginTop: 12, width: '100%' }}
+                    >
+                      Toda la zona
+                    </ITButton>
+                    <View style={{ marginTop: 16 }}>
                       <SearchComponent
                         label="Ubicación Individual"
                         placeholder="Añadir individual..."
@@ -510,35 +504,25 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                   >
                     Hoja de Ruta ({addedLocations.length})
                   </ITText>
-                  {addedLocations.map((loc, idx) => (
-                    <View
-                      key={`${loc.locationId}-${idx}`}
-                      style={styles.taskLocationGroup}
-                    >
-                      <View style={styles.taskLocationHeader}>
-                        <View style={styles.locIndexSmallActive}>
-                          <Text style={styles.locIndexTextActive}>
-                            {idx + 1}
+                  <ScrollView
+                    nestedScrollEnabled
+                    style={{ maxHeight: 400 }}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {addedLocations.map((loc, idx) => (
+                      <View
+                        key={`${loc.locationId}-${idx}`}
+                        style={styles.taskLocationGroup}
+                      >
+                        <View style={styles.taskLocationHeader}>
+                          <View style={styles.locIndexSmallActive}>
+                            <Text style={styles.locIndexTextActive}>
+                              {idx + 1}
+                            </Text>
+                          </View>
+                          <Text style={styles.taskLocationTitle}>
+                            {loc.locationName}
                           </Text>
-                        </View>
-                        <Text style={styles.taskLocationTitle}>
-                          {loc.locationName}
-                        </Text>
-                        <View
-                          style={{ flexDirection: 'row', alignItems: 'center' }}
-                        >
-                          <TouchableOpacity
-                            onPress={() => handleAddTask(idx)}
-                            style={{ marginRight: 10 }}
-                          >
-                            <ITText
-                              variant="labelSmall"
-                              weight="bold"
-                              color={theme.colors.primary}
-                            >
-                              + TAREA
-                            </ITText>
-                          </TouchableOpacity>
                           <IconButton
                             icon="trash-can-outline"
                             iconColor="#EF4444"
@@ -547,36 +531,36 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                             style={{ margin: 0 }}
                           />
                         </View>
-                      </View>
 
-                      {loc.tasks.map((task: any, tIdx: number) => (
-                        <View key={tIdx} style={styles.taskInputRow}>
-                          <TextInput
-                            placeholder="Describa la consigna..."
-                            value={task.description}
-                            onChangeText={text =>
-                              handleTaskChange(idx, tIdx, text)
-                            }
-                            style={styles.taskFlatInput}
-                          />
-                          <IconButton
-                            icon="close"
-                            iconColor="#EF4444"
-                            size={16}
-                            onPress={() => handleRemoveTask(idx, tIdx)}
-                          />
-                        </View>
-                      ))}
-                    </View>
-                  ))}
-                  {addedLocations.length === 0 && (
-                    <View style={styles.emptyCard}>
-                      <Icon source="map-marker-off" size={32} color="#94A3B8" />
-                      <Text style={styles.emptyText}>
-                        Sin puntos vinculados
-                      </Text>
-                    </View>
-                  )}
+                        {loc.tasks.map((task: any, tIdx: number) => (
+                          <View key={tIdx} style={styles.taskInputRow}>
+                            <TextInput
+                              placeholder="Describa la consigna..."
+                              value={task.description}
+                              onChangeText={text =>
+                                handleTaskChange(idx, tIdx, text)
+                              }
+                              style={styles.taskFlatInput}
+                            />
+                            <IconButton
+                              icon="close"
+                              iconColor="#EF4444"
+                              size={16}
+                              onPress={() => handleRemoveTask(idx, tIdx)}
+                            />
+                          </View>
+                        ))}
+                      </View>
+                    ))}
+                    {addedLocations.length === 0 && (
+                      <View style={styles.emptyCard}>
+                        <Icon source="map-marker-off" size={32} color="#94A3B8" />
+                        <Text style={styles.emptyText}>
+                          Sin puntos vinculados
+                        </Text>
+                      </View>
+                    )}
+                  </ScrollView>
                 </View>
               </View>
             )}
@@ -599,6 +583,24 @@ export const RecurringFormScreen = ({ navigation, route }: any) => {
                         Selecciona los guardias habilitados para esta ruta.
                       </Text>
                     </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                    <ITButton
+                      variant="text"
+                      size="sm"
+                      onPress={selectAllGuards}
+                      style={{ flex: 1 }}
+                    >
+                      Agregar todos
+                    </ITButton>
+                    <ITButton
+                      variant="text"
+                      size="sm"
+                      onPress={deselectAllGuards}
+                      style={{ flex: 1 }}
+                    >
+                      Quitar todos
+                    </ITButton>
                   </View>
                   <View style={styles.guardsGrid}>
                     {guards

@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import * as Yup from 'yup';
+import { Icon } from 'react-native-paper';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import {
@@ -24,7 +25,6 @@ import {
 import { getPaginatedLocations } from '../../locations/service/location.service';
 import { theme } from '../../../shared/theme/theme';
 import { createAssignment } from '../../assignments/service/assignment.service';
-import { Icon } from 'react-native-paper';
 
 const AssignmentSchema = Yup.object().shape({
   locationId: Yup.string().required('Debe seleccionar una ubicación'),
@@ -103,6 +103,7 @@ export const GuardAssignmentFormScreen = () => {
 
       if (res.success) {
         dispatch(showToast({ type: 'success', message: 'Asignación creada' }));
+        setSaving(false);
         setTimeout(() => {
           if (navigation.canGoBack()) {
             navigation.goBack();
@@ -360,21 +361,23 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'flex-end',
+    gap: 10,
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     backgroundColor: '#FFFFFF',
   },
   footerButton: {
-    flex: 1,
-    height: 48,
+    minWidth: 110,
+    height: 38,
     justifyContent: 'center',
-    borderRadius: 12,
+    borderRadius: 10,
+    paddingHorizontal: 16,
   },
   footerButtonLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
 });

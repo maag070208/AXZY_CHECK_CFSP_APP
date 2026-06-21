@@ -13,13 +13,9 @@ import {
   View,
 } from 'react-native';
 import {
-  Dialog,
-  Divider,
   FAB,
   Icon,
   IconButton,
-  List,
-  Portal,
   Searchbar,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +34,7 @@ import {
   ITText,
   ITTouchableOpacity,
   SearchComponent,
+  ActionPickerModal,
 } from '../../../shared/components';
 import { theme } from '../../../shared/theme/theme';
 import { getClients } from '../../clients/service/client.service';
@@ -404,215 +401,40 @@ export const GuardListScreen = () => {
       />
 
       {/* REASSIGNMENT MODALS */}
-      <Portal>
-        <Dialog
-          visible={showClientModal}
-          onDismiss={() => setShowClientModal(false)}
-          style={styles.reassignDialog}
-        >
-          <Dialog.Title>
-            <ITText variant="headlineSmall" weight="bold">
-              Reasignar Cliente
-            </ITText>
-          </Dialog.Title>
-          <Dialog.Content>
-            {updating ? (
-              <ActivityIndicator
-                color={theme.colors.primary}
-                style={{ margin: 20 }}
-              />
-            ) : (
-              <FlatList
-                data={clients.filter(c => c.value !== 'ALL')}
-                keyExtractor={item => item.value.toString()}
-                renderItem={({ item }) => {
-                  const isSelected = changingGuard?.client?.id === item.value;
-                  return (
-                    <List.Item
-                      title={item.label}
-                      onPress={() =>
-                        handleUpdate(changingGuard.id, { clientId: item.value })
-                      }
-                      left={props => (
-                        <List.Icon
-                          {...props}
-                          icon="domain"
-                          color={
-                            isSelected
-                              ? theme.colors.primary
-                              : theme.colors.slate500
-                          }
-                        />
-                      )}
-                      right={props =>
-                        isSelected ? (
-                          <List.Icon
-                            {...props}
-                            icon="check"
-                            color={theme.colors.primary}
-                          />
-                        ) : null
-                      }
-                      titleStyle={
-                        isSelected
-                          ? { color: theme.colors.primary, fontWeight: 'bold' }
-                          : { color: theme.colors.slate900 }
-                      }
-                    />
-                  );
-                }}
-                ItemSeparatorComponent={() => (
-                  <Divider style={{ backgroundColor: '#F1F5F9' }} />
-                )}
-                style={{ maxHeight: 400 }}
-              />
-            )}
-          </Dialog.Content>
-        </Dialog>
+      <ActionPickerModal
+        visible={showClientModal}
+        onDismiss={() => setShowClientModal(false)}
+        title="Reasignar Cliente"
+        icon="domain"
+        iconColor="#3B82F6"
+        subtitle={`${changingGuard?.name} ${changingGuard?.lastName}`}
+        options={(clients || []).filter(c => c.value !== 'ALL').map(c => ({
+          id: c.value,
+          label: c.label,
+          icon: 'domain',
+          selected: changingGuard?.client?.id === c.value,
+        }))}
+        onSelect={(opt) => handleUpdate(changingGuard.id, { clientId: opt.id })}
+        loading={updating}
+      />
 
-        <Dialog
-          visible={showScheduleModal}
-          onDismiss={() => setShowScheduleModal(false)}
-          style={styles.reassignDialog}
-        >
-          <Dialog.Title>
-            <ITText variant="headlineSmall" weight="bold">
-              Cambiar Horario
-            </ITText>
-          </Dialog.Title>
-          <Dialog.Content>
-            {updating ? (
-              <ActivityIndicator
-                color={theme.colors.primary}
-                style={{ margin: 20 }}
-              />
-            ) : (
-              <FlatList
-                data={schedules}
-                keyExtractor={item => item.id.toString()}
-                renderItem={({ item }) => {
-                  const isSelected = changingGuard?.schedule?.id === item.id;
-                  return (
-                    <List.Item
-                      title={item.name}
-                      description={`${item.startTime} - ${item.endTime}`}
-                      onPress={() =>
-                        handleUpdate(changingGuard.id, { scheduleId: item.id })
-                      }
-                      left={props => (
-                        <List.Icon
-                          {...props}
-                          icon="clock-outline"
-                          color={
-                            isSelected
-                              ? theme.colors.primary
-                              : theme.colors.slate500
-                          }
-                        />
-                      )}
-                      right={props =>
-                        isSelected ? (
-                          <List.Icon
-                            {...props}
-                            icon="check"
-                            color={theme.colors.primary}
-                          />
-                        ) : null
-                      }
-                      titleStyle={
-                        isSelected
-                          ? { color: theme.colors.primary, fontWeight: 'bold' }
-                          : { color: theme.colors.slate900 }
-                      }
-                    />
-                  );
-                }}
-                ItemSeparatorComponent={() => (
-                  <Divider style={{ backgroundColor: '#F1F5F9' }} />
-                )}
-                style={{ maxHeight: 400 }}
-              />
-            )}
-          </Dialog.Content>
-        </Dialog>
-      </Portal>
-
-      {/* FILTER MODAL */}
-      <Portal>
-        <Modal
-          visible={showFilters}
-          onDismiss={() => setShowFilters(false)}
-          contentContainerStyle={styles.filterModalContainer}
-        >
-          <View
-            style={[styles.modalHeaderFilter, { paddingTop: insets.top + 16 }]}
-          >
-            <View style={styles.modalHeaderTitle}>
-              <Icon
-                source="filter-variant"
-                size={24}
-                color={theme.colors.primary}
-              />
-              <ITText variant="titleLarge" weight="bold">
-                Filtros Avanzados
-              </ITText>
-            </View>
-            <IconButton
-              icon="close"
-              size={24}
-              onPress={() => setShowFilters(false)}
-              iconColor={theme.colors.slate500}
-            />
-          </View>
-
-          <ScrollView
-            style={styles.modalScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.filterGroup}>
-              <ITText
-                variant="labelSmall"
-                weight="bold"
-                color={theme.colors.slate500}
-                style={styles.filterLabel}
-              >
-                FILTRAR POR CLIENTE
-              </ITText>
-              <SearchComponent
-                label="Cliente"
-                placeholder="Todos los clientes"
-                options={[
-                  { label: 'Todos los clientes', value: 'ALL' },
-                  ...clients,
-                ]}
-                value={tempClientId}
-                onSelect={setTempClientId}
-              />
-            </View>
-          </ScrollView>
-
-          <View
-            style={[styles.modalFooter, { paddingBottom: insets.bottom + 24 }]}
-          >
-            <ITButton
-              label="Limpiar Filtros"
-              mode="outlined"
-              onPress={handleClearFilters}
-              style={styles.footerButton}
-              textColor={theme.colors.slate500}
-            />
-            <ITButton
-              label="Aplicar"
-              mode="contained"
-              onPress={handleApplyFilters}
-              style={[
-                styles.footerButton,
-                { backgroundColor: theme.colors.primary },
-              ]}
-            />
-          </View>
-        </Modal>
-      </Portal>
+      <ActionPickerModal
+        visible={showScheduleModal}
+        onDismiss={() => setShowScheduleModal(false)}
+        title="Cambiar Horario"
+        icon="clock-outline"
+        iconColor="#F59E0B"
+        subtitle={`${changingGuard?.name} ${changingGuard?.lastName}`}
+        options={(schedules || []).map(s => ({
+          id: s.id,
+          label: s.name,
+          subtitle: `${s.startTime} - ${s.endTime}`,
+          icon: 'clock-outline',
+          selected: changingGuard?.schedule?.id === s.id,
+        }))}
+        onSelect={(opt) => handleUpdate(changingGuard.id, { scheduleId: opt.id })}
+        loading={updating}
+      />
     </View>
   );
 };

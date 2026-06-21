@@ -1,4 +1,4 @@
-import { get, post, axiosInstance } from '../../../core/axios';
+import { get, post, remove, axiosInstance } from '../../../core/axios';
 import { TResult } from '../../../core/types/TResult';
 import { getCatalog } from '../../../shared/service/catalog.service';
 
@@ -80,4 +80,8 @@ export const getRoundPDF = async (id: number): Promise<any> => {
 
 export const shareRoundReport = async (id: number): Promise<TResult<string>> => {
   return await get(`/rounds/${id}/share`);
+};
+
+export const deleteRound = async (id: number): Promise<TResult<boolean>> => {
+  return await remove<boolean>(`/rounds/${id}`);
 };

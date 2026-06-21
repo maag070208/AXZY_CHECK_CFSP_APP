@@ -34,11 +34,12 @@ import { IClient } from '../../clients/type/client.types';
 interface ClientLocationFormModalProps {
   visible: boolean;
   onDismiss: () => void;
-  onSuccess: () => void;
+  onSuccess: (keepOpen?: boolean) => void;
   clientId: string;
   editLocation?: ILocation | null;
   onDelete?: (id: string) => void;
   onPrintQR?: (item: ILocation) => void;
+  preselectedZoneId?: string;
 }
 
 const validationSchema = z.object({
@@ -47,7 +48,6 @@ const validationSchema = z.object({
     .string()
     .uuid('Debes seleccionar una zona válida')
     .or(z.string().min(1, 'Debes seleccionar una zona válida')),
-  reference: z.string().optional(),
 });
 
 export const ClientLocationFormModal = ({
@@ -58,6 +58,7 @@ export const ClientLocationFormModal = ({
   editLocation,
   onDelete,
   onPrintQR,
+  preselectedZoneId,
 }: ClientLocationFormModalProps) => {
   const dispatch = useDispatch();
 
@@ -68,17 +69,18 @@ export const ClientLocationFormModal = ({
   const [form, setForm] = useState({
     name: '',
     zoneId: '',
-    reference: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const isValid = form.name.trim().length >= 3 && form.zoneId.length > 0;
 
   useEffect(() => {
     if (visible) {
       setForm({
         name: editLocation?.name || '',
-        zoneId: editLocation?.zoneId || '',
-        reference: editLocation?.reference || '',
+        zoneId: editLocation?.zoneId || preselectedZoneId || '',
       });
       setErrors({});
       fetchZones();
@@ -156,23 +158,11 @@ export const ClientLocationFormModal = ({
       }
 
       if (res.success) {
-        dispatch(
-          showToast({
-            message: `Ubicación ${
-              editLocation ? 'actualizada' : 'creada'
-            } correctamente`,
-            type: 'success',
-          }),
-        );
-        onSuccess();
-        if (!keepOpen) {
-          onDismiss();
-        } else {
-          setForm(prev => ({
-            ...prev,
-            name: '',
-            reference: '',
-          }));
+        onSuccess(keepOpen);
+        if (keepOpen) {
+          setForm(prev => ({ ...prev, name: '' }));
+          setSuccessMsg('¡Ubicación creada!');
+          setTimeout(() => setSuccessMsg(''), 2000);
         }
       } else {
         dispatch(
@@ -219,6 +209,14 @@ export const ClientLocationFormModal = ({
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          {successMsg ? (
+            <View style={styles.successBanner}>
+              <ITText style={{ color: '#065F46', fontWeight: '700', fontSize: 14 }}>
+                {successMsg}
+              </ITText>
+            </View>
+          ) : null}
+
           <View style={styles.formGroup}>
             <ITInput
               label="Nombre de Ubicación"
@@ -246,18 +244,6 @@ export const ClientLocationFormModal = ({
             {errors.zoneId && (
               <ITText style={styles.errorText}>{errors.zoneId}</ITText>
             )}
-          </View>
-
-          <View style={styles.formGroup}>
-            <ITInput
-              label="Referencia (Opcional)"
-              value={form.reference}
-              onChangeText={val => handleChange('reference', val)}
-              placeholder="Ej. Planta baja, junto al elevador"
-              multiline
-              numberOfLines={3}
-              leftIcon="information-outline"
-            />
           </View>
 
           {editLocation && (
@@ -306,7 +292,7 @@ export const ClientLocationFormModal = ({
                 styles.saveButton,
                 { flex: 1, backgroundColor: theme.colors.primary },
               ]}
-              disabled={loading}
+              disabled={loading || !isValid}
               loading={loading}
             />
           </View>
@@ -320,7 +306,7 @@ export const ClientLocationFormModal = ({
                 { marginTop: 8, backgroundColor: '#EEF2FF' },
               ]}
               textColor={theme.colors.primary}
-              disabled={loading}
+              disabled={loading || !isValid}
             />
           )}
         </View>
@@ -359,6 +345,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     marginLeft: 14,
+  },
+  successBanner: {
+    backgroundColor: '#D1FAE5',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    alignItems: 'center',
   },
   footer: {
     padding: 16,

@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import { HeaderBack } from '../../../navigation/header/HeaderBack';
 import { GuardDisciplineScreen } from '../screens/GuardDisciplineScreen';
+import { GuardDisciplineDetailScreen } from '../screens/GuardDisciplineDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,6 +17,19 @@ export const GuardDisciplineStack = () => {
             <HeaderBack
               navigation={navigation}
               title="Incidencias a Guardias"
+              back={true}
+            />
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="GUARD_DISCIPLINE_DETAIL"
+        component={GuardDisciplineDetailScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <HeaderBack
+              navigation={navigation}
+              title="Detalle de Incidencia"
               back={true}
             />
           ),

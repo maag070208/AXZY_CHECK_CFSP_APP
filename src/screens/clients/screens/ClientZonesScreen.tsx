@@ -14,7 +14,6 @@ import { TResult } from '../../../core/types/TResult';
 import {
   ITAlert,
   ITBadge,
-  ITCard,
   ITScreenDatatableLayout,
   ITText,
   ITTouchableOpacity,
@@ -158,35 +157,29 @@ export const ClientZonesScreen = () => {
     const initial = item.name ? item.name.charAt(0).toUpperCase() : 'Z';
 
     return (
-      <ITCard
-        mode="elevated"
-        style={styles.card}
+      <ITTouchableOpacity
         onPress={() => {
-          setZoneToEdit(item);
-          setFormModalVisible(true);
+          navigation.navigate('CLIENT_LOCATIONS' as any, {
+            clientId,
+            zoneId: item.id,
+            zoneName: item.name,
+          });
         }}
+        style={[styles.card, !item.active && styles.cardInactive]}
       >
         <View style={styles.cardHeader}>
           <View style={styles.avatarContainer}>
             <ITText style={styles.avatarText}>{initial}</ITText>
+            <View style={[styles.statusDot, { backgroundColor: item.active ? '#10B981' : '#EF4444' }]} />
           </View>
 
           <View style={styles.headerInfo}>
-            <ITText
-              variant="titleMedium"
-              weight="700"
-              style={styles.zoneName}
-              numberOfLines={1}
-            >
+            <ITText style={styles.zoneName}>
               {item.name}
             </ITText>
-            <View style={styles.headerRow}>
-              <Icon
-                source="map-marker-outline"
-                size={14}
-                color={theme.colors.slate500}
-              />
-              <ITText variant="labelSmall" style={styles.locationCountText}>
+            <View style={styles.headerMeta}>
+              <Icon source="map-marker-outline" size={12} color="#64748B" />
+              <ITText variant="labelSmall" color="#64748B" style={{ marginLeft: 3 }}>
                 {item._count?.locations || 0} Ubicaciones
               </ITText>
             </View>
@@ -201,41 +194,20 @@ export const ClientZonesScreen = () => {
         </View>
 
         <View style={styles.cardFooter}>
-          <View style={styles.footerStats}>
-            <Icon
-              source="tag-outline"
-              size={16}
-              color={theme.colors.slate500}
-            />
-            <ITText variant="bodySmall" style={styles.idText}>
-              ID: {item.id.substring(0, 8).toUpperCase()}
-            </ITText>
-          </View>
-
-          <View style={styles.actionButtons}>
-            <ITTouchableOpacity
-              onPress={() => {
-                setZoneToEdit(item);
-                setFormModalVisible(true);
-              }}
-              style={styles.iconButton}
-            >
-              <Icon
-                source="pencil-outline"
-                size={20}
-                color={theme.colors.primary}
-              />
-            </ITTouchableOpacity>
-
-            <ITTouchableOpacity
-              onPress={() => handleDeletePress(item.id)}
-              style={styles.iconButton}
-            >
-              <Icon source="trash-can-outline" size={20} color="#EF4444" />
-            </ITTouchableOpacity>
-          </View>
+          <ITTouchableOpacity
+            onPress={() => { setZoneToEdit(item); setFormModalVisible(true); }}
+            style={styles.footerButton}
+          >
+            <Icon source="pencil" size={16} color={theme.colors.primary} />
+            <ITText style={styles.footerButtonText}>Editar</ITText>
+          </ITTouchableOpacity>
+          <View style={styles.footerDivider} />
+          <ITTouchableOpacity onPress={() => handleDeletePress(item.id)} style={styles.footerButton}>
+            <Icon source="delete" size={16} color="#EF4444" />
+            <ITText style={[styles.footerButtonText, { color: '#EF4444' }] as any}>Eliminar</ITText>
+          </ITTouchableOpacity>
         </View>
-      </ITCard>
+      </ITTouchableOpacity>
     );
   };
 
@@ -324,10 +296,21 @@ const styles = StyleSheet.create({
     color: theme.colors.slate900,
   },
   card: {
-    marginHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
     marginBottom: 12,
-    borderRadius: 16,
-    padding: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  cardInactive: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -335,60 +318,68 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatarContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    position: 'relative',
   },
   avatarText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: theme.colors.primary,
+  },
+  statusDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   headerInfo: {
     flex: 1,
   },
   zoneName: {
-    color: theme.colors.slate900,
+    fontWeight: '700',
+    color: '#1E293B',
     fontSize: 16,
     letterSpacing: -0.3,
-    marginBottom: 2,
+    marginBottom: 4,
   },
-  headerRow: {
+  headerMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  locationCountText: {
-    color: theme.colors.slate500,
-    fontSize: 11,
   },
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
+    paddingTop: 10,
+    marginTop: 10,
   },
-  footerStats: {
+  footerButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    paddingVertical: 2,
   },
-  idText: {
-    color: theme.colors.slate500,
+  footerButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    marginLeft: 4,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  iconButton: {
-    padding: 4,
+  footerDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#F1F5F9',
   },
   fab: {
     position: 'absolute',

@@ -1,4 +1,4 @@
-import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { FAB, Icon, Searchbar } from 'react-native-paper';
@@ -7,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { UserRole } from '../../../core/types/IUser';
-import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
   ITBadge,
   ITScreenDatatableLayout,
@@ -22,7 +21,7 @@ import { theme } from '../../../shared/theme/theme';
 
 export const IncidentListScreen = () => {
   const insets = useSafeAreaInsets();
-  const { navigateToScreen } = useAppNavigation();
+  const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const user = useSelector((state: RootState) => state.userState);
 
@@ -230,7 +229,7 @@ export const IncidentListScreen = () => {
     return (
       <ITTouchableOpacity
         onPress={() =>
-          navigateToScreen('INCIDENTS_STACK', 'INCIDENT_DETAIL', {
+          navigation.navigate('INCIDENT_DETAIL', {
             incident: item,
           })
         }
@@ -373,7 +372,7 @@ export const IncidentListScreen = () => {
               icon="plus"
               style={styles.fab}
               onPress={() =>
-                navigateToScreen('INCIDENTS_STACK', 'INCIDENT_REPORT')
+                navigation.navigate('INCIDENT_REPORT')
               }
               color="#FFFFFF"
             />
@@ -607,9 +606,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    margin: 20,
-    right: 0,
-    bottom: 0,
+    right: 20,
+    bottom: 20,
     borderRadius: 16,
     backgroundColor: theme.colors.primary,
     elevation: 4,

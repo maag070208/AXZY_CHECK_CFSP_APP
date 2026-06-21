@@ -1,10 +1,9 @@
-import { useFocusEffect, useIsFocused, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { FAB, Icon } from 'react-native-paper';
 import { useDispatch } from 'react-redux';
 import { showLoader } from '../../../core/store/slices/loader.slice';
-import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
   ITBadge,
   ITText,
@@ -30,7 +29,7 @@ export const GuardAssignmentsScreen = () => {
   const route = useRoute<any>();
   const dispatch = useDispatch();
   const isFocused = useIsFocused();
-  const { navigateToScreen } = useAppNavigation();
+  const navigation = useNavigation<any>();
 
   const guard = route.params?.guard;
 
@@ -167,7 +166,7 @@ export const GuardAssignmentsScreen = () => {
       <ITTouchableOpacity
         style={styles.itemCard}
         onPress={() =>
-          (navigateToScreen as any)('GUARDS_STACK', 'ASSIGNMENT_DETAIL', {
+          navigation.navigate('ASSIGNMENT_DETAIL', {
             assignment: { id: item.id },
           })
         }
@@ -230,9 +229,7 @@ export const GuardAssignmentsScreen = () => {
               style={styles.fab}
               color="#FFFFFF"
               onPress={() =>
-                (navigateToScreen as any)('GUARDS_STACK', 'GUARD_ASSIGNMENT_FORM', {
-                  guard,
-                })
+                navigation.navigate('GUARD_ASSIGNMENT_FORM', { guard })
               }
             />
           ) : undefined

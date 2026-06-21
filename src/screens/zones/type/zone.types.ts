@@ -4,6 +4,7 @@ export interface IZone {
   clientId?: string;
   client?: any;
   active: boolean;
+  _count?: { locations: number };
 }
 
 export interface IZoneCreate {

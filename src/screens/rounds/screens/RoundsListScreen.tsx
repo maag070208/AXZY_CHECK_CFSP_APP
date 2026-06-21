@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, Platform, StyleSheet, View } from 'react-native';
 import { Icon, Searchbar } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { useDispatch, useSelector } from 'react-redux';
@@ -17,12 +17,20 @@ import { ITScreensFiltersModal } from '../../../shared/components/ITScreensFilte
 import { SearchComponent } from '../../../shared/components/SearchComponent';
 import { endRound } from '../../home/service/round.service';
 import {
+  deleteRound,
   getPaginatedRounds,
   getRoundsUsers,
   IRound,
 } from '../service/rounds.service';
 import { theme } from '../../../shared/theme/theme';
 import { UserRole } from '../../../core/types/IUser';
+
+const getStatusStyle = (item: IRound) => {
+  const kardexCount = (item as any)._count?.kardexEntries || 0;
+  if (kardexCount === 0) return { bg: '#FEF2F2', dot: '#EF4444', label: 'SIN ACTIVIDAD', variant: 'error' as const };
+  if (item.status === 'COMPLETED') return { bg: '#ECFDF5', dot: '#10B981', label: 'COMPLETADA', variant: 'success' as const };
+  return { bg: '#FFFBEB', dot: '#F59E0B', label: 'EN CURSO', variant: 'warning' as const };
+};
 
 export const RoundsListScreen = ({ navigation, route }: any) => {
   const dispatch = useDispatch();
@@ -48,10 +56,11 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
     clientId?: any;
     status?: string;
   }>({ clientId: routeClientId, status: 'all' });
-  const [appliedDate, setAppliedDate] = useState<Date | undefined>(undefined);
+  const today = new Date();
+  const [appliedDateRange, setAppliedDateRange] = useState<[Date | null, Date | null]>([today, today]);
 
   const [tempFilters, setTempFilters] = useState<{ guardId?: number }>({});
-  const [tempDate, setTempDate] = useState<Date | undefined>(undefined);
+  const [tempDateRange, setTempDateRange] = useState<[Date | null, Date | null]>([today, today]);
   const [openDatePicker, setOpenDatePicker] = useState(false);
 
   const [usersCatalog, setUsersCatalog] = useState<
@@ -60,6 +69,10 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
   const [stoppingId, setStoppingId] = useState<number | null>(null);
   const [showStopDialog, setShowStopDialog] = useState(false);
   const [roundToStop, setRoundToStop] = useState<number | null>(null);
+
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [roundToDelete, setRoundToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchCatalogs = async () => {
@@ -98,7 +111,12 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
 
         const filters: any = { ...appliedFilters };
         if (debouncedSearch) filters.search = debouncedSearch;
-        if (appliedDate) filters.date = dayjs(appliedDate).format('YYYY-MM-DD');
+        if (appliedDateRange[0] && appliedDateRange[1]) {
+          filters.date = [
+            dayjs(appliedDateRange[0]).startOf('day').format(),
+            dayjs(appliedDateRange[1]).endOf('day').format(),
+          ];
+        }
         if (filters.status === 'all') delete filters.status;
 
         const res = await getPaginatedRounds({
@@ -129,7 +147,7 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
         setLoadingMore(false);
       }
     },
-    [debouncedSearch, appliedFilters, appliedDate],
+    [debouncedSearch, appliedFilters, appliedDateRange],
   );
 
   useEffect(() => {
@@ -149,13 +167,13 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
 
   const handleApplyFilters = () => {
     setAppliedFilters(prev => ({ ...prev, ...tempFilters }));
-    setAppliedDate(tempDate);
+    setAppliedDateRange(tempDateRange);
     setShowFilters(false);
   };
 
   const handleClearFilters = () => {
     setTempFilters({});
-    setTempDate(undefined);
+    setTempDateRange([null, null]);
   };
 
   const handleSharePDF = (roundId: number) => {
@@ -185,85 +203,95 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const confirmDeleteRound = async () => {
+    if (!roundToDelete || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteRound(roundToDelete);
+      if (res.success) {
+        dispatch(showToast({ message: 'Ronda eliminada', type: 'success' }));
+        fetchRounds(1);
+      } else {
+        dispatch(
+          showToast({
+            message: res?.messages?.[0] || 'Error al eliminar',
+            type: 'error',
+          }),
+        );
+      }
+    } catch {
+      dispatch(showToast({ message: 'Error inesperado', type: 'error' }));
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+      setRoundToDelete(null);
+    }
+  };
+
   const renderItem = ({ item }: { item: IRound }) => {
+    const statusStyle = getStatusStyle(item);
     const isInProgress = item.status === 'IN_PROGRESS';
     const config =
       (item as any).recurringConfiguration || (item as any).recurringConfig;
-    const title = config?.title || 'Recorrido General';
-    const guardName = `${item.guard?.name || ''} ${item.guard?.lastName || ''}`;
+    const title = config?.title || item.client?.name || 'Recorrido General';
+    const guardName = `${item.guard?.name || ''} ${item.guard?.lastName || ''}`.trim();
+    const guardUsername = item.guard?.name || 'S/U';
 
     return (
       <ITTouchableOpacity
         onPress={() => navigation.navigate('ROUND_DETAIL', { id: item.id })}
         style={styles.cardContainer}
       >
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: statusStyle.bg }]}>
           <View style={styles.cardHeader}>
             <View style={styles.headerInfo}>
-              <ITText variant="titleMedium" weight="bold" color="#0F172A">
+              <ITText variant="titleMedium" weight="bold" color="#1E293B">
                 {title}
               </ITText>
-              <ITText
-                variant="labelSmall"
-                color="#64748B"
-                style={styles.idText}
-              >
-                ID: {item.id.toString().split('-')[0]}
-              </ITText>
+              <View style={styles.clientRow}>
+                <View style={[styles.statusDot, { backgroundColor: statusStyle.dot }]} />
+                <ITText variant="labelSmall" weight="bold" color="#64748B">
+                  {item.client?.name || 'SIN CLIENTE'}
+                </ITText>
+              </View>
             </View>
             <ITBadge
-              label={isInProgress ? 'En curso' : 'Completado'}
-              variant={isInProgress ? 'warning' : 'success'}
+              label={statusStyle.label}
+              variant={statusStyle.variant}
               size="small"
-              dot={isInProgress}
             />
           </View>
 
           <View style={styles.cardBody}>
-            <View style={styles.infoRow}>
-              <View style={styles.infoItem}>
-                <Icon
-                  source="shield-account"
-                  size={14}
-                  color={theme.colors.primary}
-                />
-                <ITText variant="bodySmall" color="#475569" weight="medium">
-                  {guardName}
-                </ITText>
-              </View>
-              <View style={styles.infoItem}>
-                <Icon
-                  source="office-building"
-                  size={14}
-                  color={theme.colors.primary}
-                />
-                <ITText
-                  variant="bodySmall"
-                  color="#475569"
-                  numberOfLines={1}
-                  style={{ flex: 1 }}
-                >
-                  {item.client?.name || 'S/C'}
-                </ITText>
-              </View>
+            <View style={styles.guardRow}>
+              <Icon source="shield-account" size={14} color={theme.colors.primary} />
+              <ITText variant="bodySmall" weight="bold" color="#334155">
+                {guardName}
+              </ITText>
+              <ITText variant="labelSmall" color="#94A3B8">
+                @{guardUsername}
+              </ITText>
             </View>
 
-            <View style={styles.timeContainer}>
-              <View style={styles.timeBox}>
-                <Icon source="clock-start" size={14} color="#64748B" />
-                <ITText variant="labelSmall" color="#64748B">
-                  {dayjs(item.startTime).format('HH:mm')} •{' '}
-                  {dayjs(item.startTime).format('DD/MM')}
-                </ITText>
-              </View>
-              {item.endTime && (
-                <View style={styles.timeBox}>
-                  <Icon source="clock-end" size={14} color="#64748B" />
-                  <ITText variant="labelSmall" color="#64748B">
-                    {dayjs(item.endTime).format('HH:mm')}
-                  </ITText>
-                </View>
+            <View style={styles.timeRow}>
+              <Icon source="play-circle-outline" size={14} color="#64748B" />
+              <ITText variant="labelSmall" weight="bold" color="#475569" style={styles.mono}>
+                {dayjs(item.startTime).format('DD MMM · HH:mm')}
+              </ITText>
+              {isInProgress ? (
+                <View style={styles.liveDot} />
+              ) : (
+                <Icon source="stop-circle-outline" size={14} color="#64748B" />
               )}
+              {isInProgress ? (
+                <ITText variant="labelSmall" weight="bold" color="#10B981">
+                  En curso
+                </ITText>
+              ) : item.endTime ? (
+                <ITText variant="labelSmall" weight="bold" color="#64748B" style={styles.mono}>
+                  {dayjs(item.endTime).format('DD MMM · HH:mm')}
+                </ITText>
+              ) : null}
             </View>
           </View>
 
@@ -283,29 +311,35 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
                 </ITText>
               </ITTouchableOpacity>
             ) : !isInProgress ? (
-              <ITTouchableOpacity
-                style={[styles.footerAction, styles.pdfBtn]}
-                onPress={() => handleSharePDF(item.id)}
-              >
-                <Icon source="file-pdf-box" size={16} color="#3B82F6" />
-                <ITText variant="labelSmall" weight="bold" color="#3B82F6">
-                  VER REPORTE
-                </ITText>
-              </ITTouchableOpacity>
+              <>
+                <ITTouchableOpacity
+                  style={[styles.footerAction, styles.pdfBtn]}
+                  onPress={() => handleSharePDF(item.id)}
+                >
+                  <Icon source="file-pdf-box" size={16} color="#3B82F6" />
+                  <ITText variant="labelSmall" weight="bold" color="#3B82F6">
+                    REPORTE
+                  </ITText>
+                </ITTouchableOpacity>
+                <ITTouchableOpacity
+                  style={[styles.footerAction, styles.deleteBtn]}
+                  onPress={() => {
+                    setRoundToDelete(item.id);
+                    setShowDeleteDialog(true);
+                  }}
+                >
+                  <Icon source="trash-can-outline" size={16} color="#EF4444" />
+                  <ITText variant="labelSmall" weight="bold" color="#EF4444">
+                    ELIMINAR
+                  </ITText>
+                </ITTouchableOpacity>
+              </>
             ) : null}
             <View style={styles.detailsBtn}>
-              <ITText
-                variant="labelSmall"
-                color={theme.colors.primary}
-                weight="bold"
-              >
+              <ITText variant="labelSmall" color={theme.colors.primary} weight="bold">
                 DETALLES
               </ITText>
-              <Icon
-                source="chevron-right"
-                size={16}
-                color={theme.colors.primary}
-              />
+              <Icon source="chevron-right" size={16} color={theme.colors.primary} />
             </View>
           </View>
         </View>
@@ -313,10 +347,19 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
     );
   };
 
+  const formatDateRange = () => {
+    if (!tempDateRange[0] && !tempDateRange[1]) return 'Cualquier fecha';
+    if (tempDateRange[0] && !tempDateRange[1]) return dayjs(tempDateRange[0]).format('DD/MM/YYYY');
+    if (tempDateRange[0] && tempDateRange[1]) {
+      return `${dayjs(tempDateRange[0]).format('DD/MM')} - ${dayjs(tempDateRange[1]).format('DD/MM/YYYY')}`;
+    }
+    return 'Cualquier fecha';
+  };
+
   return (
     <View style={styles.container}>
       <ITScreenDatatableLayout
-        title="Control de Recorridos"
+        title="Historial de Rondas"
         totalItems={total}
         loading={loading}
         refreshing={refreshing}
@@ -327,7 +370,7 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
         onFilterPress={() => setShowFilters(true)}
         searchBar={
           <Searchbar
-            placeholder="Buscar recorrido..."
+            placeholder="Buscar guardia..."
             onChangeText={setSearch}
             value={search}
             style={styles.searchBar}
@@ -340,9 +383,9 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
         filterBadges={
           <View style={styles.badgesRow}>
             {[
-              { label: 'Todos', value: 'all' },
-              { label: 'En curso', value: 'IN_PROGRESS' },
-              { label: 'Completados', value: 'COMPLETED' },
+              { label: 'TODAS', value: 'all' },
+              { label: 'ACTIVAS', value: 'IN_PROGRESS' },
+              { label: 'HISTORIAL', value: 'COMPLETED' },
             ].map(f => (
               <ITTouchableOpacity
                 key={f.value}
@@ -379,7 +422,7 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
             color="#94A3B8"
             style={styles.filterLabel}
           >
-            FECHA DE INICIO
+            RANGO DE FECHAS
           </ITText>
           <ITTouchableOpacity
             onPress={() => setOpenDatePicker(true)}
@@ -391,7 +434,7 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
               color={theme.colors.primary}
             />
             <ITText variant="bodyMedium" color="#334155">
-              {tempDate ? tempDate.toLocaleDateString() : 'Cualquier fecha'}
+              {formatDateRange()}
             </ITText>
           </ITTouchableOpacity>
         </View>
@@ -414,13 +457,14 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
 
       <DatePickerModal
         locale="es"
-        mode="single"
+        mode="range"
         visible={openDatePicker}
         onDismiss={() => setOpenDatePicker(false)}
-        date={tempDate}
+        startDate={tempDateRange[0] || undefined}
+        endDate={tempDateRange[1] || undefined}
         onConfirm={params => {
           setOpenDatePicker(false);
-          setTempDate(params.date);
+          setTempDateRange([params.startDate || null, params.endDate || null]);
         }}
       />
 
@@ -433,6 +477,20 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
         confirmLabel="Finalizar"
         type="alert"
         loading={stoppingId !== null}
+      />
+
+      <ITAlert
+        visible={showDeleteDialog}
+        onDismiss={() => {
+          setShowDeleteDialog(false);
+          setRoundToDelete(null);
+        }}
+        onConfirm={confirmDeleteRound}
+        title="Eliminar Ronda"
+        description="Esta acción eliminará el registro de la ronda y todo su historial asociado de forma permanente."
+        confirmLabel="Eliminar"
+        type="alert"
+        loading={isDeleting}
       />
     </View>
   );
@@ -461,16 +519,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
     borderColor: '#F1F5F9',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -482,35 +534,40 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
-  idText: {
-    marginTop: 2,
-    letterSpacing: 0.5,
+  clientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   cardBody: {
-    gap: 12,
+    gap: 8,
     marginBottom: 16,
   },
-  infoRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  infoItem: {
+  guardRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    flex: 1,
   },
-  timeContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F8FAFC',
-    padding: 10,
-    borderRadius: 12,
-    gap: 16,
-  },
-  timeBox: {
+  timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  mono: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 11,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
   },
   cardFooter: {
     flexDirection: 'row',
@@ -518,7 +575,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: 'rgba(0,0,0,0.06)',
   },
   footerAction: {
     flexDirection: 'row',
@@ -533,6 +590,9 @@ const styles = StyleSheet.create({
   },
   pdfBtn: {
     backgroundColor: '#EFF6FF',
+  },
+  deleteBtn: {
+    backgroundColor: '#FEF2F2',
   },
   detailsBtn: {
     flexDirection: 'row',

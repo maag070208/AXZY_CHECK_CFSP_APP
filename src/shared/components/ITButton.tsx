@@ -6,6 +6,8 @@ interface ITButtonProps {
   label?: string;
   onPress: () => void;
   mode?: 'text' | 'outlined' | 'contained' | 'elevated' | 'contained-tonal';
+  variant?: 'text' | 'outlined' | 'contained' | 'elevated' | 'contained-tonal';
+  size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
   icon?: string;
@@ -18,10 +20,18 @@ interface ITButtonProps {
   testID?: string;
 }
 
+const sizeStyles = {
+  sm: { height: 36, fontSize: 13 },
+  md: { height: 48, fontSize: 16 },
+  lg: { height: 56, fontSize: 18 },
+};
+
 export const ITButton: React.FC<ITButtonProps> = ({
   label,
   onPress,
-  mode = 'contained',
+  mode: modeProp,
+  variant,
+  size = 'md',
   loading = false,
   disabled = false,
   icon,
@@ -34,6 +44,8 @@ export const ITButton: React.FC<ITButtonProps> = ({
   testID,
 }) => {
   const theme = useTheme();
+  const mode = variant || modeProp || 'contained';
+  const currentSize = sizeStyles[size];
 
   return (
     <Button
@@ -43,9 +55,10 @@ export const ITButton: React.FC<ITButtonProps> = ({
       loading={loading}
       disabled={disabled || loading}
       icon={icon}
+      compact={size === 'sm'}
       style={[styles.button, style]}
-      labelStyle={[styles.label, labelStyle]}
-      contentStyle={styles.content}
+      labelStyle={[styles.label, { fontSize: currentSize.fontSize }, labelStyle]}
+      contentStyle={[styles.content, { height: currentSize.height }]}
       buttonColor={color}
       textColor={textColor}
     >
@@ -60,11 +73,9 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   content: {
-    height: 48,
-    flexDirection: 'row-reverse', // Icon on the right if needed, or keep standard
+    flexDirection: 'row-reverse',
   },
   label: {
-    fontSize: 16,
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },

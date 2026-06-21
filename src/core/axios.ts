@@ -105,7 +105,15 @@ axiosInstance.interceptors.response.use(
    4. Central Error (igual web, backend ya regresa TResult)
 --------------------------------------------------------- */
 const handleError = <T>(error: any): TResult<T> => {
-  throw error?.response?.data || error;
+  const errorData = error?.response?.data;
+  if (errorData && typeof errorData === 'object' && 'success' in errorData) {
+    return errorData as TResult<T>;
+  }
+  return {
+    success: false,
+    data: null as T,
+    messages: [error?.message || 'Error de conexión'],
+  } as TResult<T>;
 };
 
 /* ---------------------------------------------------------

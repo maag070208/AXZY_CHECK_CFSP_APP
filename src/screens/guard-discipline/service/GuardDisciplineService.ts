@@ -39,3 +39,8 @@ export const getPaginatedGuards = async (params: any) => {
   }
   return { success: false, data: { rows: [], total: 0 } };
 };
+
+export const resolveDiscipline = async (
+  id: string,
+  data: { status: 'RESOLVED' | 'DISMISSED'; description?: string },
+) => put(`/guard-discipline/${id}/resolve`, data);

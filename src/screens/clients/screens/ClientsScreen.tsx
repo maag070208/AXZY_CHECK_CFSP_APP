@@ -1,7 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -25,6 +24,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { UserRole } from '../../../core/types/IUser';
+import { ITAlert } from '../../../shared/components';
 import { theme } from '../../../shared/theme/theme';
 
 export const ClientsScreen = ({ navigation }: any) => {
@@ -43,6 +43,9 @@ export const ClientsScreen = ({ navigation }: any) => {
   const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<IClient | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -122,26 +125,33 @@ export const ClientsScreen = ({ navigation }: any) => {
   };
 
   const handleDelete = (item: IClient) => {
-    Alert.alert(
-      'Eliminar cliente',
-      `¿Estás seguro de que deseas eliminar "${item.name}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            const res = await deleteClient(item.id);
-            if (res.success) {
-              dispatch(
-                showToast({ message: 'Cliente eliminado', type: 'success' }),
-              );
-              fetchData(1);
-            }
-          },
-        },
-      ],
-    );
+    setItemToDelete(item);
+    setDeleteDialogVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteClient(itemToDelete.id);
+      if (res.success) {
+        dispatch(showToast({ message: 'Cliente eliminado', type: 'success' }));
+        fetchData(1);
+      } else {
+        dispatch(
+          showToast({
+            message: res?.messages?.[0] || 'Error al eliminar',
+            type: 'error',
+          }),
+        );
+      }
+    } catch {
+      dispatch(showToast({ message: 'Error inesperado', type: 'error' }));
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogVisible(false);
+      setItemToDelete(null);
+    }
   };
 
   const renderItem = ({ item }: { item: IClient }) => (

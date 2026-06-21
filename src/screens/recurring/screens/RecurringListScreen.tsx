@@ -1,7 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -38,6 +37,7 @@ import {
   ITScreenDatatableLayout,
   ITText,
   ITTouchableOpacity,
+  ITAlert,
 } from '../../../shared/components';
 import { ITScreensFiltersModal } from '../../../shared/components/ITScreensFiltersModal';
 import { SearchComponent } from '../../../shared/components/SearchComponent';
@@ -62,6 +62,11 @@ export const RecurringListScreen = ({ navigation }: any) => {
   const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Delete Dialog
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filters
   const [showFilters, setShowFilters] = useState(false);
@@ -168,26 +173,33 @@ export const RecurringListScreen = ({ navigation }: any) => {
   };
 
   const handleDelete = (item: any) => {
-    Alert.alert(
-      'Eliminar ruta',
-      `¿Estás seguro de que deseas eliminar la ruta "${item.title}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            const res = await deleteRecurring(item.id);
-            if (res && res.success) {
-              dispatch(
-                showToast({ message: 'Ruta eliminada', type: 'success' }),
-              );
-              fetchData(1);
-            }
-          },
-        },
-      ],
-    );
+    setItemToDelete(item);
+    setDeleteDialogVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteRecurring(itemToDelete.id);
+      if (res && res.success) {
+        dispatch(showToast({ message: 'Ruta eliminada', type: 'success' }));
+        fetchData(1);
+      } else {
+        dispatch(
+          showToast({
+            message: res?.messages?.[0] || 'Error al eliminar',
+            type: 'error',
+          }),
+        );
+      }
+    } catch {
+      dispatch(showToast({ message: 'Error inesperado', type: 'error' }));
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogVisible(false);
+      setItemToDelete(null);
+    }
   };
 
   const clientOptions = clients.map(c => ({
@@ -392,6 +404,20 @@ export const RecurringListScreen = ({ navigation }: any) => {
           />
         </View>
       </ITScreensFiltersModal>
+
+      <ITAlert
+        visible={deleteDialogVisible}
+        onDismiss={() => {
+          setDeleteDialogVisible(false);
+          setItemToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Eliminar ruta"
+        description={`¿Estás seguro de que deseas eliminar la ruta "${itemToDelete?.title || ''}"?`}
+        confirmLabel="Eliminar"
+        type="alert"
+        loading={isDeleting}
+      />
     </View>
   );
 };

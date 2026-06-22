@@ -385,7 +385,7 @@ export const GuardListScreen = () => {
         renderItem={renderGuard}
         keyExtractor={item => item.id.toString()}
         fab={
-          isFocused ? (
+          isFocused && user.role !== UserRole.RESDN ? (
             <FAB
               icon="plus"
               style={styles.fab}

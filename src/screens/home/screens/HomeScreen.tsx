@@ -316,7 +316,16 @@ export const HomeScreen = () => {
       color: '#EC4899',
       roles: [UserRole.ADMIN],
     },
-  ];
+    {
+      id: 'notifications',
+      label: 'Notificaciones',
+      icon: 'bell-outline',
+      stack: 'NOTIFICATIONS_STACK',
+      screen: 'NOTIFICATIONS_LIST',
+      color: '#3B82F6',
+        roles: [UserRole.ADMIN, UserRole.SHIFT],
+      },
+    ];
 
   const filteredModules = MODULES.filter(m =>
     m.roles.includes(user.role as UserRole),

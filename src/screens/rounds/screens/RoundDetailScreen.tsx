@@ -83,6 +83,7 @@ export const RoundDetailScreen = ({ route }: any) => {
       const res = await getRoundDetail(id);
       if (res.success && res.data) {
         setData(res.data);
+
       }
     } catch (error) {
       console.error('Error fetching round detail:', error);
@@ -411,32 +412,33 @@ export const RoundDetailScreen = ({ route }: any) => {
 
     return (
       <View style={styles.tasksContainer}>
-        <ITText
-          variant="labelSmall"
-          weight="bold"
-          color="#94A3B8"
-          style={styles.tasksTitle}
-        >
-          TAREAS ASOCIADAS
+        <ITText variant="labelSmall" weight="bold" color="#94A3B8" style={styles.tasksTitle}>
+          TAREAS
         </ITText>
-        {tasks.map((task, idx) => (
-          <View key={idx} style={styles.taskItem}>
-            <Icon
-              source={task.completed ? 'check-circle' : 'circle-outline'}
-              size={18}
-              color={task.completed ? '#10B981' : '#CBD5E1'}
-            />
-            <ITText
-              variant="bodySmall"
+        <View style={styles.tasksBadgeRow}>
+          {tasks.map((task, idx) => (
+            <View
+              key={idx}
               style={[
-                styles.taskText,
-                task.completed && styles.taskTextCompleted,
+                styles.taskBadge,
+                { backgroundColor: task.completed ? '#ECFDF5' : '#FFF7ED' },
               ]}
             >
-              {task.description}
-            </ITText>
-          </View>
-        ))}
+              <Icon
+                source={task.completed ? 'check-bold' : 'clock-outline'}
+                size={12}
+                color={task.completed ? '#10B981' : '#F97316'}
+              />
+              <ITText
+                variant="labelSmall"
+                weight="bold"
+                color={task.completed ? '#059669' : '#C2410C'}
+              >
+                {task.description}
+              </ITText>
+            </View>
+          ))}
+        </View>
       </View>
     );
   }, []);
@@ -526,9 +528,38 @@ export const RoundDetailScreen = ({ route }: any) => {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+          <View style={styles.headerTopRow}>
+            <ITTouchableOpacity onPress={() => navigation.goBack()}>
+              <Icon source="arrow-left" size={24} color="#0F172A" />
+            </ITTouchableOpacity>
+            <ITText variant="titleMedium" weight="bold" color="#0F172A">
+              Ronda no encontrada
+            </ITText>
+            <View style={{ width: 24 }} />
+          </View>
+        </View>
+        <View style={styles.center}>
+          <Icon source="alert-circle-outline" size={48} color="#94A3B8" />
+          <ITText variant="bodyMedium" color="#64748B" style={{ marginTop: 12, textAlign: 'center' }}>
+            No se pudieron cargar los detalles{'\n'}de esta ronda.
+          </ITText>
+          <ITButton
+            label="Reintentar"
+            mode="tonal"
+            icon="refresh"
+            onPress={fetchData}
+            style={{ marginTop: 20, borderRadius: 12 }}
+          />
+        </View>
+      </View>
+    );
+  }
 
-  const routeTitle = data.round.client?.name || 'Ronda General';
+  const routeTitle = data.round.recurringConfiguration?.title || data.round.client?.name || 'Ronda General';
 
   return (
     <View style={styles.container}>
@@ -540,8 +571,14 @@ export const RoundDetailScreen = ({ route }: any) => {
         {/* Modern Header */}
         <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <View style={styles.headerTopRow}>
+            <ITTouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backBtn}
+            >
+              <Icon source="arrow-left" size={24} color="#0F172A" />
+            </ITTouchableOpacity>
             <View style={styles.headerInfo}>
-              <ITText variant="headlineSmall" weight="bold" color="#0F172A">
+              <ITText variant="headlineSmall" weight="bold" color="#0F172A" numberOfLines={1}>
                 {routeTitle}
               </ITText>
               <ITText variant="bodySmall" color="#64748B" weight="medium">
@@ -944,13 +981,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
+  backBtn: { marginRight: 12, padding: 4 },
   headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
-  headerInfo: { flex: 1, marginRight: 16 },
+  headerInfo: { flex: 1 },
   pdfBtn: { borderRadius: 12 },
   headerMetaRow: { flexDirection: 'row', gap: 16 },
   metaCard: {
@@ -1151,9 +1189,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tasksTitle: { letterSpacing: 0.5 },
-  taskItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  taskText: { flex: 1 },
-  taskTextCompleted: { color: '#94A3B8', textDecorationLine: 'line-through' },
+  tasksBadgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  taskBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
   incidentHeader: {
     flexDirection: 'row',
     alignItems: 'center',

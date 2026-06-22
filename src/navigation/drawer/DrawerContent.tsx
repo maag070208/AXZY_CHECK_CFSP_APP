@@ -42,7 +42,7 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'home-outline',
     route: 'Tabs',
     screen: 'HOME_STACK',
-    roles: ['ADMIN', 'SHIFT', 'GUARD', 'MAINT', 'RESDN'],
+    roles: ['ADMIN', 'SHIFT', 'GUARD', 'MAINT'],
   },
   {
     label: 'Guardias',
@@ -56,7 +56,7 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'clipboard-text-clock',
     route: 'GUARD_LOGS_STACK',
     screen: 'GUARD_LOGS_LIST',
-    roles: ['ADMIN', 'SHIFT', 'RESDN'],
+    roles: ['ADMIN', 'SHIFT'],
   },
   {
     label: 'Incidencias a Guardias',
@@ -133,6 +133,13 @@ const MENU_ITEMS: MenuItem[] = [
     icon: 'map-marker-outline',
     route: 'LOCATIONS_STACK',
     screen: 'LOCATIONS_MAIN',
+    roles: ['ADMIN', 'SHIFT'],
+  },
+  {
+    label: 'Notificaciones',
+    icon: 'bell-outline',
+    route: 'NOTIFICATIONS_STACK',
+    screen: 'NOTIFICATIONS_LIST',
     roles: ['ADMIN', 'SHIFT'],
   },
 ];

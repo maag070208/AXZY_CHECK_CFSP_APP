@@ -321,18 +321,20 @@ export const RoundsListScreen = ({ navigation, route }: any) => {
                     REPORTE
                   </ITText>
                 </ITTouchableOpacity>
-                <ITTouchableOpacity
-                  style={[styles.footerAction, styles.deleteBtn]}
-                  onPress={() => {
-                    setRoundToDelete(item.id);
-                    setShowDeleteDialog(true);
-                  }}
-                >
-                  <Icon source="trash-can-outline" size={16} color="#EF4444" />
-                  <ITText variant="labelSmall" weight="bold" color="#EF4444">
-                    ELIMINAR
-                  </ITText>
-                </ITTouchableOpacity>
+                {user.role !== UserRole.RESDN && (
+                  <ITTouchableOpacity
+                    style={[styles.footerAction, styles.deleteBtn]}
+                    onPress={() => {
+                      setRoundToDelete(item.id);
+                      setShowDeleteDialog(true);
+                    }}
+                  >
+                    <Icon source="trash-can-outline" size={16} color="#EF4444" />
+                    <ITText variant="labelSmall" weight="bold" color="#EF4444">
+                      ELIMINAR
+                    </ITText>
+                  </ITTouchableOpacity>
+                )}
               </>
             ) : null}
             <View style={styles.detailsBtn}>

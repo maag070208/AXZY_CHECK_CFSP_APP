@@ -7,9 +7,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { FAB, Icon, Portal, Searchbar } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../../core/store/redux.config';
 import { showLoader } from '../../../core/store/slices/loader.slice';
 import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
+import { UserRole } from '../../../core/types/IUser';
 import {
   ITBadge,
   ITCard,
@@ -28,6 +30,7 @@ export const GuardDetailScreen = () => {
   const dispatch = useDispatch();
   const { navigateToScreen } = useAppNavigation();
   const isFocused = useIsFocused();
+  const user = useSelector((state: RootState) => state.userState);
   const { guard } = route.params;
 
   const [activeGuard, setActiveGuard] = useState<any>(guard);
@@ -327,7 +330,7 @@ export const GuardDetailScreen = () => {
       </View>
 
       <Portal>
-        {isFocused && (
+        {isFocused && user.role !== UserRole.RESDN && (
           <FAB
             icon="plus"
             style={[

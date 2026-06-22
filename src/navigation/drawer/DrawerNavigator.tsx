@@ -21,6 +21,7 @@ import { SchedulesStack } from '../../screens/schedules/stack/SchedulesStack';
 import { ClientStack as ClientsStack } from '../../screens/clients/stack/ClientStack';
 import { ZonesStack } from '../../screens/zones/stack/ZonesStack';
 import { RecurringStack } from '../../screens/recurring/stack/RecurringStack';
+import { NotificationsStack } from '../../screens/notifications/stack/NotificationsStack';
 import { SyncScreen } from '../../screens/home/screens/SyncScreen';
 
 const Drawer = createDrawerNavigator();
@@ -219,6 +220,14 @@ const DrawerNavigator = () => {
         options={{
           drawerItemStyle: { display: 'none' },
         }}
+      />
+
+      <Drawer.Screen
+        name="NOTIFICATIONS_STACK"
+        component={NotificationsStack}
+        options={({ route }) => ({
+          swipeEnabled: isDrawerEnabled(route),
+        })}
       />
     </Drawer.Navigator>
   );

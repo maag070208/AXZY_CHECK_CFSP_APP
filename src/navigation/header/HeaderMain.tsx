@@ -21,7 +21,7 @@ export const HeaderMain = ({ navigation, title }: any) => {
         styles.container,
         {
           backgroundColor: '#FFFFFF',
-          paddingTop: Platform.OS === 'ios' ? insets.top + 12 : insets.top + 0,
+          paddingTop: Platform.OS === 'ios' ? insets.top + 12 : insets.top + -20,
           paddingBottom: 20,
           marginBottom: 10,
         },
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#ffffff',
   },
   topRow: {
     flexDirection: 'row',

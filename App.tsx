@@ -12,7 +12,9 @@ import { toastConfig } from './src/shared/components/CustomToast';
 import { ToastHandler } from './src/core/store/hooks/toast';
 import { es, registerTranslation } from 'react-native-paper-dates';
 import { NoInternetScreen } from './src/shared/components/NoInternetScreen';
+import { WatermarkOverlay } from './src/shared/components/WatermarkOverlay';
 import { FCMProvider } from './src/core/providers/FCMProvider';
+import { AblyNotificationProvider } from './src/core/providers/AblyNotificationProvider';
 
 registerTranslation('es', es);
 
@@ -46,8 +48,10 @@ function App() {
             <Provider store={store}>
               <PersistGate persistor={persistored} loading={null}>
                 <PaperProvider theme={ITTheme}>
+                  <WatermarkOverlay />
                   <FCMProvider>
                     <MainNavigator />
+                    <AblyNotificationProvider />
                   </FCMProvider>
                   <ToastHandler />
                   <Toast config={toastConfig} />

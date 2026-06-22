@@ -355,7 +355,7 @@ export const MaintenanceListScreen = () => {
         renderItem={renderItem}
         keyExtractor={item => item.id.toString()}
         fab={
-          user.role === UserRole.ADMIN && isFocused ? (
+          (user.role === UserRole.ADMIN || user.role === UserRole.RESDN) && isFocused ? (
             <FAB
               icon="plus"
               style={styles.fab}

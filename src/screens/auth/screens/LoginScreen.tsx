@@ -110,7 +110,7 @@ const LoginScreen: React.FC = () => {
                 weight="bold"
                 style={styles.appTitle}
               >
-                Fansal CheckApp
+                CheckApp
               </ITText>
               <ITText variant="bodyMedium" style={styles.appSubtitle}>
                 Sistema de Gestión y Control Administrativo

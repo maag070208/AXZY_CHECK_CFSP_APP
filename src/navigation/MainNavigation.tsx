@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from '../core/store/hooks';
 import { logout } from '../core/store/slices/user.slice';
 import { IAuthToken } from '../core/types/IUser';
 import LoginScreen from '../screens/auth/screens/LoginScreen';
-import { PermissionsValidator } from '../shared/components';
+import { PermissionsValidator, LocationValidator } from '../shared/components';
 import DrawerNavigator from './drawer/DrawerNavigator';
 
 import { navigationRef } from './navigationRef';
@@ -56,7 +56,9 @@ const MainNavigation = () => {
       <NavigationContainer ref={navigationRef} onStateChange={validateToken}>
         {isSignedIn ? (
           <PermissionsValidator>
-            <DrawerNavigator />
+            <LocationValidator>
+              <DrawerNavigator />
+            </LocationValidator>
           </PermissionsValidator>
         ) : (
           <LoginScreen />

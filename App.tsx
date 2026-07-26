@@ -15,6 +15,7 @@ import { NoInternetScreen } from './src/shared/components/NoInternetScreen';
 import { WatermarkOverlay } from './src/shared/components/WatermarkOverlay';
 import { FCMProvider } from './src/core/providers/FCMProvider';
 import { AblyNotificationProvider } from './src/core/providers/AblyNotificationProvider';
+import { PanicProvider } from './src/core/providers/PanicProvider';
 
 registerTranslation('es', es);
 
@@ -50,8 +51,10 @@ function App() {
                 <PaperProvider theme={ITTheme}>
                   <WatermarkOverlay />
                   <FCMProvider>
-                    <MainNavigator />
-                    <AblyNotificationProvider />
+                    <PanicProvider>
+                      <MainNavigator />
+                      <AblyNotificationProvider />
+                    </PanicProvider>
                   </FCMProvider>
                   <ToastHandler />
                   <Toast config={toastConfig} />

@@ -1,5 +1,6 @@
 import { CommonActions, NavigationState, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { navigationRef } from "../navigationRef";
 import { AppStacks, NavigationParams, ScreenNames, StackNames } from "../types/navigation.types";
 
 export const useAppNavigation = () => {
@@ -55,19 +56,12 @@ export const useAppNavigation = () => {
      * 4) Reset hacia el Drawer Main
      * -------------------------------------------------------*/
     const resetToHome = () => {
-        navigation.dispatch(
-            CommonActions.reset({
+        if (navigationRef.isReady()) {
+            navigationRef.reset({
                 index: 0,
-                routes: [{ name: "DRAWER_MAIN" }],
-            })
-        );
-
-        setTimeout(() => {
-            navigation.navigate("DRAWER_MAIN", {
-                screen: "TABS",
-                params: { screen: "HOME_STACK" }
+                routes: [{ name: "Tabs" }],
             });
-        }, 50);
+        }
     };
 
     /* -------------------------------------------------------

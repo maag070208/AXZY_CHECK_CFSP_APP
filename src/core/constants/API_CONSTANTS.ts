@@ -4,7 +4,7 @@ export const API_CONSTANTS = {
   // PROD
   // BASE_URL: 'https://axzycheckcfspapi-production.up.railway.app/api/v1',
   //DEV
-  BASE_URL: 'https://axzycheckapidevelop-production.up.railway.app/api/v1',
+  BASE_URL: 'https://axzycheckcfspapi-production.up.railway.app/api/v1',
   ROUND_COOLDOWN_MINUTES: 0,
   TIMEOUT: 30000,
   HEADERS: {

@@ -27,5 +27,6 @@ export * from './ITScreenDatatableLayout';
 export * from './ITTouchableOpacity';
 export * from './ITMediaPreviewSection';
 export * from './PermissionsValidator';
+export * from './LocationValidator';
 export * from './ActionPickerModal';
 export * from './ITModal';

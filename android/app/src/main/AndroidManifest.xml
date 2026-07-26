@@ -9,9 +9,12 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <application
       android:name=".MainApplication"
@@ -27,6 +30,38 @@
         android:name="app.notifee.core.ForegroundService"
         android:foregroundServiceType="dataSync"
         android:exported="false" />
+
+      <!-- Servicio persistente de pánico: mantiene el proceso vivo y muestra
+           notificación low-priority. Es el que mantiene el BroadcastReceiver
+           de MEDIA_BUTTON registrado para que la detección funcione con la
+           app en background o cerrada. -->
+      <service
+        android:name=".panic.PanicForegroundService"
+        android:foregroundServiceType="mediaPlayback"
+        android:exported="false" />
+
+      <!-- Receiver nativo que escucha los botones de volumen a nivel SO.
+           Se ejecuta incluso con la app cerrada. Declarado en el manifest
+           con exported=false para que solo el sistema lo invoque. -->
+      <receiver
+        android:name=".panic.PanicMediaButtonReceiver"
+        android:exported="true"
+        android:priority="1000">
+        <intent-filter>
+          <action android:name="android.intent.action.MEDIA_BUTTON" />
+        </intent-filter>
+      </receiver>
+
+      <!-- Auto-arranca el servicio después del reboot del dispositivo. -->
+      <receiver
+        android:name=".panic.PanicBootReceiver"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="android.intent.action.BOOT_COMPLETED" />
+          <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+          <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        </intent-filter>
+      </receiver>
 
       <meta-data
         android:name="com.google.android.geo.API_KEY"

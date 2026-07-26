@@ -21,6 +21,7 @@ import { database } from '../../../core/database/database';
 import { RootState } from '../../../core/store/redux.config';
 import { showToast } from '../../../core/store/slices/toast.slice';
 import { HeaderBack } from '../../../navigation/header/HeaderBack';
+import { useAppNavigation } from '../../../navigation/hooks/useAppNavigation';
 import {
   ITAlert,
   ITButton,
@@ -55,6 +56,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
   const { location, assignmentId, roundId } = route.params;
   const user = useSelector((state: RootState) => state.userState);
   const dispatch = useDispatch();
+  const { resetToHome } = useAppNavigation();
 
   // States
   const [loading, setLoading] = useState(false);
@@ -283,7 +285,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
           title: 'Error',
           message: 'No se pudo generar el reporte inicial.',
           type: 'alert',
-          onConfirm: () => navigation.navigate('Tabs'),
+          onConfirm: () => resetToHome(),
         });
       }
     } catch (e: any) {
@@ -293,7 +295,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
           title: 'Error de Conexión',
           message: e?.messages?.[0] || 'No se pudo contactar con el servidor.',
           type: 'alert',
-          onConfirm: () => navigation.navigate('Tabs'),
+          onConfirm: () => resetToHome(),
         });
     } finally {
       setLoading(false);
@@ -458,7 +460,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
         setVideos([]);
         updateKardexId(null);
         setAlertConfig({ ...alertConfig, visible: false });
-        navigation.navigate('Tabs');
+        resetToHome();
       },
     });
     return true;
@@ -522,11 +524,7 @@ export const CheckReportScreen = ({ route, navigation }: any) => {
         }
         dispatch(showToast({ message: '¡Reporte enviado!', type: 'success' }));
         setLoading(false);
-        navigation.navigate('Tabs');
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'CHECK_SCAN' }],
-        });
+        resetToHome();
         return;
       }
 

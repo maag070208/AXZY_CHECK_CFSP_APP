@@ -360,7 +360,7 @@ export const GuardDashboard = () => {
       <TouchableOpacity
         key={item.id || String(index)}
         style={[styles.locCard, isCompleted && styles.completedCard]}
-        onPress={handleLocationTap}
+        // onPress={handleLocationTap}
         disabled={!__DEV__ || !isMyRound || isCompleted}
         testID={`loc-card-${item.id}`}
       >
@@ -528,7 +528,7 @@ export const GuardDashboard = () => {
                     })
                   }
                 />
-                {(user.role === UserRole.MAINT || user.role === UserRole.ADMIN) && (
+                {(user.role === UserRole.SHIFT || user.role === UserRole.GUARD || user.role === UserRole.MAINT || user.role === UserRole.ADMIN) && (
                   <QuickAction
                     icon="wrench"
                     label="Mantenimiento"
@@ -760,9 +760,10 @@ const styles = StyleSheet.create({
   },
   actionSection: { marginBottom: 20 },
   mainActionBtn: { borderRadius: 16, height: 56, justifyContent: 'center' },
-  secondaryActions: { flexDirection: 'row', gap: 12, marginTop: 14 },
+  secondaryActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 },
   quickBtn: {
-    flex: 1,
+    width: '48%',
+    flexGrow: 1,
     height: 54,
     borderRadius: 14,
     flexDirection: 'row',

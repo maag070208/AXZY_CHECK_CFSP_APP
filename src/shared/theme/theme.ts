@@ -69,6 +69,31 @@ const baseColors = {
   slate300: '#CBD5E1',
   slate200: '#E2E8F0',
   slate100: '#F1F5F9',
+
+  emerald: '#059669',
+  emeraldLight: '#D1FAE5',
+  red: '#DC2626',
+  redLight: '#FEE2E2',
+  orange: '#EA580C',
+  orangeLight: '#FFEDD5',
+  amber: '#f59e0b',
+  blue: '#2563eb',
+  blueLight: '#DBEAFE',
+  purple: '#7c3aed',
+  pink: '#db2777',
+  cyan: '#0891b2',
+  indigoBrand: '#4f46e5',
+  white: '#FFFFFF',
+
+  pendingCard: '#FFF8F1',
+  pendingBorder: '#FFE0B2',
+  border: '#E2E8F0',
+  complete: '#4CAF50',
+  pending: '#FF9800',
+
+  rounds: '#7c3aed',
+  incidents: '#DC2626',
+  maintenance: '#f59e0b',
 };
 
 export const ITTheme = {
